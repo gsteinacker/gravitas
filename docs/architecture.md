@@ -24,8 +24,9 @@ Abhängigkeiten zeigen nur nach unten: `cmd → ui → render, scene → sim →
 ## GPU (ADR-0004)
 
 Auf macOS führt Metal den Baumdurchlauf aus (`bh.Solver.GPU`, Standard in der App). Der Baumaufbau bleibt auf
-der CPU und ist parallelisiert: Sammeln, Morton-Keys, stabiler paralleler Radix-Sort, sortierte Kopien. Die
-Rekursion über die Knoten läuft noch seriell.
+der CPU und ist vollständig parallelisiert: Sammeln, Morton-Keys, stabiler paralleler Radix-Sort,
+sortierte Kopien und die Knoten (Teilbäume parallel, T-029). Das Ergebnis ist bitidentisch zum seriellen
+Aufbau.
 
 ## Rendering (M4)
 

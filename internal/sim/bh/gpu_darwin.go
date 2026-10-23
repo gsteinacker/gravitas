@@ -61,6 +61,8 @@ import (
 	"errors"
 	"sync"
 	"unsafe"
+
+	"galaxy/internal/sim"
 )
 
 // walkKernel is the GPU version of Solver.walk (skip-pointer traversal with quadrupoles), one
@@ -163,21 +165,27 @@ func (b *Solver) walkGPU(eps2 float64) {
 	nodes := unsafe.Slice((*gNode)(C.gpu_contents(g.nodes)), len(b.nodes))
 	stars := unsafe.Slice((*[4]float32)(C.gpu_contents(g.stars)), n)
 	acc := unsafe.Slice((*[4]float32)(C.gpu_contents(g.acc)), n)
-	for i := range b.nodes {
-		nd := &b.nodes[i]
-		nodes[i] = gNode{
-			com:   [4]float32{float32(nd.x), float32(nd.y), float32(nd.z), float32(nd.m)},
-			q1:    [4]float32{float32(nd.qxx), float32(nd.qyy), float32(nd.qzz), float32(nd.qxy)},
-			q2:    [4]float32{float32(nd.qxz), float32(nd.qyz), float32(nd.crit2), 0},
-			links: [4]int32{nd.first, nd.next, nd.lo, nd.hi},
+	sim.ParallelFor(len(b.nodes), 4096, b.Workers, func(lo, hi int) {
+		for i := lo; i < hi; i++ {
+			nd := &b.nodes[i]
+			nodes[i] = gNode{
+				com:   [4]float32{float32(nd.x), float32(nd.y), float32(nd.z), float32(nd.m)},
+				q1:    [4]float32{float32(nd.qxx), float32(nd.qyy), float32(nd.qzz), float32(nd.qxy)},
+				q2:    [4]float32{float32(nd.qxz), float32(nd.qyz), float32(nd.crit2), 0},
+				links: [4]int32{nd.first, nd.next, nd.lo, nd.hi},
+			}
 		}
-	}
-	for k := range n {
-		stars[k] = [4]float32{float32(b.sx[k]), float32(b.sy[k]), float32(b.sz[k]), float32(b.sm[k])}
-	}
+	})
+	sim.ParallelFor(n, 8192, b.Workers, func(lo, hi int) {
+		for k := lo; k < hi; k++ {
+			stars[k] = [4]float32{float32(b.sx[k]), float32(b.sy[k]), float32(b.sz[k]), float32(b.sm[k])}
+		}
+	})
 	g.lastSeconds = float64(C.gpu_walk(g.nodes, g.stars, g.acc, C.uint32_t(n), C.float(eps2)))
 	b.ax, b.ay, b.az = resize(b.ax, n), resize(b.ay, n), resize(b.az, n)
-	for k := range n {
-		b.ax[k], b.ay[k], b.az[k] = float64(acc[k][0]), float64(acc[k][1]), float64(acc[k][2])
-	}
+	sim.ParallelFor(n, 8192, b.Workers, func(lo, hi int) {
+		for k := lo; k < hi; k++ {
+			b.ax[k], b.ay[k], b.az[k] = float64(acc[k][0]), float64(acc[k][1]), float64(acc[k][2])
+		}
+	})
 }

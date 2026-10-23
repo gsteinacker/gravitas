@@ -49,6 +49,10 @@ type Solver struct {
 	hist       [][256]int // radix sort histograms per worker
 	parts      []part     // per-chunk results of collect
 	offsets    []int
+	tasks      []subtreeTask // parallel build: subtrees, their nodes, merge bases, top nodes
+	locals     [][]node
+	bases      []int32
+	tops       []topNode
 	gpu        gpuBuffers
 }
 
@@ -74,9 +78,12 @@ func (b *Solver) Accelerations(s *sim.State, p sim.Params) {
 	eps2 := p.Softening * p.Softening
 	if b.GPU && len(b.nodes) > 0 && GPUAvailable() == nil {
 		b.walkGPU(eps2)
-		for k, i := range b.order {
-			s.AccX[i], s.AccY[i], s.AccZ[i] = b.ax[k], b.ay[k], b.az[k]
-		}
+		sim.ParallelFor(len(b.order), 8192, b.Workers, func(lo, hi int) {
+			for k := lo; k < hi; k++ {
+				i := b.order[k]
+				s.AccX[i], s.AccY[i], s.AccZ[i] = b.ax[k], b.ay[k], b.az[k]
+			}
+		})
 		for _, i := range b.holes {
 			s.AccX[i], s.AccY[i], s.AccZ[i] = 0, 0, 0
 		}

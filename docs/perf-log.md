@@ -9,6 +9,16 @@ Maschine: M4 Pro, GOMAXPROCS=12, Go 1.27.x
 Fazit: …
 ```
 
+## 2026-10-23 · T-029 · Paralleler Baumaufbau (Teilbäume)
+
+```
+BenchmarkBuild N=100k:  serial 4.05 ms → parallel 1.39 ms
+BenchmarkBuild N=1M:    serial 46.7 ms → parallel 8.8 ms   (5.3×)
+GPUvsCPU N=1M/GPU:      40.2 → 27.3 ms (Kernel 16.1 ms)
+GPUvsCPU N=1M/CPU:      155  → 142  ms
+AccelerationsEvolved (CPU, 100k): 20.7 → 18.1 ms
+```
+
 ## 2026-10-23 · T-023 · GPU-Baumdurchlauf (Metal) + paralleler Baumaufbau
 
 Ohne Last:

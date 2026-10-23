@@ -254,12 +254,18 @@ func BenchmarkStep(b *testing.B) {
 }
 
 func BenchmarkBuild(b *testing.B) {
-	s, _ := galaxy(100_000)
-	solver := &Solver{}
-	solver.build(s, DefaultTheta)
-	b.ReportAllocs()
-	for b.Loop() {
-		solver.build(s, DefaultTheta)
+	for _, n := range []int{100_000, 1_000_000} {
+		for _, workers := range []int{1, 0} {
+			b.Run(fmt.Sprintf("N=%d/workers=%d", n, workers), func(b *testing.B) {
+				s, _ := galaxy(n)
+				solver := &Solver{Workers: workers}
+				solver.build(s, DefaultTheta)
+				b.ReportAllocs()
+				for b.Loop() {
+					solver.build(s, DefaultTheta)
+				}
+			})
+		}
 	}
 }
 
@@ -358,5 +364,23 @@ func TestBuildIndependentOfWorkers(t *testing.T) {
 	b := accelerations(s, &Solver{Workers: 12}, p)
 	if !slices.Equal(a, b) {
 		t.Error("result depends on the number of workers")
+	}
+}
+
+func TestParallelBuildIsBitIdentical(t *testing.T) {
+	for _, n := range []int{40_000, 300_000} {
+		s, p := galaxy(n)
+		serial, parallel := &Solver{Workers: 1}, &Solver{Workers: 12}
+		a, b := accelerations(s, serial, p), accelerations(s, parallel, p)
+		if !slices.Equal(a, b) {
+			t.Fatalf("N=%d: parallel build changes the forces", n)
+		}
+		if len(serial.nodes) != len(parallel.nodes) {
+			t.Fatalf("N=%d: %d vs %d nodes", n, len(serial.nodes), len(parallel.nodes))
+		}
+		// The potential sums chunk results in completion order, so only round-off may differ.
+		if us, up := serial.PotentialEnergy(s, p), parallel.PotentialEnergy(s, p); math.Abs((us-up)/us) > 1e-12 {
+			t.Fatalf("N=%d: potential %v vs %v", n, us, up)
+		}
 	}
 }

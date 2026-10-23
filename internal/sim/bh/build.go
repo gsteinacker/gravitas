@@ -40,8 +40,13 @@ func (b *Solver) build(s *sim.State, theta float64) {
 	})
 
 	half := side / 2
-	b.nodes = append(b.nodes, node{})
-	b.buildNode(0, 0, int32(n), 0, minX+half, minY+half, minZ+half, half, -1, theta)
+	if n >= parallelMin && b.workers() > 1 {
+		b.buildParallel(int32(n), minX+half, minY+half, minZ+half, half, theta)
+		return
+	}
+	t := treeBuilder{b: b, nodes: append(b.nodes[:0], node{}), theta: theta}
+	t.buildNode(0, 0, int32(n), 0, minX+half, minY+half, minZ+half, half, -1)
+	b.nodes = t.nodes
 }
 
 // part is one chunk's result in collect.
@@ -113,31 +118,25 @@ func (b *Solver) workers() int {
 	return runtime.GOMAXPROCS(0)
 }
 
+// subtreeNext marks, inside a subtree built in isolation, the link to whatever follows the subtree.
+const subtreeNext = -2
+
+// treeBuilder builds (part of) the tree into nodes. The sorted star arrays are shared.
+type treeBuilder struct {
+	b     *Solver
+	nodes []node
+	theta float64
+}
+
 // buildNode fills node ni for the sorted star range [lo, hi). The node is a cube with the given
 // center and half side length at the given tree level.
-func (b *Solver) buildNode(ni, lo, hi int32, level int, cx, cy, cz, half float64, next int32, theta float64) {
-	var x, y, z, m float64
+func (t *treeBuilder) buildNode(ni, lo, hi int32, level int, cx, cy, cz, half float64, next int32) {
 	first, children := int32(-1), int32(0)
-	if hi-lo <= leafSize || level >= mortonBits {
-		for j := lo; j < hi; j++ {
-			mj := b.sm[j]
-			x, y, z, m = x+mj*b.sx[j], y+mj*b.sy[j], z+mj*b.sz[j], m+mj
-		}
-	} else {
-		shift := uint(3 * (mortonBits - 1 - level))
-		var bounds [9]int32
-		bounds[0], bounds[8] = lo, hi
-		for oct := uint64(1); oct < 8; oct++ {
-			bounds[oct] = b.lowerBound(bounds[oct-1], hi, shift, oct)
-		}
-		for oct := range 8 {
-			if bounds[oct+1] > bounds[oct] {
-				children++
-			}
-		}
-		first = int32(len(b.nodes))
+	if hi-lo > leafSize && level < mortonBits {
+		bounds, n := t.b.split(lo, hi, level)
+		first, children = int32(len(t.nodes)), n
 		for range children {
-			b.nodes = append(b.nodes, node{})
+			t.nodes = append(t.nodes, node{})
 		}
 		c, q := first, half/2
 		for oct := range 8 {
@@ -149,11 +148,41 @@ func (b *Solver) buildNode(ni, lo, hi int32, level int, cx, cy, cz, half float64
 			if c < first+children-1 {
 				childNext = c + 1
 			}
-			b.buildNode(c, clo, chi, level+1,
-				cx+offset(oct, 2)*q, cy+offset(oct, 1)*q, cz+offset(oct, 0)*q, q, childNext, theta)
-			ch := &b.nodes[c]
-			x, y, z, m = x+ch.m*ch.x, y+ch.m*ch.y, z+ch.m*ch.z, m+ch.m
+			t.buildNode(c, clo, chi, level+1, cx+offset(oct, 2)*q, cy+offset(oct, 1)*q, cz+offset(oct, 0)*q, q, childNext)
 			c++
+		}
+	}
+	t.nodes[ni] = t.b.finish(t.nodes, lo, hi, first, children, cx, cy, cz, half, next, t.theta)
+}
+
+// split returns the octant boundaries of [lo, hi) at level and the number of non-empty octants.
+func (b *Solver) split(lo, hi int32, level int) (bounds [9]int32, children int32) {
+	shift := uint(3 * (mortonBits - 1 - level))
+	bounds[0], bounds[8] = lo, hi
+	for oct := uint64(1); oct < 8; oct++ {
+		bounds[oct] = b.lowerBound(bounds[oct-1], hi, shift, oct)
+	}
+	for oct := range 8 {
+		if bounds[oct+1] > bounds[oct] {
+			children++
+		}
+	}
+	return bounds, children
+}
+
+// finish computes a node's moments, from its stars (first < 0) or from its children
+// nodes[first : first+children].
+func (b *Solver) finish(nodes []node, lo, hi, first, children int32, cx, cy, cz, half float64, next int32, theta float64) node {
+	var x, y, z, m float64
+	if first < 0 {
+		for j := lo; j < hi; j++ {
+			mj := b.sm[j]
+			x, y, z, m = x+mj*b.sx[j], y+mj*b.sy[j], z+mj*b.sz[j], m+mj
+		}
+	} else {
+		for c := first; c < first+children; c++ {
+			ch := &nodes[c]
+			x, y, z, m = x+ch.m*ch.x, y+ch.m*ch.y, z+ch.m*ch.z, m+ch.m
 		}
 	}
 	if m > 0 {
@@ -169,7 +198,7 @@ func (b *Solver) buildNode(ni, lo, hi int32, level int, cx, cy, cz, half float64
 	} else {
 		// Parallel axis theorem: shift each child's tensor to this node's center of mass.
 		for c := first; c < first+children; c++ {
-			ch := &b.nodes[c]
+			ch := &nodes[c]
 			q.qxx, q.qyy, q.qzz = q.qxx+ch.qxx, q.qyy+ch.qyy, q.qzz+ch.qzz
 			q.qxy, q.qxz, q.qyz = q.qxy+ch.qxy, q.qxz+ch.qxz, q.qyz+ch.qyz
 			q.add(ch.m, ch.x-x, ch.y-y, ch.z-z)
@@ -179,10 +208,116 @@ func (b *Solver) buildNode(ni, lo, hi int32, level int, cx, cy, cz, half float64
 	// lies off-center must be opened earlier. For θ ≤ 1 a node containing the target is always opened.
 	delta := math.Sqrt((x-cx)*(x-cx) + (y-cy)*(y-cy) + (z-cz)*(z-cz))
 	crit := 2*half/theta + delta
-	b.nodes[ni] = node{
+	return node{
 		x: x, y: y, z: z, m: m,
 		qxx: q.qxx, qyy: q.qyy, qzz: q.qzz, qxy: q.qxy, qxz: q.qxz, qyz: q.qyz,
 		crit2: crit * crit, first: first, next: next, lo: lo, hi: hi,
+	}
+}
+
+// Parallel tree build (T-029): the top of the tree is split serially into subtree tasks, the
+// subtrees are built concurrently into their own node slices, merged with shifted indices, and the
+// top nodes are finished bottom-up. The walk order is defined by the links only, so forces are
+// bit-identical to the serial build.
+
+type subtreeTask struct {
+	ni, lo, hi       int32
+	level            int
+	cx, cy, cz, half float64
+	next             int32
+}
+
+type topNode struct {
+	ni, lo, hi, first, children int32
+	cx, cy, cz, half            float64
+	next                        int32
+}
+
+// buildParallel builds the tree for n sorted stars into b.nodes.
+func (b *Solver) buildParallel(n int32, cx, cy, cz, half, theta float64) {
+	taskSize := max(8*leafSize, n/int32(8*b.workers()))
+	b.tasks, b.tops = b.tasks[:0], b.tops[:0]
+	b.nodes = append(b.nodes[:0], node{})
+	b.splitTop(0, 0, n, 0, cx, cy, cz, half, -1, taskSize)
+
+	for len(b.locals) < len(b.tasks) {
+		b.locals = append(b.locals, nil)
+	}
+	sim.ParallelFor(len(b.tasks), 1, b.Workers, func(lo, hi int) {
+		for ti := lo; ti < hi; ti++ {
+			task := &b.tasks[ti]
+			t := treeBuilder{b: b, nodes: append(b.locals[ti][:0], node{}), theta: theta}
+			t.buildNode(0, task.lo, task.hi, task.level, task.cx, task.cy, task.cz, task.half, subtreeNext)
+			b.locals[ti] = t.nodes
+		}
+	})
+
+	// Prefix sums give every subtree its place, so merging can run in parallel as well.
+	b.bases = b.bases[:0]
+	total := int32(len(b.nodes))
+	for ti := range b.tasks {
+		b.bases = append(b.bases, total)
+		total += int32(len(b.locals[ti])) - 1 // the local root goes to the task's placeholder
+	}
+	b.nodes = resize(b.nodes, int(total))
+	sim.ParallelFor(len(b.tasks), 1, b.Workers, func(lo, hi int) {
+		for ti := lo; ti < hi; ti++ {
+			task, base, local := &b.tasks[ti], b.bases[ti], b.locals[ti]
+			remap := func(j int32) int32 {
+				switch {
+				case j == subtreeNext:
+					return task.next
+				case j < 0:
+					return j
+				case j == 0:
+					return task.ni
+				default:
+					return base + j - 1
+				}
+			}
+			for j := range local {
+				nd := local[j]
+				nd.first, nd.next = remap(nd.first), remap(nd.next)
+				if j == 0 {
+					b.nodes[task.ni] = nd
+				} else {
+					b.nodes[base+int32(j)-1] = nd
+				}
+			}
+		}
+	})
+
+	// Top nodes were created parents first, so finishing them in reverse sees finished children.
+	for i := len(b.tops) - 1; i >= 0; i-- {
+		tn := &b.tops[i]
+		b.nodes[tn.ni] = b.finish(b.nodes, tn.lo, tn.hi, tn.first, tn.children, tn.cx, tn.cy, tn.cz, tn.half, tn.next, theta)
+	}
+}
+
+// splitTop creates the top of the tree down to subtrees of at most taskSize stars.
+func (b *Solver) splitTop(ni, lo, hi int32, level int, cx, cy, cz, half float64, next, taskSize int32) {
+	if hi-lo <= taskSize || hi-lo <= leafSize || level >= mortonBits {
+		b.tasks = append(b.tasks, subtreeTask{ni: ni, lo: lo, hi: hi, level: level, cx: cx, cy: cy, cz: cz, half: half, next: next})
+		return
+	}
+	bounds, children := b.split(lo, hi, level)
+	first := int32(len(b.nodes))
+	for range children {
+		b.nodes = append(b.nodes, node{})
+	}
+	b.tops = append(b.tops, topNode{ni: ni, lo: lo, hi: hi, first: first, children: children, cx: cx, cy: cy, cz: cz, half: half, next: next})
+	c, q := first, half/2
+	for oct := range 8 {
+		clo, chi := bounds[oct], bounds[oct+1]
+		if chi == clo {
+			continue
+		}
+		childNext := next
+		if c < first+children-1 {
+			childNext = c + 1
+		}
+		b.splitTop(c, clo, chi, level+1, cx+offset(oct, 2)*q, cy+offset(oct, 1)*q, cz+offset(oct, 0)*q, q, childNext, taskSize)
+		c++
 	}
 }
 
