@@ -180,6 +180,30 @@ func BenchmarkAccelerations(b *testing.B) {
 	}
 }
 
+// BenchmarkAccelerationsEvolved measures a galaxy after it has developed a dense core, which is
+// markedly more expensive than the initial state (t = 0: ~19 ms, t = 2.4: ~36 ms at N = 100k).
+func BenchmarkAccelerationsEvolved(b *testing.B) {
+	s, p := galaxy(100_000)
+	m := sim.New(s, &Solver{}, p)
+	for range 600 {
+		m.Step()
+	}
+	solver := &Solver{}
+	solver.Accelerations(s, p)
+	b.ResetTimer()
+	for b.Loop() {
+		solver.Accelerations(s, p)
+	}
+}
+
+func BenchmarkPotentialEnergy(b *testing.B) {
+	s, p := galaxy(100_000)
+	solver := &Solver{}
+	for b.Loop() {
+		solver.PotentialEnergy(s, p)
+	}
+}
+
 func BenchmarkBuild(b *testing.B) {
 	s, _ := galaxy(100_000)
 	solver := &Solver{}

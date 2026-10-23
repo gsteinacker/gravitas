@@ -97,3 +97,22 @@ func (pairSolver) Accelerations(s *State, p Params) {
 		}
 	}
 }
+
+func TestSlowRendererDoesNotBlockStepping(t *testing.T) {
+	s := NewState(1)
+	s.Add(Body{Mass: 1})
+	r := NewRunner(New(s, nopSolver{}, Params{Dt: 1e-3}))
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	go r.Run(ctx)
+
+	var before, after int
+	r.View(func(sn *Snapshot) {
+		before = sn.Steps
+		time.Sleep(200 * time.Millisecond) // a very slow frame
+	})
+	r.View(func(sn *Snapshot) { after = sn.Steps })
+	if after-before < 100 {
+		t.Errorf("only %d steps during a 200 ms frame; rendering blocks the simulation", after-before)
+	}
+}

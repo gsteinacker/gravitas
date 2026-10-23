@@ -21,4 +21,6 @@ Goroutinen, mit Barnes-Hut. Daten als Struct-of-Arrays in float64.
 - Realistisches Ziel ca. 10⁵ Sterne interaktiv. Darüber hinaus wäre GPU-Compute nötig.
 - Physik hinter `Solver`-Interface, damit ein späteres GPU-Backend möglich bleibt.
 - Re-Evaluierung nach M2, falls 100k Sterne < 15 Schritte/s.
+- Re-Evaluierung nach M2 (2026-10-23, T-010): 100k Sterne laufen mit 27–46 Schritten/s, je nach
+  Entwicklungsstand der Galaxie. Das Abbruchkriterium (< 15 Schritte/s) ist klar verfehlt, **Go bleibt**.
 - Nachprüfung 2026-10-23 (Analyse, Abschnitt 6): Ein anderer Sprachstack brächte auf der CPU nur ~2–3×. Faktor 10 erfordert einen GPU-Baumcode. Das ist eine Backend-Frage und lässt sich auch aus Go lösen (T-023).

@@ -14,8 +14,9 @@ import (
 const (
 	// DefaultTheta is the opening angle used when Solver.Theta is 0.
 	DefaultTheta = 0.6
-	// leafSize is the maximum number of stars in a leaf.
-	leafSize = 12
+	// leafSize is the maximum number of stars in a leaf. Measured on an evolved 100k galaxy:
+	// 12 → 40.5 ms, 24 → 36.0 ms, 32 → 35.7 ms per force evaluation.
+	leafSize = 24
 	// diagTheta caps the opening angle for energy diagnostics: the potential's systematic error
 	// must stay well below the integration drift it is meant to reveal.
 	diagTheta = 0.3

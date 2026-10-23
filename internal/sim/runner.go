@@ -39,8 +39,12 @@ type Runner struct {
 	sim  *Simulation
 	cmds chan func(*Simulation)
 
-	mu          sync.Mutex
-	front, back *Snapshot
+	// Triple buffer: the simulation fills writing, the renderer reads reading, and latest is the
+	// newest complete snapshot. The mutex only guards pointer swaps, so neither side ever waits
+	// for the other's work (rendering used to block publishing, see T-024).
+	mu                       sync.Mutex
+	writing, latest, reading *Snapshot
+	fresh                    bool // latest is newer than reading
 
 	paused    atomic.Bool
 	targetSPS atomic.Int64 // 0 = as fast as possible
@@ -58,8 +62,8 @@ type Runner struct {
 const energyInterval = 2 * time.Second
 
 func NewRunner(m *Simulation) *Runner {
-	r := &Runner{sim: m, cmds: make(chan func(*Simulation), 64), front: &Snapshot{}, back: &Snapshot{}}
-	r.front.fill(m)
+	r := &Runner{sim: m, cmds: make(chan func(*Simulation), 64), writing: &Snapshot{}, latest: &Snapshot{}, reading: &Snapshot{}}
+	r.reading.fill(m)
 	r.epoch = m.Epoch - 1 // forces a baseline measurement on the first step
 	r.drift.Store(math.Float64bits(math.NaN()))
 	return r
@@ -68,11 +72,15 @@ func NewRunner(m *Simulation) *Runner {
 // Do schedules f to run on the simulation goroutine before the next step.
 func (r *Runner) Do(f func(*Simulation)) { r.cmds <- f }
 
-// View calls f with the latest snapshot. f must not retain it.
+// View calls f with the newest published snapshot. f must not retain it. View must only be
+// called from one goroutine (the renderer); the simulation keeps stepping while f runs.
 func (r *Runner) View(f func(*Snapshot)) {
 	r.mu.Lock()
-	defer r.mu.Unlock()
-	f(r.front)
+	if r.fresh {
+		r.reading, r.latest, r.fresh = r.latest, r.reading, false
+	}
+	r.mu.Unlock()
+	f(r.reading)
 }
 
 func (r *Runner) Paused() bool         { return r.paused.Load() }
@@ -165,8 +173,8 @@ func (r *Runner) drain() bool {
 }
 
 func (r *Runner) publish() {
-	r.back.fill(r.sim)
+	r.writing.fill(r.sim)
 	r.mu.Lock()
-	r.front, r.back = r.back, r.front
+	r.latest, r.writing, r.fresh = r.writing, r.latest, true
 	r.mu.Unlock()
 }

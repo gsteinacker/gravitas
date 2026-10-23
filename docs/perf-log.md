@@ -9,6 +9,35 @@ Maschine: M4 Pro, GOMAXPROCS=12, Go 1.27.x
 Fazit: …
 ```
 
+## 2026-10-23 · T-024/T-010 · Triple-Buffer, Blattgröße, entwickelter Zustand
+
+Profil der laufenden App (100k, 20 s): `walk` 78 %, Rendern 8 %, Energie-Diagnose 5 %.
+CPU-Auslastung 616 % → 714 % nach dem Triple-Buffer. Die Schritte/s blieben aber gleich (~25 bei t ≈ 2,5).
+
+Ursache der Lücke zum Benchmark: Der Benchmark maß nur t = 0. Headless, ohne App:
+
+```
+t = 0.4: 21.6 ms/step   t = 1.2: 29.0   t = 2.0: 35.6   t = 2.8: 38.1
+```
+
+Die App ist also so schnell wie die nackte Simulation. Blattgröße am entwickelten Zustand (t = 2,4):
+
+```
+leafSize  4: 44.4 ms   8: 39.9   12: 40.5   16: 37.6   24: 36.0   32: 35.7
+```
+
+→ leafSize = 24. Danach:
+
+```
+BenchmarkAccelerations/N=100000-12      17.5 ms/op    27 allocs/op
+BenchmarkAccelerations/N=1000000-12    260   ms/op
+BenchmarkAccelerationsEvolved-12        35.1 ms/op    (100k, t = 2.4)
+BenchmarkPotentialEnergy-12             50   ms/op    (θ = 0.3)
+BenchmarkBuild-12                        3.3 ms/op     0 allocs/op
+```
+
+Fazit: Die App ist nicht der Engpass, sondern die Kraftberechnung bei dichtem Kern. Nächster Hebel ist T-027 (Gruppen-Walk).
+
 ## 2026-10-23 · T-008/T-009 · Barnes-Hut, parallel
 
 Maschine: M4 Pro (8P+4E), Go 1.27.1, θ = 0,6, Scheibe + 2 BHs
