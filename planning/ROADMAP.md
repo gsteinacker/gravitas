@@ -8,5 +8,6 @@
 | M3 | Licht | `c` spürbar machen | v < c, Horizont/Akkretion, Paczyński-Wiita, c im UI |
 | M4 | Schönheit | Wow-Effekt | Glow, Doppler-Farben, Gravitationslinse, Spuren |
 | M5 | Experimente | Neugier | Retardierte Gravitation, WASM, Speichern, GPU-Spike |
+| M6 | Gas & Staub | Interstellares Medium | Hydrodynamik, Sternentstehung, Ionisation, Staub; Szene Pferdekopfnebel |
 
 Fortschritt: `make plan`. Die Tasks liegen in `tasks/`, Workflow in [README.md](README.md).

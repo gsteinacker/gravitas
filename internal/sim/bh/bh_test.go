@@ -49,12 +49,20 @@ func TestRadixSort(t *testing.T) {
 	}
 }
 
-// galaxy returns a clustered test system: a disk with a central black hole plus a second black hole.
+// galaxy returns a fixed, clustered test system independent of the scene files: a disk around a
+// heavy central black hole plus a second black hole (the former "Spiral galaxy" scene).
 func galaxy(n int) (*sim.State, sim.Params) {
-	s, p := scene.Presets[0].Build(n)
+	s := sim.NewState(n + 2)
+	scene.AddDisk(s, scene.DiskConfig{
+		N: n, StarMass: 1, BHMass: 2, ScaleRadius: 0.8, MinRadius: 0.15, MaxRadius: 4,
+		Thickness: 0.03, Softening: 0.06, Dispersion: 0.12, Seed: 1,
+	})
 	s.Add(sim.Body{Pos: vec.Vec3{X: 1.5, Y: 0.3}, Mass: 0.5, Kind: sim.BlackHole})
-	return s, p
+	return s, sim.Params{Dt: 0.004, Softening: 0.06, C: 10}
 }
+
+// realisticGalaxy is the dark matter dominated "Spiral galaxy" scene.
+func realisticGalaxy(n int) (*sim.State, sim.Params) { return scene.Presets[0].Build(n) }
 
 func accelerations(s *sim.State, solver sim.Solver, p sim.Params) [][3]float64 {
 	solver.Accelerations(s, p)

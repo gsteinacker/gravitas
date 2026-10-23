@@ -1,6 +1,6 @@
 {
   "name": "Spiral galaxy",
-  "info": "scale-free model read as 1 unit = 2.5 kpc, 2e10 Msun (185 km/s); c reduced to 10 (real ~1600)",
+  "info": "1 unit = 2.5 kpc, 2e10 Msun (185 km/s); Hernquist dark matter halo; c reduced to 10 (real ~1600)",
   "yearsPerUnit": 13200000.0,
   "params": {
     "dt": 0.004,
@@ -11,15 +11,21 @@
     {
       "type": "galaxy",
       "weight": 1,
-      "mass": 1,
-      "holeMass": 2,
+      "mass": 10,
+      "holeMass": 0.002,
       "diskScale": 0.8,
-      "diskMin": 0.15,
+      "diskMin": 0.05,
       "diskMax": 4,
       "thickness": 0.03,
-      "dispersion": 0.12,
       "seed": 1,
-      "note": "No halo: the oversized central hole stabilizes the disk."
+      "note": "2e11 Msun total (disk 2e10 = 10 %), Hernquist halo a = 10 kpc, central hole 4e7 Msun; flat rotation curve ~180 km/s.",
+      "diskFraction": 0.1,
+      "toomreQ": 1.2,
+      "coldFraction": 0.15,
+      "haloProfile": "hernquist",
+      "haloScale": 4,
+      "haloMax": 40,
+      "darkFraction": 0.5
     }
   ]
 }

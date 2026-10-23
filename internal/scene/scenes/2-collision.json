@@ -1,6 +1,6 @@
 {
   "name": "Galaxy collision",
-  "info": "scale-free model read as 1 unit = 2.5 kpc, 2e10 Msun (185 km/s); c reduced to 10 (real ~1600)",
+  "info": "1 unit = 2.5 kpc, 2e10 Msun (185 km/s); Hernquist dark matter halos; c reduced to 10 (real ~1600)",
   "yearsPerUnit": 13200000.0,
   "params": {
     "dt": 0.004,
@@ -12,49 +12,72 @@
     {
       "type": "galaxy",
       "weight": 0.6,
-      "mass": 0.6,
-      "holeMass": 1.2,
+      "mass": 6,
+      "holeMass": 0.0012,
       "diskScale": 0.7,
-      "diskMin": 0.15,
+      "diskMin": 0.05,
       "diskMax": 3,
       "thickness": 0.03,
-      "dispersion": 0.12,
       "position": [
-        -4,
-        -1.2,
+        -9,
+        -2.5,
         0
       ],
       "velocity": [
-        0.32,
-        0,
+        0.42,
+        0.06,
         0
       ],
       "inclination": 17.188733853924695,
-      "seed": 2
+      "seed": 2,
+      "diskFraction": 0.1,
+      "toomreQ": 1.2,
+      "coldFraction": 0.15,
+      "haloProfile": "hernquist",
+      "haloScale": 3.5,
+      "haloMax": 30,
+      "darkFraction": 0.5,
+      "note": "Disks as before (0.6 and 0.4), now inside Hernquist halos with 90 % dark matter and realistic central holes. Start ~47 kpc apart, opposite momenta (6 x 0.42 = 4 x 0.63), so the approach is visible before the halos merge."
     },
     {
       "type": "galaxy",
       "weight": 0.4,
-      "mass": 0.4,
-      "holeMass": 0.8,
+      "mass": 4,
+      "holeMass": 0.0008,
       "diskScale": 0.6,
-      "diskMin": 0.15,
+      "diskMin": 0.05,
       "diskMax": 2.5,
       "thickness": 0.03,
-      "dispersion": 0.12,
       "position": [
-        4,
-        1.2,
+        9,
+        2.5,
         0
       ],
       "velocity": [
-        -0.32,
-        0,
+        -0.63,
+        -0.09,
         0
       ],
       "inclination": -63.02535746439056,
       "orientation": 45.83662361046586,
-      "seed": 3
+      "seed": 3,
+      "diskFraction": 0.1,
+      "toomreQ": 1.2,
+      "coldFraction": 0.15,
+      "haloProfile": "hernquist",
+      "haloScale": 3,
+      "haloMax": 25,
+      "darkFraction": 0.5
     }
-  ]
+  ],
+  "camera": {
+    "target": [
+      0,
+      0,
+      0
+    ],
+    "distance": 22,
+    "pitch": 55,
+    "yaw": 0
+  }
 }

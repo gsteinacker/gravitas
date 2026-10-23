@@ -9,6 +9,21 @@ Maschine: M4 Pro, GOMAXPROCS=12, Go 1.27.x
 Fazit: …
 ```
 
+## 2026-10-24 · T-034 · θ auf DM-dominierter Galaxie
+
+Szene „Spiral galaxy“ mit Hernquist-Halo, Kraftfehler der Sterne gegenüber direkter Summe (6000) und Zeit (150k, CPU):
+
+```
+θ=0.5  median 7.8e-4  max 7.7e-3  193 ms
+θ=0.6  median 1.5e-3  max 1.5e-2  126 ms
+θ=0.7  median 2.5e-3  max 3.1e-2   90 ms
+θ=0.8  median 3.9e-3  max 6.4e-2   51 ms
+θ=0.9  median 5.7e-3  max 8.0e-2   33 ms   ← Standard
+```
+
+Fazit: In DM-dominierten Systemen ist der relative Fehler ~10× größer als im lochdominierten Testsystem. Er liegt
+noch im üblichen Rahmen und unter dem Diskretheitsrauschen der schweren DM-Teilchen.
+
 ## 2026-10-23 · T-030 · Rendering bei 1M
 
 ```

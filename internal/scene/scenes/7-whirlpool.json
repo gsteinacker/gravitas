@@ -24,7 +24,7 @@
       "name": "M51",
       "weight": 0.75,
       "mass": 1,
-      "diskFraction": 0.3,
+      "diskFraction": 0.15,
       "diskScale": 0.5,
       "diskMin": 0.05,
       "diskMax": 3,
@@ -33,15 +33,17 @@
       "coldFraction": 0.15,
       "haloScale": 1.2,
       "darkFraction": 0.4,
-      "holeMass": 0.01,
-      "seed": 31
+      "holeMass": 0.002,
+      "seed": 31,
+      "haloProfile": "hernquist",
+      "haloMax": 12
     },
     {
       "type": "galaxy",
       "name": "NGC 5195",
       "weight": 0.25,
       "mass": 0.3,
-      "diskFraction": 0.4,
+      "diskFraction": 0.25,
       "diskScale": 0.2,
       "diskMin": 0.02,
       "diskMax": 0.8,
@@ -50,7 +52,7 @@
       "coldFraction": 0.05,
       "haloScale": 0.5,
       "darkFraction": 0.4,
-      "holeMass": 0.003,
+      "holeMass": 0.0006,
       "inclination": 60,
       "position": [
         3.5,
@@ -63,7 +65,9 @@
         -0.2
       ],
       "seed": 32,
-      "note": "Bound orbit (0.8 of escape speed) aimed below the main disk; geometry inspired by, not fitted to, published M51 models."
+      "note": "Bound orbit (0.8 of escape speed) aimed below the main disk; geometry inspired by, not fitted to, published M51 models.",
+      "haloProfile": "hernquist",
+      "haloMax": 5
     }
   ]
 }

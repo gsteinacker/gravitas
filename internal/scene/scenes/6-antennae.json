@@ -24,7 +24,7 @@
       "name": "NGC 4038",
       "weight": 0.5,
       "mass": 1,
-      "diskFraction": 0.25,
+      "diskFraction": 0.15,
       "diskScale": 0.5,
       "diskMin": 0.05,
       "diskMax": 2.5,
@@ -33,7 +33,7 @@
       "coldFraction": 0.15,
       "haloScale": 1.5,
       "darkFraction": 0.4,
-      "holeMass": 0.01,
+      "holeMass": 0.002,
       "inclination": 60,
       "position": [
         -5,
@@ -46,14 +46,16 @@
         0
       ],
       "seed": 21,
-      "note": "Parabolic orbit of two unit masses (point-mass approximation) from separation 10 to pericenter 1.5: v_rel = (-0.583, 0.245, 0). Both disks spin with the orbit (prograde), tilted 60 deg."
+      "note": "Parabolic orbit of two unit masses (point-mass approximation) from separation 10 to pericenter 1.5: v_rel = (-0.583, 0.245, 0). Both disks spin with the orbit (prograde), tilted 60 deg.",
+      "haloProfile": "hernquist",
+      "haloMax": 15
     },
     {
       "type": "galaxy",
       "name": "NGC 4039",
       "weight": 0.5,
       "mass": 1,
-      "diskFraction": 0.25,
+      "diskFraction": 0.15,
       "diskScale": 0.5,
       "diskMin": 0.05,
       "diskMax": 2.5,
@@ -62,7 +64,7 @@
       "coldFraction": 0.15,
       "haloScale": 1.5,
       "darkFraction": 0.4,
-      "holeMass": 0.01,
+      "holeMass": 0.002,
       "inclination": -60,
       "orientation": 30,
       "position": [
@@ -75,7 +77,9 @@
         0.1225,
         0
       ],
-      "seed": 22
+      "seed": 22,
+      "haloProfile": "hernquist",
+      "haloMax": 15
     }
   ]
 }
