@@ -16,6 +16,9 @@ const (
 	DefaultTheta = 0.6
 	// leafSize is the maximum number of stars in a leaf.
 	leafSize = 12
+	// diagTheta caps the opening angle for energy diagnostics: the potential's systematic error
+	// must stay well below the integration drift it is meant to reveal.
+	diagTheta = 0.3
 	// grain is the minimum number of target bodies per parallel chunk.
 	grain = 128
 )
@@ -53,7 +56,7 @@ func (b *Solver) theta() float64 {
 }
 
 func (b *Solver) Accelerations(s *sim.State, p sim.Params) {
-	b.build(s)
+	b.build(s, b.theta())
 	eps2 := p.Softening * p.Softening
 	sim.ParallelFor(len(b.order), grain, b.Workers, func(lo, hi int) {
 		for k := lo; k < hi; k++ {

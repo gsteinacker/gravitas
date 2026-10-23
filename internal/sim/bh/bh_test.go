@@ -183,9 +183,23 @@ func BenchmarkAccelerations(b *testing.B) {
 func BenchmarkBuild(b *testing.B) {
 	s, _ := galaxy(100_000)
 	solver := &Solver{}
-	solver.build(s)
+	solver.build(s, DefaultTheta)
 	b.ReportAllocs()
 	for b.Loop() {
-		solver.build(s)
+		solver.build(s, DefaultTheta)
+	}
+}
+
+func TestPotentialEnergyMatchesExact(t *testing.T) {
+	s, p := galaxy(3000)
+	_, want := sim.Energy(s, p.Softening)
+	if got := (&Solver{Theta: 1e-9}).PotentialEnergy(s, p); math.Abs((got-want)/want) > 1e-10 {
+		t.Errorf("tiny θ: U = %v, want %v", got, want)
+	}
+	got := (&Solver{}).PotentialEnergy(s, p)
+	rel := math.Abs((got - want) / want)
+	t.Logf("diagnostics θ=%.1f: relative potential energy error %.2g", diagTheta, rel)
+	if rel > 1e-3 {
+		t.Errorf("default θ: U = %v, want %v (rel. error %.3g)", got, want, rel)
 	}
 }

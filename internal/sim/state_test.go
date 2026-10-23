@@ -1,6 +1,7 @@
 package sim
 
 import (
+	"math"
 	"testing"
 
 	"galaxy/internal/vec"
@@ -32,3 +33,15 @@ func TestStepDoesNotAllocate(t *testing.T) {
 type nopSolver struct{}
 
 func (nopSolver) Accelerations(*State, Params) {}
+
+func TestPotentialEnergyParallelMatchesSerial(t *testing.T) {
+	s := NewState(500)
+	for i := range 500 {
+		x := float64(i)
+		s.Add(Body{Pos: vec.Vec3{X: x * 0.01, Y: x * x * 1e-4, Z: -x * 0.003}, Mass: 1 + x*0.001})
+	}
+	_, want := Energy(s, 0.05)
+	if got := PotentialEnergyParallel(s, 0.05); math.Abs((got-want)/want) > 1e-12 {
+		t.Errorf("parallel U = %v, serial %v", got, want)
+	}
+}

@@ -36,3 +36,6 @@ Stack: **Go 1.27 + Ebitengine v2**, Physik auf der CPU (siehe `docs/adr/0001-go-
 - Physik-Änderungen brauchen einen Invarianten-Test aus `docs/physics.md` (Energie-Drift, Impuls, |v| < c).
 - Nur Standardbibliothek plus Ebitengine. Neue Abhängigkeiten nur per ADR.
 - Simulationseinheiten: G = 1. `c` ist ein Parameter und keine Konstante.
+- Tastenbelegung über `ebiten.AppendInputChars` (eingegebene Zeichen), **nicht** über `ebiten.Key*`-Konstanten,
+  die US-Positionen sind. Ausnahme: layoutunabhängige Tasten (Leertaste, F-Tasten, Pfeile). Der Nutzer hat ein
+  deutsches Layout.

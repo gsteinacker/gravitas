@@ -13,10 +13,11 @@ make check                     # fmt, vet, tests, Backlog-Validierung
 | Eingabe | Aktion |
 |---------|--------|
 | `1`–`4` | Szene: Spirale, Kollision, Sternhaufen, BH-Doppel |
-| Klick | Schwarzes Loch platzieren (`[` `]` ändern die Masse) |
+| `b` `k` `Tab` | Werkzeug: Schwarzes Loch / Sternhaufen |
+| Klick / Alt-Ziehen | Objekt platzieren / mit Geschwindigkeit losschicken (`m` `n` ändern die Masse) |
 | Ziehen / Shift-Ziehen / Rad | Rotieren / Verschieben / Zoom |
-| `Leertaste` `+` `-` `r` | Pause, Tempo, Neustart |
-| `h` `?` `f` `c` | HUD, Hilfe, Vollbild, Ansicht zentrieren |
+| `Leertaste` `.` `+` `-` `r` | Pause, Einzelschritt, Tempo, Neustart |
+| `h` `?`/`F1` `f` `c` | HUD, Hilfe, Vollbild, Ansicht zentrieren |
 
 Doku: [Stack-Analyse](docs/analysis/01-tech-stack.md) · [Architektur](docs/architecture.md) ·
 [Physik](docs/physics.md) · [ADRs](docs/adr) · [Roadmap](planning/ROADMAP.md)

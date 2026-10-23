@@ -7,7 +7,7 @@ import (
 )
 
 // build sorts the stars by Morton key and rebuilds the tree, reusing all buffers.
-func (b *Solver) build(s *sim.State) {
+func (b *Solver) build(s *sim.State, theta float64) {
 	b.order, b.holes = b.order[:0], b.holes[:0]
 	minX, minY, minZ := math.Inf(1), math.Inf(1), math.Inf(1)
 	maxX, maxY, maxZ := math.Inf(-1), math.Inf(-1), math.Inf(-1)
@@ -50,7 +50,7 @@ func (b *Solver) build(s *sim.State) {
 
 	half := side / 2
 	b.nodes = append(b.nodes, node{})
-	b.buildNode(0, 0, int32(n), 0, minX+half, minY+half, minZ+half, half, -1, b.theta())
+	b.buildNode(0, 0, int32(n), 0, minX+half, minY+half, minZ+half, half, -1, theta)
 }
 
 // buildNode fills node ni for the sorted star range [lo, hi). The node is a cube with the given

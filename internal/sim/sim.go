@@ -20,6 +20,9 @@ type Simulation struct {
 	Params Params
 	Time   float64
 	Steps  int
+	// Epoch changes whenever bodies are added or the state is replaced, i.e. whenever the total
+	// energy changes for reasons other than integration error.
+	Epoch int
 
 	accValid bool
 }
@@ -31,11 +34,13 @@ func New(s *State, solver Solver, p Params) *Simulation {
 // Reset replaces the state and restarts the clock.
 func (m *Simulation) Reset(s *State, p Params) {
 	m.State, m.Params, m.Time, m.Steps, m.accValid = s, p, 0, 0, false
+	m.Epoch++
 }
 
 // AddBody adds a body during a run. Accelerations are recomputed before the next kick.
 func (m *Simulation) AddBody(b Body) int {
 	m.accValid = false
+	m.Epoch++
 	return m.State.Add(b)
 }
 

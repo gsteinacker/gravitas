@@ -45,11 +45,23 @@ type Runner struct {
 	paused    atomic.Bool
 	targetSPS atomic.Int64 // 0 = as fast as possible
 	sps       atomic.Uint64
+	drift     atomic.Uint64 // float64 bits of the relative energy drift, NaN if unknown
+	quality   atomic.Int32  // EnergyQuality of the last drift value
+
+	// Energy diagnostics, owned by the simulation goroutine.
+	epoch       int
+	e0          float64
+	lastMeasure time.Time
 }
+
+// energyInterval is how often the (comparatively expensive) total energy is measured.
+const energyInterval = 2 * time.Second
 
 func NewRunner(m *Simulation) *Runner {
 	r := &Runner{sim: m, cmds: make(chan func(*Simulation), 64), front: &Snapshot{}, back: &Snapshot{}}
 	r.front.fill(m)
+	r.epoch = m.Epoch - 1 // forces a baseline measurement on the first step
+	r.drift.Store(math.Float64bits(math.NaN()))
 	return r
 }
 
@@ -63,10 +75,17 @@ func (r *Runner) View(f func(*Snapshot)) {
 	f(r.front)
 }
 
-func (r *Runner) Paused() bool            { return r.paused.Load() }
-func (r *Runner) SetPaused(p bool)        { r.paused.Store(p) }
-func (r *Runner) TargetSPS() int          { return int(r.targetSPS.Load()) }
-func (r *Runner) SetTargetSPS(sps int)    { r.targetSPS.Store(int64(sps)) }
+func (r *Runner) Paused() bool         { return r.paused.Load() }
+func (r *Runner) SetPaused(p bool)     { r.paused.Store(p) }
+func (r *Runner) TargetSPS() int       { return int(r.targetSPS.Load()) }
+func (r *Runner) SetTargetSPS(sps int) { r.targetSPS.Store(int64(sps)) }
+
+// EnergyDrift returns (E - E0) / |E0| since the last scene change or added body (NaN if unknown)
+// and how it was measured.
+func (r *Runner) EnergyDrift() (float64, EnergyQuality) {
+	return math.Float64frombits(r.drift.Load()), EnergyQuality(r.quality.Load())
+}
+
 func (r *Runner) StepsPerSecond() float64 { return math.Float64frombits(r.sps.Load()) }
 
 // Run steps the simulation until ctx is cancelled.
@@ -91,7 +110,13 @@ func (r *Runner) Run(ctx context.Context) {
 			continue
 		}
 
+		if r.sim.Epoch != r.epoch {
+			r.measureEnergy() // baseline before the first step of a new epoch
+		}
 		r.sim.Step()
+		if time.Since(r.lastMeasure) > energyInterval {
+			r.measureEnergy()
+		}
 		r.publish()
 		windowSteps++
 		if el := time.Since(windowStart); el > 500*time.Millisecond {
@@ -110,6 +135,20 @@ func (r *Runner) Run(ctx context.Context) {
 			}
 		}
 	}
+}
+
+func (r *Runner) measureEnergy() {
+	r.lastMeasure = time.Now()
+	e, q := TotalEnergy(r.sim)
+	r.quality.Store(int32(q))
+	if r.sim.Epoch != r.epoch {
+		r.epoch, r.e0 = r.sim.Epoch, e
+	}
+	if q == EnergyUnknown || r.e0 == 0 {
+		r.drift.Store(math.Float64bits(math.NaN()))
+		return
+	}
+	r.drift.Store(math.Float64bits((e - r.e0) / math.Abs(r.e0)))
 }
 
 func (r *Runner) drain() bool {
