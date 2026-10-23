@@ -26,6 +26,9 @@ Stack: **Go 1.27 + Ebitengine v2**, Physik auf der CPU (siehe `docs/adr/0001-go-
 3. Kleine, in sich geschlossene Commits pro Task: `T-XXX: <was>`.
 4. Abweichungen vom Physikmodell oder von der Architektur brauchen einen ADR (`/adr`).
 5. Performance-relevante Änderungen: vorher/nachher benchmarken (`/bench`), Ergebnis in `docs/perf-log.md`.
+   **Vorher `pgrep -fl bin/galaxy` prüfen:** Eine laufende App belegt mehrere Kerne und halbiert die
+   Benchmark-Zahlen. Läuft sie, nur relativ messen (alter Commit per `git worktree` gegen neuen, abwechselnd).
+   Benchmarks auch am entwickelten Zustand prüfen (`BenchmarkAccelerationsEvolved`).
 
 ## Code-Konventionen
 - Code, Bezeichner, Kommentare und Commit-Messages auf **Englisch**. Doku und Tasks auf **Deutsch**.

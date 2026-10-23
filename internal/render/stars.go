@@ -99,10 +99,14 @@ func (sr *StarRenderer) Draw(dst *ebiten.Image, cam *Camera, sn *sim.Snapshot) {
 	sr.flush(dst)
 
 	for _, bh := range sr.bhs {
-		// Additive glow out to the shadow edge (~2.6 r_s), the photon sphere at 1.5 r_s, and the
-		// horizon. The glow uses a premultiplied color with zero alpha, so it adds light.
+		// Additive glow out to the shadow edge (~2.6 r_s), the ISCO at 3 r_s, the photon sphere at
+		// 1.5 r_s, and the horizon. The glow uses a premultiplied color with zero alpha, so it adds light.
 		ring := float32(math.Max(1.5, float64(bh.r)*0.25))
 		vector.FillCircle(dst, bh.x, bh.y, bh.r*2.6, color.RGBA{18, 7, 2, 0}, true)
+		if bh.r > minHolePixels {
+			// Innermost stable circular orbit of the Paczyński-Wiita potential: stars inside plunge.
+			vector.StrokeCircle(dst, bh.x, bh.y, bh.r*3, 1, color.RGBA{90, 60, 40, 120}, true)
+		}
 		vector.StrokeCircle(dst, bh.x, bh.y, bh.r*1.5, ring, color.RGBA{255, 150, 50, 220}, true)
 		vector.FillCircle(dst, bh.x, bh.y, bh.r, color.Black, true)
 	}

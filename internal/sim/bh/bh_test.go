@@ -216,7 +216,7 @@ func BenchmarkBuild(b *testing.B) {
 
 func TestPotentialEnergyMatchesExact(t *testing.T) {
 	s, p := galaxy(3000)
-	_, want := sim.Energy(s, p.Softening)
+	want := sim.PotentialEnergyParallel(s, p) // includes Paczyński-Wiita star–hole pairs (c = 10)
 	if got := (&Solver{Theta: 1e-9}).PotentialEnergy(s, p); math.Abs((got-want)/want) > 1e-10 {
 		t.Errorf("tiny θ: U = %v, want %v", got, want)
 	}

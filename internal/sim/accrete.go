@@ -1,16 +1,15 @@
 package sim
 
-import (
-	"math"
-	"sync"
-)
+import "sync"
 
 // accrete lets black holes swallow every star inside their Schwarzschild radius and merges
 // black holes whose horizons touch. Rest mass and momentum m·u are conserved; the position is
 // the center of mass. Each event's exact energy change is added to ExternalEnergy.
 //
-// Accelerations are kept after star absorption (the field changes only by the moved mass of one
-// star) but recomputed after a black hole merger.
+// After any absorption the accelerations are recomputed before the next kick: the stale ones still
+// contain the pull of the swallowed body, which no longer has a counterpart, so momentum would not
+// be conserved (a star inside the horizon pulls the hole very hard). Cost: one extra force
+// evaluation per step with accretion.
 func (m *Simulation) accrete() {
 	s, c := m.State, m.Params.C
 	m.holes = m.holes[:0]
@@ -35,7 +34,7 @@ func (m *Simulation) accrete() {
 					survivor, victim = g, h
 				}
 				m.merge(survivor, victim)
-				m.accValid, changed = false, true
+				changed = true
 			}
 		}
 	}
@@ -56,6 +55,7 @@ func (m *Simulation) accrete() {
 	}
 	if changed {
 		s.Compact()
+		m.accValid = false
 	}
 }
 
@@ -77,9 +77,11 @@ func (m *Simulation) merge(h, i int) {
 
 	dK := kinetic(mn, ux, uy, uz, c) - kinetic(mh, s.VelX[h], s.VelY[h], s.VelZ[h], c) -
 		kinetic(mi, s.VelX[i], s.VelY[i], s.VelZ[i], c)
-	// Potential: the pair term (h, i) disappears, and every other body j now sees mass mn at
-	// the center of mass instead of mh and mi at their old positions.
-	dU := mh * mi / math.Sqrt(dist2(s, h, i)+eps2)
+	// Potential: the pair term (h, i) disappears, and every other body j now sees the merged
+	// body (mass mn, kind of h, at the center of mass) instead of h and i. The merged hole's r_s
+	// grows with its mass, which changes its Paczyński-Wiita interaction with every star.
+	kh, ki := s.Kind[h], s.Kind[i]
+	dU := -PairPotential(mh, mi, dist2(s, h, i), eps2, PairRS(kh, mh, ki, mi, c))
 	var mu sync.Mutex
 	ParallelFor(s.Len(), 4096, 0, func(lo, hi int) {
 		var part float64
@@ -87,9 +89,10 @@ func (m *Simulation) merge(h, i int) {
 			if j == h || j == i || !s.Alive[j] {
 				continue
 			}
-			x, y, z := s.PosX[j], s.PosY[j], s.PosZ[j]
-			part += s.Mass[j] * (mh/dist(x-xh, y-yh, z-zh, eps2) + mi/dist(x-xi, y-yi, z-zi, eps2) -
-				mn/dist(x-xn, y-yn, z-zn, eps2))
+			x, y, z, mj, kj := s.PosX[j], s.PosY[j], s.PosZ[j], s.Mass[j], s.Kind[j]
+			part += PairPotential(mj, mn, sq(x-xn, y-yn, z-zn), eps2, PairRS(kj, mj, kh, mn, c)) -
+				PairPotential(mj, mh, sq(x-xh, y-yh, z-zh), eps2, PairRS(kj, mj, kh, mh, c)) -
+				PairPotential(mj, mi, sq(x-xi, y-yi, z-zi), eps2, PairRS(kj, mj, ki, mi, c))
 		}
 		mu.Lock()
 		dU += part
@@ -103,4 +106,4 @@ func (m *Simulation) merge(h, i int) {
 	s.Alive[i], s.Mass[i] = false, 0
 }
 
-func dist(dx, dy, dz, eps2 float64) float64 { return math.Sqrt(dx*dx + dy*dy + dz*dz + eps2) }
+func sq(dx, dy, dz float64) float64 { return dx*dx + dy*dy + dz*dz }

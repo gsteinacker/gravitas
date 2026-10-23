@@ -50,6 +50,15 @@ Simulationseinheiten mit `G = 1`. Längen, Massen und Zeiten sind dimensionslos.
   (O(N): Paarterm plus verschobene Masse für alle anderen Körper) und in `Simulation.ExternalEnergy`
   aufsummiert. Die Drift im HUD ist (E − E0 − ΔE_extern)/|E0|, also nur der Integrationsfehler.
 - Bei einem Wechsel von c beginnt die Drift-Messung neu, weil die kinetische Energie von c abhängt.
+- Nach jeder Absorption werden die Beschleunigungen neu berechnet. Die alten enthielten noch den Zug des
+  verschluckten Körpers ohne Gegenkraft, was den Impuls verletzt (gemessen: Δp = 1 bei massiver Akkretion).
+- **Paczyński-Wiita als Paarpotential** (`sim/pair.go`): Stern-Loch-Paare verwenden U = −m M/(r_ε − r_s) mit dem
+  r_s des Lochs und r_ε = √(r² + ε²). Stern-Stern und Loch-Loch bleiben Newtonsch. Dadurch ist die Kraft
+  symmetrisch und der Impuls erhalten. Löcher bekommen ihre Kraft deshalb direkt von allen Sternen, nicht über
+  den Baum. Unterhalb 1,5 r_s wird die Kraft auf ihren Wert an der Photonensphäre gekappt (Potential linear
+  fortgesetzt), damit sie bei r → r_s nicht divergiert. Die ISCO bei 3 r_s bleibt unberührt.
+- Gemessen: Kreisbahn bei 6 r_s und 0,34 c ist stabil, gestört bei 2 r_s stürzt sie hinein (die Newtonsche
+  Kontrolle bleibt gebunden). Mehraufwand ~2,5 % bei 100k.
 
 ## Was wir bewusst ignorieren
 

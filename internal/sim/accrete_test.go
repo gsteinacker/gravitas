@@ -8,10 +8,9 @@ import (
 	"galaxy/internal/vec"
 )
 
-// exactEnergy is the relativistic kinetic plus the exact softened potential energy.
+// exactEnergy is the relativistic kinetic plus the exact pair-model potential energy.
 func exactEnergy(s *State, p Params) float64 {
-	_, u := Energy(s, p.Softening)
-	return KineticEnergy(s, p.C) + u
+	return KineticEnergy(s, p.C) + PotentialEnergyParallel(s, p)
 }
 
 func totalMass(s *State) float64 {
@@ -75,6 +74,18 @@ func TestAccretionConservesMassMomentumAndBooksEnergy(t *testing.T) {
 		if s.Kind[i] == Star && math.Sqrt(dist2(s, 0, i)) < SchwarzschildRadius(s.Mass[0], p.C) {
 			t.Errorf("star %d still inside the horizon", i)
 		}
+	}
+}
+
+func TestMomentumConservedThroughHeavyAccretion(t *testing.T) {
+	s, p := accretionScene()
+	m := New(s, pairSolver{}, p)
+	p0 := Momentum(s)
+	for range 50 {
+		m.Step()
+	}
+	if d := Momentum(s).Sub(p0).Len(); d > 1e-12 {
+		t.Errorf("momentum changed by %.3g through accretion steps", d)
 	}
 }
 
