@@ -3,17 +3,12 @@ package direct
 
 import (
 	"math"
-	"runtime"
-	"sync"
 
 	"galaxy/internal/sim"
 )
 
-// serialBelow is the body count under which goroutine overhead outweighs parallelism.
-const serialBelow = 256
-
-// chunksPerWorker > 1 balances load between performance and efficiency cores.
-const chunksPerWorker = 4
+// grain is the minimum number of bodies per parallel chunk.
+const grain = 64
 
 // Solver sums all pair forces exactly (up to softening).
 type Solver struct {
@@ -21,23 +16,8 @@ type Solver struct {
 }
 
 func (d *Solver) Accelerations(s *sim.State, p sim.Params) {
-	n := s.Len()
 	eps2 := p.Softening * p.Softening
-	if n < serialBelow {
-		accRange(s, eps2, 0, n)
-		return
-	}
-	workers := d.Workers
-	if workers <= 0 {
-		workers = runtime.GOMAXPROCS(0)
-	}
-	chunk := max(1, (n+workers*chunksPerWorker-1)/(workers*chunksPerWorker))
-	var wg sync.WaitGroup
-	for lo := 0; lo < n; lo += chunk {
-		hi := min(lo+chunk, n)
-		wg.Go(func() { accRange(s, eps2, lo, hi) })
-	}
-	wg.Wait()
+	sim.ParallelFor(s.Len(), grain, d.Workers, func(lo, hi int) { accRange(s, eps2, lo, hi) })
 }
 
 func accRange(s *sim.State, eps2 float64, lo, hi int) {

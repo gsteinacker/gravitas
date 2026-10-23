@@ -63,6 +63,8 @@ func (sr *StarRenderer) Draw(dst *ebiten.Image, cam *Camera, sn *sim.Snapshot) {
 		}
 	}
 	meanMass := starMass / math.Max(1, float64(stars))
+	// Keep the total brightness roughly constant: dense scenes would otherwise saturate to white.
+	exposure := math.Max(0.12, math.Min(1, math.Sqrt(10000/math.Max(1, float64(stars)))))
 
 	sr.verts, sr.bhs = sr.verts[:0], sr.bhs[:0]
 	focal := cam.focal()
@@ -83,7 +85,7 @@ func (sr *StarRenderer) Draw(dst *ebiten.Image, cam *Camera, sn *sim.Snapshot) {
 			continue
 		}
 		cr, cg, cb := starColor(rel)
-		alpha := float32(math.Min(1, 0.55+0.2*rel))
+		alpha := float32(exposure * math.Min(1, 0.55+0.2*rel))
 		sr.appendQuad(float32(sx), float32(sy), float32(size/2), cr, cg, cb, alpha)
 	}
 	sr.flush(dst)

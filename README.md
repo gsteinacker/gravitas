@@ -4,8 +4,8 @@ Interaktive N-Body-Simulation: Tausende Sterne, Schwarze Löcher per Mausklick, 
 Go + Ebitengine.
 
 ```sh
-make run                       # Start (8000 Sterne, Spiralgalaxie)
-go run ./cmd/galaxy -n 12000 -preset 2
+make run                       # Start (50.000 Sterne, Spiralgalaxie)
+go run ./cmd/galaxy -n 100000 -preset 2   # Barnes-Hut (Default), -solver direct für Referenz
 make plan                      # Fortschritt im Backlog
 make check                     # fmt, vet, tests, Backlog-Validierung
 ```
