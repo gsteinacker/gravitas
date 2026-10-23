@@ -12,6 +12,10 @@ import (
 type Snapshot struct {
 	X, Y, Z, Mass  []float32
 	VX, VY, VZ     []float32 // coordinate velocities v = u/γ
+	Age            []float32 // stars born from gas: time since birth; -1 for initial stars
+	GasU, GasRho   []float32 // gas: specific internal energy and density (0 otherwise)
+	YoungAge       float64   // stars younger than this are drawn young
+	StarsFormed    int
 	Kind           []Kind
 	Time           float64
 	Steps          int
@@ -30,6 +34,12 @@ func (sn *Snapshot) fill(m *Simulation) {
 	n := s.Len()
 	sn.X, sn.Y, sn.Z, sn.Mass = resize(sn.X, n), resize(sn.Y, n), resize(sn.Z, n), resize(sn.Mass, n)
 	sn.VX, sn.VY, sn.VZ = resize(sn.VX, n), resize(sn.VY, n), resize(sn.VZ, n)
+	sn.Age, sn.GasU, sn.GasRho = resize(sn.Age, n), resize(sn.GasU, n), resize(sn.GasRho, n)
+	sn.YoungAge, sn.StarsFormed = m.Params.Gas.YoungAge, m.StarsFormed
+	if sn.YoungAge == 0 {
+		sn.YoungAge = defaultYoungAge
+	}
+	now := m.Time
 	sn.Kind = append(sn.Kind[:0], s.Kind...)
 	c := m.Params.C
 	ParallelFor(n, 8192, 0, func(lo, hi int) {
@@ -38,6 +48,11 @@ func (sn *Snapshot) fill(m *Simulation) {
 			sn.Mass[i] = float32(s.Mass[i])
 			g := gamma(s.VelX[i], s.VelY[i], s.VelZ[i], c)
 			sn.VX[i], sn.VY[i], sn.VZ[i] = float32(s.VelX[i]/g), float32(s.VelY[i]/g), float32(s.VelZ[i]/g)
+			sn.Age[i] = -1
+			if !math.IsInf(s.Born[i], -1) {
+				sn.Age[i] = float32(now - s.Born[i])
+			}
+			sn.GasU[i], sn.GasRho[i] = float32(s.U[i]), float32(s.Rho[i])
 		}
 	})
 	sn.Time, sn.Steps, sn.C, sn.Substeps, sn.Gravity = m.Time, m.Steps, m.Params.C, m.Substeps, m.Params.Gravity

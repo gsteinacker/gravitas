@@ -5,8 +5,16 @@
   "params": {
     "dt": 0.004,
     "softening": 0.06,
-    "c": 10
+    "c": 10,
+    "gas": {
+      "coolTime": 0.5,
+      "sfDensity": 0.5,
+      "sfEfficiency": 0.02,
+      "youngAge": 5
+    }
   },
+  "velocityUnit": 185,
+  "gasFloorK": 10000,
   "components": [
     {
       "type": "galaxy",
@@ -25,7 +33,9 @@
       "haloProfile": "hernquist",
       "haloScale": 4,
       "haloMax": 40,
-      "darkFraction": 0.5
+      "darkFraction": 0.5,
+      "gasFraction": 0.15,
+      "gasTemperature": 10000
     }
   ]
 }

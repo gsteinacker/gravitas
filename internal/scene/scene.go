@@ -27,8 +27,12 @@ type DiskConfig struct {
 	// ColdFraction of the stars form a young, cold population (dispersion ×coldScale, thinner,
 	// more massive and therefore drawn bluer and brighter); it traces spiral arms. Needs Q > 0.
 	ColdFraction float64
-	HaloMass     float64 // mass of a dark matter halo around the disk (added separately)
-	HaloScale    float64 // its scale radius
+	// GasFraction of the disk particles (and mass) are gas with specific internal energy GasU.
+	// Needs Q > 0.
+	GasFraction float64
+	GasU        float64
+	HaloMass    float64 // mass of a dark matter halo around the disk (added separately)
+	HaloScale   float64 // its scale radius
 	// HaloHernquist selects a Hernquist profile; HaloMass is then the mass inside HaloMax.
 	HaloHernquist bool
 	HaloMax       float64
@@ -116,10 +120,14 @@ const (
 // The rotation curve uses the spherically approximated enclosed mass of hole, disk and halo.
 func addToomreDisk(s *sim.State, c DiskConfig, rng *rand.Rand, masses, radii []float64, place func(p, v vec.Vec3) (vec.Vec3, vec.Vec3)) {
 	n := len(radii)
-	cold := make([]bool, n)
+	cold, gas := make([]bool, n), make([]bool, n)
 	var total float64
 	for i := range cold {
-		if rng.Float64() < c.ColdFraction {
+		switch r := rng.Float64(); {
+		case r < c.GasFraction:
+			gas[i] = true
+			masses[i] = c.StarMass / float64(n) // equal-mass gas particles
+		case r < c.GasFraction+c.ColdFraction:
 			cold[i] = true
 			masses[i] = coldMass * c.StarMass / float64(n)
 		}
@@ -174,6 +182,12 @@ func addToomreDisk(s *sim.State, c DiskConfig, rng *rand.Rand, masses, radii []f
 			sigZ *= coldScale
 		}
 		vphi := math.Sqrt(math.Max(0, vc*vc+sigR*sigR*(1-kappa2/(4*w2)-2*r/rd)))
+		if gas[i] {
+			// Gas is supported by pressure, not by random motions: small turbulence, circular
+			// rotation, a thin layer.
+			cs := math.Sqrt(10.0 / 9 * c.GasU)
+			sigR, sigPhi, sigZ, z0, vphi = 0.3*cs, 0.3*cs, 0.3*cs, 0.5*c.Thickness, vc
+		}
 
 		phi := rng.Float64() * 2 * math.Pi
 		z := z0 * math.Atanh(2*rng.Float64()-1)
@@ -182,7 +196,11 @@ func addToomreDisk(s *sim.State, c DiskConfig, rng *rand.Rand, masses, radii []f
 		pos := vec.Vec3{X: r * cosp, Y: r * sinp, Z: z}
 		vel := vec.Vec3{X: vr*cosp - vt*sinp, Y: vr*sinp + vt*cosp, Z: rng.NormFloat64() * sigZ}
 		p, v := place(pos, vel)
-		s.Add(sim.Body{Pos: p, Vel: v, Mass: masses[i]})
+		b := sim.Body{Pos: p, Vel: v, Mass: masses[i]}
+		if gas[i] {
+			b.Kind, b.U = sim.Gas, c.GasU
+		}
+		s.Add(b)
 	}
 }
 

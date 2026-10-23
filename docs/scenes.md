@@ -24,13 +24,15 @@ Spielstände (F5/F9, `-load`) sind dagegen **exakte Abzüge** eines laufenden Zu
   Beispiele: 2,5 kpc und 2·10¹⁰ M☉ ergeben 185 km/s und 13,2 Myr. 100 kpc und 10¹² M☉ ergeben 207 km/s und 0,47 Gyr.
 - `c` in denselben Einheiten: echt wäre 3·10⁵ km/s geteilt durch die Geschwindigkeitseinheit.
 - Winkel in Grad. `weight` verteilt die Teilchenzahl `-n`, die letzte gewichtete Komponente bekommt den Rest.
+- Gas: `velocityUnit` (km/s je Geschwindigkeitseinheit) und `gasFloorK` auf Szenenebene, in `params.gas`
+  `coolTime`, `sfDensity`, `sfEfficiency`, `youngAge` (Simulationseinheiten). Siehe ADR-0007.
 - `note` ist freier Text für Quellen und Annahmen und wird nicht ausgewertet.
 
 ## Komponenten
 
 | `type` | Felder | Beschreibung |
 |--------|--------|--------------|
-| `galaxy` | `mass`, `diskFraction`, `diskScale`, `diskMin`, `diskMax`, `thickness`, `dispersion` (oder `toomreQ` und `coldFraction`), `haloProfile` (`plummer`/`hernquist`), `haloScale`, `haloCut` (plummer), `haloMax` (hernquist), `darkFraction`, `holeMass`, `inclination`, `orientation`, `position`, `velocity`, `seed` | Exponentielle Scheibe auf Kreisbahnen (aus der eingeschlossenen Masse von Loch, Scheibe und Halo), optional Plummer-Halo aus Dunkler Materie (`darkFraction` der Teilchen) |
+| `galaxy` | `mass`, `diskFraction`, `diskScale`, `diskMin`, `diskMax`, `thickness`, `dispersion` (oder `toomreQ` und `coldFraction`), `haloProfile` (`plummer`/`hernquist`), `haloScale`, `haloCut` (plummer), `haloMax` (hernquist), `darkFraction`, `gasFraction`, `gasTemperature` (K), `holeMass`, `inclination`, `orientation`, `position`, `velocity`, `seed` | Exponentielle Scheibe auf Kreisbahnen (aus der eingeschlossenen Masse von Loch, Scheibe und Halo), optional Plummer-Halo aus Dunkler Materie (`darkFraction` der Teilchen) |
 | `plummer` | `mass`, `scale`, `position`, `velocity`, `seed` | Sternhaufen im Virialgleichgewicht |
 | `hole` | `mass`, `position`, `velocity` | einzelnes Schwarzes Loch |
 | `orbits` | `mass` (zentrales Loch), `aScale`, `orbits[]` (`a`, `e`, `i`, `node`, `peri`, `anomaly`), `starMass`, `background`, `backgroundA`, `backgroundMass`, `seed` | Kepler-Bahnen um ein Loch, z. B. aus Bahnelementen der Literatur |

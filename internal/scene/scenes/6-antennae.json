@@ -5,8 +5,16 @@
   "params": {
     "dt": 0.004,
     "softening": 0.04,
-    "c": 10
+    "c": 10,
+    "gas": {
+      "coolTime": 0.5,
+      "sfDensity": 0.5,
+      "sfEfficiency": 0.02,
+      "youngAge": 5
+    }
   },
+  "velocityUnit": 185,
+  "gasFloorK": 10000,
   "removeBulkMotion": true,
   "camera": {
     "target": [
@@ -48,7 +56,9 @@
       "seed": 21,
       "note": "Parabolic orbit of two unit masses (point-mass approximation) from separation 10 to pericenter 1.5: v_rel = (-0.583, 0.245, 0). Both disks spin with the orbit (prograde), tilted 60 deg.",
       "haloProfile": "hernquist",
-      "haloMax": 15
+      "haloMax": 15,
+      "gasFraction": 0.15,
+      "gasTemperature": 10000
     },
     {
       "type": "galaxy",
@@ -79,7 +89,9 @@
       ],
       "seed": 22,
       "haloProfile": "hernquist",
-      "haloMax": 15
+      "haloMax": 15,
+      "gasFraction": 0.15,
+      "gasTemperature": 10000
     }
   ]
 }

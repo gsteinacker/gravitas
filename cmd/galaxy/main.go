@@ -16,6 +16,7 @@ import (
 	"galaxy/internal/sim"
 	"galaxy/internal/sim/bh"
 	"galaxy/internal/sim/direct"
+	"galaxy/internal/sph"
 	"galaxy/internal/ui"
 )
 
@@ -79,7 +80,9 @@ func main() {
 	default:
 		log.Fatalf("unknown solver %q", *solverName)
 	}
-	runner := sim.NewRunner(sim.New(s, solver, params))
+	simulation := sim.New(s, solver, params)
+	simulation.Hydro = &sph.Solver{}
+	runner := sim.NewRunner(simulation)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	go runner.Run(ctx)

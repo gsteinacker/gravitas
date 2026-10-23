@@ -2,7 +2,11 @@
 // It must not depend on any rendering or UI package.
 package sim
 
-import "galaxy/internal/vec"
+import (
+	"math"
+
+	"galaxy/internal/vec"
+)
 
 type Kind uint8
 
@@ -11,6 +15,8 @@ const (
 	BlackHole
 	// DarkMatter behaves like a star in every respect (gravity, accretion) but is not drawn.
 	DarkMatter
+	// Gas feels gravity like a star plus pressure and viscosity (internal/sph).
+	Gas
 )
 
 // Body is a convenience view of a single body, used for setup and tests.
@@ -18,6 +24,7 @@ type Body struct {
 	Pos, Vel vec.Vec3
 	Mass     float64
 	Kind     Kind
+	U        float64 // specific internal energy (gas)
 }
 
 // State stores all bodies as struct-of-arrays. Slices always have equal length.
@@ -29,6 +36,10 @@ type State struct {
 	Kind             []Kind
 	Alive            []bool
 	ID               []uint64 // stable identity across Compact; assigned by Add
+	// Gas (unused for other kinds): specific internal energy, smoothing length, density.
+	U, H, Rho []float64
+	// Born is the simulation time a star formed from gas; -Inf for stars of the initial conditions.
+	Born []float64
 
 	nextID uint64
 }
@@ -41,6 +52,7 @@ func NewState(n int) *State {
 		VelX: f(), VelY: f(), VelZ: f(),
 		AccX: f(), AccY: f(), AccZ: f(),
 		Mass: f(), Kind: make([]Kind, 0, n), Alive: make([]bool, 0, n), ID: make([]uint64, 0, n),
+		U: f(), H: f(), Rho: f(), Born: f(),
 	}
 }
 
@@ -56,6 +68,8 @@ func (s *State) Add(b Body) int {
 	s.Alive = append(s.Alive, true)
 	s.nextID++
 	s.ID = append(s.ID, s.nextID)
+	s.U, s.H, s.Rho = append(s.U, b.U), append(s.H, 0), append(s.Rho, 0)
+	s.Born = append(s.Born, math.Inf(-1))
 	return s.Len() - 1
 }
 
@@ -66,6 +80,7 @@ func (s *State) Body(i int) Body {
 		Vel:  vec.Vec3{X: s.VelX[i], Y: s.VelY[i], Z: s.VelZ[i]},
 		Mass: s.Mass[i],
 		Kind: s.Kind[i],
+		U:    s.U[i],
 	}
 }
 
@@ -80,10 +95,12 @@ func (s *State) Compact() {
 		s.VelX[j], s.VelY[j], s.VelZ[j] = s.VelX[i], s.VelY[i], s.VelZ[i]
 		s.AccX[j], s.AccY[j], s.AccZ[j] = s.AccX[i], s.AccY[i], s.AccZ[i]
 		s.Mass[j], s.Kind[j], s.Alive[j], s.ID[j] = s.Mass[i], s.Kind[i], true, s.ID[i]
+		s.U[j], s.H[j], s.Rho[j], s.Born[j] = s.U[i], s.H[i], s.Rho[i], s.Born[i]
 		j++
 	}
 	s.PosX, s.PosY, s.PosZ = s.PosX[:j], s.PosY[:j], s.PosZ[:j]
 	s.VelX, s.VelY, s.VelZ = s.VelX[:j], s.VelY[:j], s.VelZ[:j]
 	s.AccX, s.AccY, s.AccZ = s.AccX[:j], s.AccY[:j], s.AccZ[:j]
 	s.Mass, s.Kind, s.Alive, s.ID = s.Mass[:j], s.Kind[:j], s.Alive[:j], s.ID[:j]
+	s.U, s.H, s.Rho, s.Born = s.U[:j], s.H[:j], s.Rho[:j], s.Born[:j]
 }

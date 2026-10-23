@@ -15,8 +15,8 @@ import (
 	"galaxy/internal/vec"
 )
 
-// Format is the version of the file layout; Read rejects other versions.
-const Format = 1
+// Format is the version of the file layout. Version 1 (no gas fields) is still readable.
+const Format = 2
 
 // Extension of saved states.
 const Extension = ".galaxy"
@@ -42,6 +42,7 @@ type File struct {
 	VelX, VelY, VelZ []float64
 	Mass             []float64
 	Kind             []sim.Kind
+	U, Born          []float64 // since format 2: gas internal energy, birth time of stars from gas
 }
 
 // Capture copies the simulation. Call it on the simulation goroutine (sim.Runner.Do).
@@ -53,6 +54,7 @@ func Capture(m *sim.Simulation, sp *scene.Spec, cam Camera) *File {
 		PosX: slices.Clone(s.PosX), PosY: slices.Clone(s.PosY), PosZ: slices.Clone(s.PosZ),
 		VelX: slices.Clone(s.VelX), VelY: slices.Clone(s.VelY), VelZ: slices.Clone(s.VelZ),
 		Mass: slices.Clone(s.Mass), Kind: slices.Clone(s.Kind),
+		U: slices.Clone(s.U), Born: slices.Clone(s.Born),
 	}
 }
 
@@ -60,11 +62,18 @@ func Capture(m *sim.Simulation, sp *scene.Spec, cam Camera) *File {
 func (f *File) State() *sim.State {
 	s := sim.NewState(len(f.Mass))
 	for i := range f.Mass {
-		s.Add(sim.Body{
+		b := sim.Body{
 			Pos:  vec.Vec3{X: f.PosX[i], Y: f.PosY[i], Z: f.PosZ[i]},
 			Vel:  vec.Vec3{X: f.VelX[i], Y: f.VelY[i], Z: f.VelZ[i]},
 			Mass: f.Mass[i], Kind: f.Kind[i],
-		})
+		}
+		if i < len(f.U) {
+			b.U = f.U[i]
+		}
+		s.Add(b)
+		if i < len(f.Born) {
+			s.Born[i] = f.Born[i]
+		}
 	}
 	return s
 }
@@ -114,8 +123,8 @@ func Read(path string) (*File, error) {
 	if err := gob.NewDecoder(zr).Decode(&f); err != nil {
 		return nil, fmt.Errorf("%s: %w", path, err)
 	}
-	if f.Format != Format {
-		return nil, fmt.Errorf("%s: format %d, want %d", path, f.Format, Format)
+	if f.Format != Format && f.Format != 1 {
+		return nil, fmt.Errorf("%s: format %d, want 1 or %d", path, f.Format, Format)
 	}
 	if n := len(f.Mass); len(f.PosX) != n || len(f.VelZ) != n || len(f.Kind) != n {
 		return nil, fmt.Errorf("%s: inconsistent body arrays", path)

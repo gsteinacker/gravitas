@@ -96,7 +96,7 @@ func (sr *StarRenderer) DrawStars(dst *ebiten.Image, cam *Camera, sn *sim.Snapsh
 	doppler := fx.Doppler
 	n := sn.Len()
 	var starMass float64
-	stars, dark := 0, 0
+	stars, dark, gasCount := 0, 0, 0
 	sr.world = sr.world[:0]
 	for i := range n {
 		switch sn.Kind[i] {
@@ -105,6 +105,8 @@ func (sr *StarRenderer) DrawStars(dst *ebiten.Image, cam *Camera, sn *sim.Snapsh
 			stars++
 		case sim.DarkMatter:
 			dark++
+		case sim.Gas:
+			gasCount++
 		case sim.BlackHole:
 			sr.world = append(sr.world, worldHole{
 				x: float64(sn.X[i]), y: float64(sn.Y[i]), z: float64(sn.Z[i]),
@@ -140,6 +142,7 @@ func (sr *StarRenderer) DrawStars(dst *ebiten.Image, cam *Camera, sn *sim.Snapsh
 	// Dark matter is drawn much fainter than stars, scaled so that the total haze stays similar
 	// for any particle count.
 	darkAlpha := float32(math.Max(0.02, math.Min(0.25, 0.25*math.Sqrt(5000/math.Max(1, float64(dark))))))
+	gasAlpha := float32(math.Max(0.03, math.Min(0.3, 0.3*math.Sqrt(3000/math.Max(1, float64(gasCount))))))
 	// Every body owns 4 vertex slots, so the quads can be built in parallel without coordination;
 	// holes and culled stars get an empty quad.
 	view := cam.View()
@@ -158,7 +161,11 @@ func (sr *StarRenderer) DrawStars(dst *ebiten.Image, cam *Camera, sn *sim.Snapsh
 		for i := lo; i < hi; i++ {
 			q := sr.verts[4*i : 4*i+4 : 4*i+4]
 			if sn.Kind[i] == sim.DarkMatter && fx.Dark {
-				sr.darkQuad(q, &view, float64(sn.X[i]), float64(sn.Y[i]), float64(sn.Z[i]), focal, darkAlpha, cam)
+				sr.darkQuad(q, &view, float64(sn.X[i]), float64(sn.Y[i]), float64(sn.Z[i]), focal, darkAlpha, darkColor, cam)
+				continue
+			}
+			if sn.Kind[i] == sim.Gas && fx.Gas {
+				sr.darkQuad(q, &view, float64(sn.X[i]), float64(sn.Y[i]), float64(sn.Z[i]), focal, gasAlpha, gasColor, cam)
 				continue
 			}
 			if sn.Kind[i] != sim.Star {
@@ -180,6 +187,13 @@ func (sr *StarRenderer) DrawStars(dst *ebiten.Image, cam *Camera, sn *sim.Snapsh
 			}
 			cr, cg, cb := starColor(rel)
 			alpha := float32(math.Min(1, 0.55+0.2*rel)) // before exposure
+			if age := float64(sn.Age[i]); age >= 0 && age < sn.YoungAge {
+				// Young stars from gas: hot, blue and bright, fading to normal over YoungAge.
+				f := float32(1 - age/sn.YoungAge)
+				cr, cg, cb = cr+(youngColor[0]-cr)*f, cg+(youngColor[1]-cg)*f, cb+(youngColor[2]-cb)*f
+				alpha *= 1 + 1.5*f
+				size *= 1 + 0.5*float64(f)
+			}
 			if doppler {
 				grav := 1.0
 				for _, h := range sr.world {
@@ -259,18 +273,23 @@ func (sr *StarRenderer) DrawHoles(dst *ebiten.Image) {
 	}
 }
 
-// darkColor is the tint of visualized dark matter.
-var darkColor = [3]float32{0.55, 0.35, 1.0}
+// Tints of visualized dark matter and gas, and of young stars.
+var (
+	darkColor  = [3]float32{0.55, 0.35, 1.0}
+	gasColor   = [3]float32{0.45, 0.75, 1.0}
+	youngColor = [3]float32{0.6, 0.78, 1.0}
+)
 
-// darkQuad writes the quad of one dark matter particle, or an empty quad if it is off screen.
-func (sr *StarRenderer) darkQuad(q []ebiten.Vertex, view *View, x, y, z, focal float64, alpha float32, cam *Camera) {
+// darkQuad writes the faint quad of one dark matter or gas particle, or an empty quad if it is
+// off screen.
+func (sr *StarRenderer) darkQuad(q []ebiten.Vertex, view *View, x, y, z, focal float64, alpha float32, tint [3]float32, cam *Camera) {
 	sx, sy, depth, ok := view.Project(x, y, z)
 	size := math.Max(3, math.Min(16, 0.04*focal/depth))
 	if !ok || sx < -size || sy < -size || sx > cam.W+size || sy > cam.H+size {
 		clear(q)
 		return
 	}
-	setQuad(q, float32(sx), float32(sy), float32(size/2), darkColor[0], darkColor[1], darkColor[2], alpha)
+	setQuad(q, float32(sx), float32(sy), float32(size/2), tint[0], tint[1], tint[2], alpha)
 }
 
 // setQuad writes a sprite quad centered at (x, y) with half size h into the 4 vertices of q.

@@ -22,6 +22,8 @@ type Spec struct {
 	Name       string      `json:"name"`
 	Info       string      `json:"info,omitempty"`         // shown in the HUD, e.g. the physical units
 	YearsPer   float64     `json:"yearsPerUnit,omitempty"` // physical years per simulation time unit
+	KmPerS     float64     `json:"velocityUnit,omitempty"` // km/s per simulation velocity unit (gas temperatures)
+	GasFloorK  float64     `json:"gasFloorK,omitempty"`    // cooling floor temperature in K (sets params.gas.uFloor)
 	Params     sim.Params  `json:"params"`
 	Camera     *CameraSpec `json:"camera,omitempty"`
 	Effects    string      `json:"effects,omitempty"` // render effects to switch on, e.g. "glow,trails"
@@ -55,13 +57,15 @@ type Component struct {
 	DiskMax      float64 `json:"diskMax,omitempty"`
 	Thickness    float64 `json:"thickness,omitempty"`
 	Dispersion   float64 `json:"dispersion,omitempty"`
-	ToomreQ      float64 `json:"toomreQ,omitempty"`      // > 0: dispersions from the Toomre criterion
-	ColdFraction float64 `json:"coldFraction,omitempty"` // young, cold population tracing spiral arms
-	HaloScale    float64 `json:"haloScale,omitempty"`    // scale radius of the halo
-	HaloProfile  string  `json:"haloProfile,omitempty"`  // "plummer" (default) or "hernquist"
-	HaloCut      float64 `json:"haloCut,omitempty"`      // plummer: halo mass fraction kept (0 means 0.99)
-	HaloMax      float64 `json:"haloMax,omitempty"`      // hernquist: truncation radius (0 means 10 haloScale)
-	DarkFraction float64 `json:"darkFraction,omitempty"` // share of the galaxy's particles in the halo
+	ToomreQ      float64 `json:"toomreQ,omitempty"`        // > 0: dispersions from the Toomre criterion
+	ColdFraction float64 `json:"coldFraction,omitempty"`   // young, cold population tracing spiral arms
+	GasFraction  float64 `json:"gasFraction,omitempty"`    // share of the disk in gas (needs toomreQ)
+	GasK         float64 `json:"gasTemperature,omitempty"` // initial gas temperature in K
+	HaloScale    float64 `json:"haloScale,omitempty"`      // scale radius of the halo
+	HaloProfile  string  `json:"haloProfile,omitempty"`    // "plummer" (default) or "hernquist"
+	HaloCut      float64 `json:"haloCut,omitempty"`        // plummer: halo mass fraction kept (0 means 0.99)
+	HaloMax      float64 `json:"haloMax,omitempty"`        // hernquist: truncation radius (0 means 10 haloScale)
+	DarkFraction float64 `json:"darkFraction,omitempty"`   // share of the galaxy's particles in the halo
 	HoleMass     float64 `json:"holeMass,omitempty"`
 	Inclination  float64 `json:"inclination,omitempty"` // degrees, around x
 	Orientation  float64 `json:"orientation,omitempty"` // degrees, around z afterwards
@@ -126,12 +130,16 @@ func LoadSpec(file string) (*Spec, error) {
 
 // Build creates the initial state for about n particles.
 func (sp *Spec) Build(n int) (*sim.State, sim.Params) {
+	p := sp.Params
+	if sp.GasFloorK > 0 {
+		p.Gas.UFloor = sp.specificEnergy(sp.GasFloorK)
+	}
 	counts := sp.counts(n)
 	s := sim.NewState(n + len(sp.Components))
 	for i, c := range sp.Components {
 		switch c.Type {
 		case "galaxy":
-			addGalaxy(s, c, counts[i], sp.Params)
+			addGalaxy(s, c, counts[i], p, sp.specificEnergy(c.GasK))
 		case "plummer":
 			AddPlummer(s, counts[i], c.Mass, c.Scale, v3(c.Position), v3(c.Velocity), c.Seed)
 		case "hole":
@@ -143,7 +151,22 @@ func (sp *Spec) Build(n int) (*sim.State, sim.Params) {
 	if sp.BulkRest {
 		RemoveBulkMotion(s)
 	}
-	return s, sp.Params
+	return s, p
+}
+
+// specificEnergy converts a gas temperature in K into specific internal energy in simulation
+// units: u = 3 k T / (2 μ m_p), μ = 0.6 for ionized (T ≥ 8000 K) and 1.27 for neutral gas.
+func (sp *Spec) specificEnergy(kelvin float64) float64 {
+	if kelvin <= 0 || sp.KmPerS <= 0 {
+		return 0
+	}
+	const kB, mp = 1.380649e-23, 1.67262192e-27
+	mu := 1.27
+	if kelvin >= 8000 {
+		mu = 0.6
+	}
+	u := 1.5 * kB * kelvin / (mu * mp) / 1e6 // (km/s)²
+	return u / (sp.KmPerS * sp.KmPerS)
 }
 
 // counts splits n by weight; the last weighted component takes the remainder.
@@ -163,7 +186,7 @@ func (sp *Spec) counts(n int) []int {
 	return counts
 }
 
-func addGalaxy(s *sim.State, c Component, n int, p sim.Params) {
+func addGalaxy(s *sim.State, c Component, n int, p sim.Params, gasU float64) {
 	diskFrac := c.DiskFraction
 	if diskFrac == 0 {
 		diskFrac = 1
@@ -183,7 +206,7 @@ func addGalaxy(s *sim.State, c Component, n int, p sim.Params) {
 		HaloHernquist: hernquist, HaloMax: haloMax,
 		ScaleRadius: c.DiskScale, MinRadius: c.DiskMin, MaxRadius: c.DiskMax,
 		Thickness: c.Thickness, Softening: p.Softening, Dispersion: c.Dispersion,
-		Q: c.ToomreQ, ColdFraction: c.ColdFraction,
+		Q: c.ToomreQ, ColdFraction: c.ColdFraction, GasFraction: c.GasFraction, GasU: gasU,
 		HaloMass: haloMass, HaloScale: c.HaloScale,
 		Center: v3(c.Position), Velocity: v3(c.Velocity),
 		Inclination: c.Inclination * deg, Orientation: c.Orientation * deg, Seed: c.Seed,

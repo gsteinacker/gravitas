@@ -114,6 +114,7 @@ type Game struct {
 	simTime            float64
 	c                  float64
 	dark               int
+	gas, starsFormed   int
 	darkOff            bool
 	scene              *scene.Spec
 	message            atomic.Pointer[note]
@@ -309,6 +310,8 @@ func (g *Game) applyChar(r rune) {
 		g.runner.Do(func(m *sim.Simulation) { m.SetDarkMatterOff(!m.Params.DarkMatterOff) })
 	case 'v', 'V':
 		g.fx.Dark = !g.fx.Dark
+	case 'o', 'O':
+		g.fx.Gas = !g.fx.Gas
 	case 'r', 'R':
 		g.LoadScene(g.scene)
 	case 'h', 'H':
@@ -411,13 +414,15 @@ func (g *Game) Draw(screen *ebiten.Image) {
 	g.runner.View(func(sn *sim.Snapshot) {
 		g.pipeline.Draw(screen, &g.cam, sn, g.fx)
 		g.bodies, g.blackHoles, g.simTime, g.c, g.substeps, g.gravity = sn.Len(), 0, sn.Time, sn.C, sn.Substeps, sn.Gravity
-		g.dark, g.darkOff = 0, sn.DarkMatterOff
+		g.dark, g.darkOff, g.gas, g.starsFormed = 0, sn.DarkMatterOff, 0, sn.StarsFormed
 		for _, k := range sn.Kind {
 			switch k {
 			case sim.BlackHole:
 				g.blackHoles++
 			case sim.DarkMatter:
 				g.dark++
+			case sim.Gas:
+				g.gas++
 			}
 		}
 	})
@@ -468,7 +473,7 @@ func (g *Game) drawHUD(screen *ebiten.Image) {
 	}
 	ebitenutil.DebugPrintAt(screen, fmt.Sprintf(
 		"%s\nbodies %d (black holes %d)   %s\n%s\nsteps/s %.0f (limit %s)   substeps near holes %d   FPS %.0f\n%s\n%s\n%s\n\ntool: %s, mass %.2f   (b/k/tab, m/n)",
-		title, g.bodies, g.blackHoles, timeText(g.simTime, g.scene), darkText(g.dark, g.darkOff, g.fx.Dark),
+		title, g.bodies, g.blackHoles, timeText(g.simTime, g.scene), darkText(g.dark, g.darkOff, g.fx.Dark)+gasText(g.gas, g.starsFormed, g.fx.Gas),
 		g.runner.StepsPerSecond(), speed, g.substeps, ebiten.ActualFPS(), driftText(g.runner.EnergyDrift()),
 		lightText(g.c, g.bhMass, g.gravity), effectsText(g.fx), g.tool, g.bhMass), 10, 8)
 	if n := g.message.Load(); n != nil && time.Now().Before(n.until) {
@@ -481,7 +486,7 @@ func (g *Game) drawHUD(screen *ebiten.Image) {
 		}
 		b.WriteString("\nb k tab     tool: black hole / star cluster\nclick       place\nalt+drag    launch with velocity\nm n         mass +/-\n" +
 			"drag        rotate\nshift/right drag  pan\nwheel       zoom\n" +
-			"x v         dark matter: gravity on/off, show\n< >         speed of light\np           hole gravity: instant / retarded / retarded+v\ng t l d     glow, trails, lens, doppler\nspace       pause\n.           single step\n+ -         speed\nr           restart\nc           center view\n" +
+			"x v         dark matter: gravity on/off, show\no           show gas (young stars from gas are blue)\n< >         speed of light\np           hole gravity: instant / retarded / retarded+v\ng t l d     glow, trails, lens, doppler\nspace       pause\n.           single step\n+ -         speed\nr           restart\nc           center view\n" +
 			"F5 F9       save / load latest (saves/)\nf           fullscreen\nh           hide HUD\n? F1        hide this help")
 		ebitenutil.DebugPrintAt(screen, b.String(), 10, g.screenH-16*strings.Count(b.String(), "\n")-28)
 	}
@@ -533,6 +538,18 @@ func formatYears(y float64) string {
 	default:
 		return fmt.Sprintf("%.3g yr", y)
 	}
+}
+
+// gasText describes the gas of the scene, if any.
+func gasText(n, formed int, shown bool) string {
+	if n == 0 && formed == 0 {
+		return ""
+	}
+	vis := "hidden"
+	if shown {
+		vis = "shown"
+	}
+	return fmt.Sprintf("\ngas %d bodies, %d stars formed, %s (o)", n, formed, vis)
 }
 
 // darkText describes the dark matter of the scene, if any.

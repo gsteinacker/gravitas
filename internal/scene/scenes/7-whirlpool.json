@@ -5,8 +5,16 @@
   "params": {
     "dt": 0.004,
     "softening": 0.04,
-    "c": 10
+    "c": 10,
+    "gas": {
+      "coolTime": 0.5,
+      "sfDensity": 0.5,
+      "sfEfficiency": 0.02,
+      "youngAge": 5
+    }
   },
+  "velocityUnit": 185,
+  "gasFloorK": 10000,
   "removeBulkMotion": true,
   "camera": {
     "target": [
@@ -36,7 +44,9 @@
       "holeMass": 0.002,
       "seed": 31,
       "haloProfile": "hernquist",
-      "haloMax": 12
+      "haloMax": 12,
+      "gasFraction": 0.15,
+      "gasTemperature": 10000
     },
     {
       "type": "galaxy",
@@ -67,7 +77,9 @@
       "seed": 32,
       "note": "Bound orbit (0.8 of escape speed) aimed below the main disk; geometry inspired by, not fitted to, published M51 models.",
       "haloProfile": "hernquist",
-      "haloMax": 5
+      "haloMax": 5,
+      "gasFraction": 0.05,
+      "gasTemperature": 10000
     }
   ]
 }

@@ -29,7 +29,7 @@ const (
 
 // TotalEnergy returns K + U for periodic diagnostics.
 func TotalEnergy(m *Simulation) (float64, EnergyQuality) {
-	k := sourceKinetic(m.State, &m.Params)
+	k := sourceKinetic(m.State, &m.Params) + thermalEnergy(m.State)
 	if m.State.Len() <= exactEnergyLimit {
 		return k + PotentialEnergyParallel(m.State, m.Params), EnergyExact
 	}

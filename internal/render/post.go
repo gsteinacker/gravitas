@@ -19,6 +19,7 @@ type Effects struct {
 	Lensing bool // gravitational lens around black holes (T-018)
 	Trails  bool // fading star trails (T-019)
 	Dark    bool // draw dark matter as a faint violet haze
+	Gas     bool // draw gas as a faint glow
 }
 
 // ParseEffects reads a comma-separated list such as "glow,lens,doppler,trails".
@@ -37,8 +38,10 @@ func ParseEffects(list string) (Effects, error) {
 			fx.Trails = true
 		case "dark":
 			fx.Dark = true
+		case "gas":
+			fx.Gas = true
 		default:
-			return fx, fmt.Errorf("unknown effect %q (want glow, doppler, lens, trails, dark)", name)
+			return fx, fmt.Errorf("unknown effect %q (want glow, doppler, lens, trails, dark, gas)", name)
 		}
 	}
 	return fx, nil
@@ -195,7 +198,7 @@ func (p *Pipeline) Draw(screen *ebiten.Image, cam *Camera, sn *sim.Snapshot, fx 
 	w, h := screen.Bounds().Dx(), screen.Bounds().Dy()
 	p.resize(w, h)
 
-	starFx := Effects{Doppler: fx.Doppler, Dark: fx.Dark} // the options that change the star image
+	starFx := Effects{Doppler: fx.Doppler, Dark: fx.Dark, Gas: fx.Gas} // the options that change the star image
 	if view := cam.View(); !p.drawnValid || sn.Version != p.drawnVersion || view != p.drawnView || starFx != p.drawnFx || p.Stars.Adapting() {
 		p.stars.Clear()
 		p.Stars.DrawStars(p.stars, cam, sn, starFx)

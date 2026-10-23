@@ -8,9 +8,30 @@ type Params struct {
 	Softening float64     `json:"softening"`         // Plummer softening length ε
 	C         float64     `json:"c"`                 // speed of light; 0 disables relativistic effects (see relativity.go)
 	Gravity   GravityMode `json:"gravity,omitempty"` // propagation of the gravity of black holes (retarded.go)
+	// Gas configures the hydrodynamics of gas bodies (internal/sph); zero values disable parts.
+	Gas GasParams `json:"gas,omitzero"`
 	// DarkMatterOff switches off the gravity of dark matter: it still moves as test particles, so
 	// switching it back on finds the halos (roughly) where they were.
 	DarkMatterOff bool `json:"darkMatterOff,omitempty"`
+}
+
+// GasParams configure the gas model (ADR-0007). Energies are specific (per unit mass).
+type GasParams struct {
+	Gamma        float64 `json:"gamma,omitempty"`        // adiabatic index (0 means 5/3)
+	Neighbors    float64 `json:"neighbors,omitempty"`    // target SPH neighbor number (0 means 40)
+	Alpha        float64 `json:"alpha,omitempty"`        // artificial viscosity (0 means 1)
+	UFloor       float64 `json:"uFloor,omitempty"`       // cooling floor of the internal energy
+	CoolTime     float64 `json:"coolTime,omitempty"`     // relaxation time to UFloor (0: adiabatic)
+	SFDensity    float64 `json:"sfDensity,omitempty"`    // star formation threshold density (0: none)
+	SFEfficiency float64 `json:"sfEfficiency,omitempty"` // stars formed per free-fall time (0 means 0.02)
+	YoungAge     float64 `json:"youngAge,omitempty"`     // stars younger than this are drawn young (0 means 5)
+}
+
+// Hydro computes the hydrodynamic part of the gas model.
+type Hydro interface {
+	// Forces adds pressure and viscosity accelerations of gas bodies to s.Acc*, fills s.Rho and s.H,
+	// and writes du/dt and the velocity divergence of every body (0 for non-gas) into dudt and divv.
+	Forces(s *State, p *Params, dudt, divv []float64)
 }
 
 // SourceMass is the gravitating mass of a body of kind k and mass m under p.
@@ -32,6 +53,7 @@ type Solver interface {
 type Simulation struct {
 	State  *State
 	Solver Solver
+	Hydro  Hydro // nil: gas bodies feel gravity only
 	Params Params
 	Time   float64
 	Steps  int
@@ -42,6 +64,8 @@ type Simulation struct {
 	// computed exactly at each event. Integration error is E - E0 - ExternalEnergy.
 	ExternalEnergy float64
 
+	// StarsFormed counts stars born from gas since Reset.
+	StarsFormed int
 	// Substeps is the number of inner substeps used near black holes in the last step.
 	Substeps int
 
@@ -54,8 +78,9 @@ type Simulation struct {
 	farX, farY, farZ    []float64
 	fastX, fastY, fastZ []float64
 
-	histories map[uint64]*holeHistory // past positions of black holes by ID (retarded.go)
-	holeHists []*holeHistory          // histories of m.holes, bound once per step
+	histories  map[uint64]*holeHistory // past positions of black holes by ID (retarded.go)
+	dudt, divv []float64               // gas: du/dt and velocity divergence (gas.go)
+	holeHists  []*holeHistory          // histories of m.holes, bound once per step
 }
 
 func New(s *State, solver Solver, p Params) *Simulation {
@@ -104,15 +129,16 @@ func (m *Simulation) Step() {
 		}
 	} else {
 		if !m.accValid {
-			m.Solver.Accelerations(s, m.Params)
+			m.computeSlow()
 			m.accValid = true
 		}
 		kick(s, 0.5*dt)
 		drift(s, dt, m.Params.C)
-		m.Solver.Accelerations(s, m.Params)
+		m.computeSlow()
 		kick(s, 0.5*dt)
 		m.Substeps = 1
 	}
+	m.updateGas(dt)
 	m.Time += dt
 	m.Steps++
 	m.recordHoles()

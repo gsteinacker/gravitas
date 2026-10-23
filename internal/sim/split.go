@@ -162,10 +162,10 @@ func (m *Simulation) fastForces(eps2 float64) {
 // stepSplit is Step with holes present: outer KDK with slow and far forces, inner KDK substeps
 // for near stars and holes.
 func (m *Simulation) stepSplit() {
-	s, dt, c := m.State, m.Params.Dt, m.Params.C
+	dt, c := m.Params.Dt, m.Params.C
 	eps2 := m.Params.Softening * m.Params.Softening
 	if !m.accValid {
-		m.Solver.Accelerations(s, m.Params)
+		m.computeSlow()
 		m.accValid = true
 	}
 	m.bindHistories()
@@ -185,7 +185,7 @@ func (m *Simulation) stepSplit() {
 	}
 	m.driftFar(dt, c)
 
-	m.Solver.Accelerations(s, m.Params)
+	m.computeSlow()
 	m.outerHoleForces(eps2)
 	m.kickOuter(0.5 * dt)
 }

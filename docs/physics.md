@@ -72,11 +72,17 @@ Halos aus unsichtbaren Teilchen (`DarkMatter`), gravitativ wie Sterne. Mit `x` l
 abschalten (sie fliegen dann als Testteilchen weiter), mit `v` werden sie sichtbar. Galaxien in den Szenen
 5–7 haben Halos mit ~85–95 % der Masse.
 
+## Gas (ADR-0007)
+
+SPH-Gas mit Druck, Viskosität, Kühlung auf eine Untergrenze und Sternentstehung in dichtem, kaltem,
+zusammenströmendem Gas. Junge Sterne werden blau gezeichnet (`o` zeigt das Gas selbst). Szenen 1, 2, 6, 7 haben
+15 % Gas in der Scheibe bei 10⁴ K.
+
 ## Was wir bewusst ignorieren
 
 - Allgemeine Relativität jenseits der obigen Näherungen (keine Metrik, kein Frame-Dragging).
 - Gravitationswellen-Abstrahlung (eventuell später als „Inspiral-Hack“ für BH-Paare).
-- Sternentwicklung, Gas, Hydrodynamik. Sterne sind Massepunkte.
+- Sternentwicklung und Supernova-Rückkopplung. Sterne sind Massepunkte.
 - Kollisionen zwischen normalen Sternen (optional: Verschmelzen unterhalb eines Abstands).
 
 ## Invarianten für Tests
