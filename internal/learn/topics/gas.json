@@ -1,0 +1,11 @@
+{
+  "id": "gas",
+  "title": "Gas zwischen den Sternen",
+  "keys": "o",
+  "short": "Zwischen den Sternen schwebt Gas – Rohstoff für neue Sterne. Mit o als Karte sichtbar machen.",
+  "levels": {
+    "school": "Der Raum zwischen den Sternen ist nicht ganz leer: Dort schwebt Gas, vor allem Wasserstoff. Es ist meist so dünn, dass wir es nicht sehen. Aber aus diesem Gas entstehen neue Sterne!\n\nMit o kannst du das Gas sichtbar machen. Achte auf die blauen Sterne: Das sind ganz junge Sterne, die gerade aus dem Gas entstanden sind.",
+    "lay": "Etwa 10–15 % der normalen Materie einer Spiralgalaxie wie der Milchstraße ist Gas. Anders als Sterne hat Gas Druck und kann Stoßwellen bilden. Es verliert Energie durch Strahlung (Kühlung), sammelt sich in den dichtesten Regionen und wird dort zu Sternen.\n\nIm sichtbaren Licht ist kaltes Gas unsichtbar. Wir sehen es indirekt: durch Staub, der Licht verschluckt, und durch Gas, das von heißen Sternen zum Leuchten gebracht wird. Die Gaskarte (o) zeigt es in Falschfarben, wie Radioastronomen es tun.",
+    "physics": "SPH: ρ_i = Σ_j m_j W(r_ij, h_i), kubischer Spline, h_i aus ~40 Nachbarn. Symmetrische Variable-h-Kräfte (Impuls und Energie paarweise exakt erhalten), Monaghan-Viskosität (α = 1, β = 2), Energiegleichung für u; P = (γ − 1) ρ u, γ = 5/3.\n\nNachbarsuche: Morton-BVH mit hmax je Knoten. Grenzen: keine Grad-h-Terme (Energie adiabatisch ~1 %/300 Schritte), keine erzwungene Courant-Bedingung, keine Magnetfelder, kein Turbulenzmodell unterhalb der Auflösung. Siehe ADR-0007."
+  }
+}

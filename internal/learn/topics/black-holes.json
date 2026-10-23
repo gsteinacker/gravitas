@@ -1,0 +1,11 @@
+{
+  "id": "black-holes",
+  "title": "Schwarze Löcher",
+  "keys": "b click",
+  "short": "Was den Ereignishorizont überschreitet, kommt nie wieder heraus.",
+  "levels": {
+    "school": "Ein Schwarzes Loch ist so dicht, dass nichts mehr von ihm wegkommt, nicht einmal Licht. Um es herum liegt eine unsichtbare Grenze, der Ereignishorizont. Wer ihn überquert, ist für immer gefangen.\n\nIn der Mitte fast jeder großen Galaxie sitzt ein riesiges Schwarzes Loch. Das in unserer Milchstraße heißt Sagittarius A* und ist vier Millionen Mal schwerer als die Sonne. Klick in die Simulation, um selbst eines zu setzen – und schau zu, wie es Sterne verschluckt!",
+    "lay": "Der Radius des Ereignishorizonts ist der Schwarzschild-Radius r_s = 2GM/c². Für die Sonne wären das 3 km, für Sgr A* etwa 12 Millionen km (0,08 AE) – winzig im Vergleich zu den Bahnen der Sterne um es herum.\n\nIn der Simulation verschluckt ein Schwarzes Loch alles, was innerhalb von r_s gerät; seine Masse und damit sein Horizont wachsen. Zwei Löcher verschmelzen, wenn sich ihre Horizonte berühren. Mit < und > veränderst du die Lichtgeschwindigkeit: kleineres c bedeutet größere Horizonte – so werden die Effekte sichtbar.",
+    "physics": "r_s = 2GM/c². Akkretion: Körper mit d < r_s werden absorbiert, Löcher verschmelzen bei d < r_s1 + r_s2; Ruhemasse und Impuls m·u erhalten, Ort = Schwerpunkt; die exakte Energieänderung jedes Ereignisses wird in ExternalEnergy verbucht.\n\nVereinfachungen: keine Metrik, kein Spin (Kerr), kein Akkretionsscheiben-Modell, keine Gravitationswellen-Abstrahlung. Die kinetische Energie verschluckter Körper wird nicht zu Masse. Stern-Loch-Paare nutzen das Paczyński-Wiita-Potential (siehe ISCO). Darstellung: Horizont, Photonensphäre 1,5 r_s, ISCO 3 r_s."
+  }
+}

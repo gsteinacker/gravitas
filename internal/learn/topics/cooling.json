@@ -1,0 +1,11 @@
+{
+  "id": "cooling",
+  "title": "Kühlung",
+  "keys": "",
+  "short": "Heißes Gas strahlt Energie ab und kühlt sich dabei ab.",
+  "levels": {
+    "school": "Ein heißer Stein strahlt Wärme ab und wird kälter. Mit Gas im Weltall passiert dasselbe: Es leuchtet ganz schwach und verliert dabei Energie.\n\nDas ist wichtig: Nur kaltes Gas kann sich so stark zusammenziehen, dass daraus neue Sterne werden. Ohne Kühlung gäbe es keine neuen Sterne.",
+    "lay": "Gas kühlt, indem Atome durch Stöße angeregt werden und die Energie als Licht abstrahlen. Wie schnell, hängt stark von Temperatur, Dichte und Zusammensetzung ab. Warmes Gas zwischen den Sternen hat etwa 10.000 Kelvin, Molekülwolken, in denen Sterne entstehen, nur 10–20 Kelvin.\n\nDie Simulation vereinfacht das: Gas kühlt auf eine Mindesttemperatur ab, mit einer festen Abkühlzeit.",
+    "physics": "Implizite Relaxation u → u_floor + (u − u_floor) e^(−dt/t_cool), stabil für jedes dt; u_floor aus gasFloorK (hier 10⁴ K, warmes ISM), u = 3kT/(2 μ m_p), μ = 0,6 ionisiert bzw. 1,27 neutral.\n\nKeine Kühlfunktion Λ(T, Z, ρ), keine Molekül- oder Metallkühlung, kein UV-Hintergrund, keine Heizung durch Supernovae. Die Kühlung macht die Energie-Drift-Anzeige unaussagekräftig (Energie verlässt das System als Strahlung)."
+  }
+}

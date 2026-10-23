@@ -1,0 +1,11 @@
+{
+  "id": "dust",
+  "title": "Staub",
+  "keys": "u",
+  "short": "Staub verschluckt Licht und färbt es rötlich – daher die dunklen Bänder in Galaxien.",
+  "levels": {
+    "school": "Im Gas zwischen den Sternen schweben auch winzige Staubkörner, viel kleiner als Sandkörner. Sie verschlucken Licht, ähnlich wie Rauch oder Nebel.\n\nBlaues Licht wird dabei stärker verschluckt als rotes. Darum erscheinen Sterne hinter Staub rötlicher – wie die Sonne bei einem Sonnenuntergang. Die dunklen Bänder, die man in Galaxien sieht, sind Staub. Mit u schaltest du ihn an und aus.",
+    "lay": "Staub macht etwa 1 % der Masse des interstellaren Gases aus, verschluckt aber bis zur Hälfte des Sternlichts einer Galaxie und strahlt es im Infraroten wieder ab. Wie stark, hängt von der Wellenlänge ab: Blau wird stärker gedämpft (Rötung).\n\nIn der Simulation folgt der Staub dem Gas. Nur Sterne, die hinter dem Staub liegen, werden abgeschwächt – deshalb sieht man Staubbänder am deutlichsten, wenn man von der Seite auf eine Galaxie schaut.",
+    "physics": "Staubsäule aus dem Gas (Kernelkern, Durchmesser 2h), automatisch normiert. Abschwächung exp(−τ k), k = (0,55; 0,75; 1,0) für R, G, B — grobe Annäherung an R_V ≈ 3,1 (A_λ ~ ~1/λ). Tiefenaufteilung: Sterne tiefer als die massengewichtete Staubtiefe ihrer Bildzelle werden abgeschwächt.\n\nKeine Streuung (Reflexionsnebel), keine Infrarot-Reemission, kein Staub-zu-Gas-Modell (konstant), keine Zerstörung in heißem Gas."
+  }
+}

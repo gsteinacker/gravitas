@@ -1,0 +1,11 @@
+{
+  "id": "doppler",
+  "title": "Doppler-Effekt und Rotverschiebung",
+  "keys": "d",
+  "short": "Was auf uns zukommt, erscheint blauer, was sich entfernt, röter.",
+  "levels": {
+    "school": "Kennst du das? Ein Krankenwagen klingt höher, wenn er auf dich zufährt, und tiefer, wenn er wegfährt. Mit Licht passiert dasselbe: Kommt ein Stern auf uns zu, wird sein Licht bläulicher, entfernt er sich, wird es rötlicher.\n\nBei einer sich drehenden Galaxie ist deshalb eine Seite leicht blau und die andere leicht rot. Mit d schaltest du den Effekt an und aus.",
+    "lay": "Der Doppler-Effekt verschiebt die Lichtfrequenz um den Faktor D, abhängig von der Geschwindigkeit in Blickrichtung. Astronomen messen so, wie schnell Sterne und Galaxien rotieren – daher kennen wir auch die flachen Rotationskurven, die auf Dunkle Materie hinweisen.\n\nZwei weitere Effekte kommen hinzu: Nahe einem Schwarzen Loch verliert Licht beim Herausklettern Energie (Gravitations-Rotverschiebung), und sehr schnelle Quellen strahlen bevorzugt in Bewegungsrichtung (relativistisches Beaming).",
+    "physics": "Frequenzfaktor f = D · Π_h √(1 − r_s,h / r_h) mit D = 1/(γ (1 − β·n)), n zur Kamera; transversaler Doppler (1/γ) enthalten. Farbverschiebung als Mischung zur Blau- bzw. Rot-Tönung mit t = 2 log₂ f (gekappt), Helligkeit ~ f³ (begrenzt).\n\nRein visuell, keine Rückwirkung auf die Dynamik. Keine echte Spektralintegration (Sterne haben keinen Spektraltyp, die Farbe kommt aus der Masse). Getestet: ±0,6c ergibt f = 2 bzw. 0,5, transversal f = 0,8."
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "id": "gravity",
+  "title": "Gravitation und N-Körper",
+  "keys": "",
+  "short": "Jeder Körper zieht jeden anderen an – das Programm rechnet das für alle gleichzeitig aus.",
+  "levels": {
+    "school": "Alles, was Masse hat, zieht sich gegenseitig an: die Erde dich, die Sonne die Erde, jeder Stern jeden anderen Stern. Je schwerer die Körper und je näher sie sich sind, desto stärker ist die Anziehung.\n\nDas Programm berechnet für jeden Stern, wie stark ihn alle anderen ziehen, und bewegt ihn dann ein kleines Stück weiter. Das wiederholt es viele Male pro Sekunde. Aus diesen winzigen Schritten entstehen ganze Galaxien, die sich drehen, zusammenstoßen und verschmelzen.",
+    "lay": "Newtons Gravitationsgesetz: Die Kraft zwischen zwei Massen wächst mit ihrem Produkt und fällt mit dem Quadrat des Abstands. Bei einer Million Sternen wären das eine Billion Paare pro Schritt – zu viel. Deshalb fasst das Programm weit entfernte Sterngruppen zu einem einzigen Schwerpunkt zusammen (Barnes-Hut-Verfahren). Von weitem sieht ein Haufen eben aus wie ein Punkt.\n\nDie Bewegung wird in kleinen Zeitschritten mit dem Leapfrog-Verfahren berechnet. Es ist besonders gut darin, Bahnen über sehr lange Zeit stabil zu halten.",
+    "physics": "Beschleunigung a_i = Σ_j G m_j (r_j − r_i) / (|r_j − r_i|² + ε²)^(3/2) mit Plummer-Softening ε gegen Singularitäten bei engen Begegnungen.\n\nBarnes-Hut-Octree mit Öffnungswinkel θ = 0,9 und Quadrupolmomenten: Aufwand O(N log N), Median-Kraftfehler je nach System 0,05–0,6 %. Baum auf der CPU, Durchlauf optional auf der GPU (Metal).\n\nIntegration: Kick-Drift-Kick-Leapfrog (symplektisch, zeitumkehrbar, beschränkter Energiefehler). Kräfte mit Schwarzen Löchern in Unterschritten (RESPA, n ≥ 20 dt/τ_min). G = 1, Einheiten je Szene."
+  }
+}

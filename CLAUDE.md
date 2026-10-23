@@ -45,7 +45,10 @@ Stack: **Go 1.27 + Ebitengine v2**, Physik auf der CPU (siehe `docs/adr/0001-go-
 - Simulationseinheiten: G = 1. `c` ist ein Parameter und keine Konstante.
 - Szenen sind Daten (`internal/scene/scenes/*.json`, Format in `docs/scenes.md`). Neue Strukturen als JSON
   anlegen, mit Quellen und Annahmen in `note` und physikalischen Einheiten in `info` und `yearsPerUnit`.
-- Körperarten: Star, BlackHole, DarkMatter. „Kein Loch“ heißt `!= BlackHole`, **nicht** `== Star`.
+- Lernmodus (`internal/learn/topics/*.json`, Szenen-`intro`/`topics`): jedes neue Konzept bekommt ein Thema mit
+  drei Stufen (school, lay, physics), physikalisch korrekt, mit Modellgrenzen in der Physik-Stufe. Nur Zeichen,
+  die die Go-Schrift hat (Test `TestLearningTextsUseOnlyAvailableGlyphs`).
+- Körperarten: Star, BlackHole, DarkMatter, Gas. „Kein Loch“ heißt `!= BlackHole`, **nicht** `== Star`.
 - Tastenbelegung über `ebiten.AppendInputChars` (eingegebene Zeichen), **nicht** über `ebiten.Key*`-Konstanten,
   die US-Positionen sind. Ausnahme: layoutunabhängige Tasten (Leertaste, F-Tasten, Pfeile). Der Nutzer hat ein
   deutsches Layout.

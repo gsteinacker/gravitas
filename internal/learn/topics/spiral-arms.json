@@ -1,0 +1,11 @@
+{
+  "id": "spiral-arms",
+  "title": "Spiralarme",
+  "keys": "",
+  "short": "Spiralarme sind Wellen, durch die Sterne hindurchwandern – wie ein Stau auf der Autobahn.",
+  "levels": {
+    "school": "Man könnte denken, Spiralarme seien feste Arme aus Sternen. Dann wären sie aber längst aufgewickelt, denn innen drehen sich die Sterne schneller als außen.\n\nTatsächlich sind Spiralarme eher wie ein Stau auf der Autobahn: Die Autos (Sterne) fahren hinein und wieder heraus, aber der Stau bleibt. In den Armen ist das Gas dichter, dort entstehen neue, heiße, blaue Sterne – deshalb leuchten die Arme so hell.",
+    "lay": "Spiralarme sind Dichtewellen: Bereiche, in denen sich Sterne und Gas etwas häufen, während das Muster langsamer rotiert als die Sterne selbst. Ob eine Scheibe Arme bildet, hängt davon ab, wie „kalt“ sie ist – also wie geordnet die Sterne kreisen. Zu heiße Scheiben bleiben glatt, zu kalte zerfallen in Klumpen.\n\nGas reagiert besonders stark auf die Wellen, wird verdichtet und bildet Sterne. Die jungen blauen Sterne machen die Arme sichtbar. Ohne Gas verblassen Arme mit der Zeit, weil die Sterne sich aufheizen.",
+    "physics": "Lin–Shu-Dichtewellen und Swing-Amplifikation (Goldreich & Lynden-Bell, Toomre). Lokale Stabilität: Toomre Q = σ_R κ / (3,36 G Σ); Q ≈ 1–2 begünstigt Arme. Anfangsbedingungen: σ_R aus Q, σ_φ = σ_R κ/2Ω, σ_z² = π G Σ z₀, Asymmetric Drift (Hernquist 1993), plus kalte Population.\n\nMessgröße: m=2-Fourier-Amplitude A₂ (Szene 1: 0,1–0,25). Grenze: Zweikörper-Aufheizung durch schwere DM-Teilchen (σ_R 45 → 70–90 km/s in ~1 Gyr, N-abhängig); Gas und Sternentstehung wirken dem entgegen."
+  }
+}

@@ -15,8 +15,10 @@ import (
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
 	"github.com/hajimehoshi/ebiten/v2/inpututil"
+	"github.com/hajimehoshi/ebiten/v2/text/v2"
 	"github.com/hajimehoshi/ebiten/v2/vector"
 
+	"galaxy/internal/learn"
 	"galaxy/internal/render"
 	"galaxy/internal/save"
 	"galaxy/internal/scene"
@@ -118,8 +120,15 @@ type Game struct {
 	darkOff            bool
 	scene              *scene.Spec
 	message            atomic.Pointer[note]
-	substeps           int
-	gravity            sim.GravityMode
+
+	// Learning mode (explain.go).
+	explain  bool
+	level    learn.Level
+	topics   []string
+	topicIdx int
+	hinted   map[string]bool
+	substeps int
+	gravity  sim.GravityMode
 }
 
 // SetEffects replaces the active render effects.
@@ -198,6 +207,10 @@ func NewGame(runner *sim.Runner, n int, sp *scene.Spec) (*Game, error) {
 // applyScene takes over the camera, effects and HUD texts of a scene.
 func (g *Game) applyScene(sp *scene.Spec) {
 	g.scene = sp
+	g.topics, g.topicIdx = topicList(sp.Topics), 0
+	if len(sp.Intro) > 0 {
+		g.notify(sp.Name + ": e öffnet eine Einführung")
+	}
 	g.cam = render.NewCamera()
 	if c := sp.Camera; c != nil {
 		g.cam.Target = vec.Vec3{X: c.Target[0], Y: c.Target[1], Z: c.Target[2]}
@@ -235,6 +248,7 @@ func (g *Game) Update() error {
 	if g.ShotPath != "" {
 		return nil // screenshots must be reproducible: ignore stray input on the window
 	}
+	g.handleExplainKeys()
 	g.handleKeys()
 	g.handleMouse()
 	return nil
@@ -247,6 +261,9 @@ func (g *Game) handleKeys() {
 	g.chars = ebiten.AppendInputChars(g.chars[:0])
 	for _, r := range g.chars {
 		g.applyChar(r)
+		if id, ok := hintFor[r]; ok {
+			g.hint(id)
+		}
 	}
 	switch {
 	case inpututil.IsKeyJustPressed(ebiten.KeySpace):
@@ -314,6 +331,8 @@ func (g *Game) applyChar(r rune) {
 		g.fx.Gas = !g.fx.Gas
 	case 'u', 'U':
 		g.fx.Dust = !g.fx.Dust
+	case 'e', 'E':
+		g.explain = !g.explain
 	case 'r', 'R':
 		g.LoadScene(g.scene)
 	case 'h', 'H':
@@ -372,6 +391,13 @@ func (g *Game) handleMouse() {
 func (g *Game) place(x, y int, vel vec.Vec3) {
 	pos := g.cam.Unproject(float64(x), float64(y))
 	mass := g.bhMass
+	if g.hinted == nil {
+		g.hinted = map[string]bool{}
+	}
+	if topic := map[tool]string{toolBlackHole: "black-holes", toolCluster: "gravity"}[g.tool]; !g.hinted[topic] {
+		g.hinted[topic] = true // once per run, placing is frequent
+		g.hint(topic)
+	}
 	if g.tool == toolBlackHole {
 		g.runner.Do(func(m *sim.Simulation) {
 			m.AddBody(sim.Body{Pos: pos, Vel: sim.ProperVelocity(vel, m.Params.C), Mass: mass, Kind: sim.BlackHole})
@@ -479,7 +505,16 @@ func (g *Game) drawHUD(screen *ebiten.Image) {
 		g.runner.StepsPerSecond(), speed, g.substeps, ebiten.ActualFPS(), driftText(g.runner.EnergyDrift()),
 		lightText(g.c, g.bhMass, g.gravity), effectsText(g.fx), g.tool, g.bhMass), 10, 8)
 	if n := g.message.Load(); n != nil && time.Now().Before(n.until) {
-		ebitenutil.DebugPrintAt(screen, n.text, 10, g.screenH/2)
+		w, _ := text.Measure(n.text, bodyFace, 0)
+		area := float64(g.screenW)
+		if g.explain {
+			area -= panelWidth(g.screenW) + 32 // keep the hint left of the open panel
+		}
+		x := math.Max(12, (area-w)/2)
+		drawText(screen, n.text, bodyFace, x, float64(g.screenH)-48, accentColor)
+	}
+	if g.explain {
+		g.drawExplanation(screen)
 	}
 	if g.showHelp {
 		var b strings.Builder
@@ -488,7 +523,7 @@ func (g *Game) drawHUD(screen *ebiten.Image) {
 		}
 		b.WriteString("\nb k tab     tool: black hole / star cluster\nclick       place\nalt+drag    launch with velocity\nm n         mass +/-\n" +
 			"drag        rotate\nshift/right drag  pan\nwheel       zoom\n" +
-			"x v         dark matter: gravity on/off, show\no u         gas map, dust absorption\n< >         speed of light\np           hole gravity: instant / retarded / retarded+v\ng t l d     glow, trails, lens, doppler\nspace       pause\n.           single step\n+ -         speed\nr           restart\nc           center view\n" +
+			"e           EXPLAIN: learning mode (arrows: topic, audience)\nx v         dark matter: gravity on/off, show\no u         gas map, dust absorption\n< >         speed of light\np           hole gravity: instant / retarded / retarded+v\ng t l d     glow, trails, lens, doppler\nspace       pause\n.           single step\n+ -         speed\nr           restart\nc           center view\n" +
 			"F5 F9       save / load latest (saves/)\nf           fullscreen\nh           hide HUD\n? F1        hide this help")
 		ebitenutil.DebugPrintAt(screen, b.String(), 10, g.screenH-16*strings.Count(b.String(), "\n")-28)
 	}

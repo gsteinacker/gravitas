@@ -23,8 +23,10 @@ make check                     # fmt, vet, tests, Backlog-Validierung
 | Ziehen / Shift-Ziehen / Rad | Rotieren / Verschieben / Zoom |
 | `<` `>` | Lichtgeschwindigkeit verringern / erhöhen (kleines c → große Horizonte) |
 | `Leertaste` `.` `+` `-` `r` | Pause, Einzelschritt, Tempo, Neustart |
+| `e` | **Lernmodus**: Einführung zur Szene und Erklärungen (←/→ Thema, ↑/↓ Zielgruppe: Schüler, Interessierte, Physik) |
 | `x` `v` | Dunkle Materie: Gravitation an/aus, sichtbar machen |
 | `F5` `F9` | Spielstand speichern / neuesten laden (`saves/`) |
+| `o` `u` | Gaskarte (Falschfarben) / Staubabsorption |
 | `p` | Gravitation der Löcher: instantan / retardiert / retardiert + v (Ausbreitung mit c) |
 | `g` `t` `l` `d` | Effekte: Glow, Spuren, Gravitationslinse, Doppler-Farben |
 | `h` `?`/`F1` `f` `c` | HUD, Hilfe, Vollbild, Ansicht zentrieren |

@@ -1,5 +1,17 @@
 {
   "name": "Black hole binary in a cluster",
+  "intro": {
+    "school": "Zwei Schwarze Löcher umkreisen sich mitten in einem Sternhaufen. Sie wirbeln die Sterne herum und verschlucken manche davon. Mit < machst du die Lichtgeschwindigkeit kleiner – dann werden die Löcher größer und gefräßiger.",
+    "lay": "Ein Doppel-Schwarzes-Loch in einem Sternhaufen. Die Löcher schleudern Sterne heraus, verschlucken andere und lenken das Licht ab (Gravitationslinse). Mit p kannst du die endliche Ausbreitung der Gravitation einschalten.",
+    "physics": "Zwei 5·10⁴-Sonnenmassen-Löcher auf Kreisbahn in einer Plummer-Kugel, c = 10. Akkretion bei d < r_s, Paczyński-Wiita-Paare, RESPA-Unterschritte, optionale retardierte Gravitation (ADR-0005)."
+  },
+  "topics": [
+    "black-holes",
+    "isco",
+    "speed-of-light",
+    "lensing",
+    "retarded-gravity"
+  ],
   "info": "1 unit = 1 pc, 1e5 Msun: two 5e4 Msun holes in a cluster; c reduced to 10 (real ~14500)",
   "yearsPerUnit": 47200.0,
   "params": {

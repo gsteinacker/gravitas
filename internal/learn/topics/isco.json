@@ -1,0 +1,11 @@
+{
+  "id": "isco",
+  "title": "Letzte stabile Bahn (ISCO)",
+  "keys": "",
+  "short": "Zu nah am Schwarzen Loch gibt es keine stabilen Kreisbahnen mehr – Sterne stürzen hinein.",
+  "levels": {
+    "school": "Um die Erde oder die Sonne kann man im Prinzip auf jeder Höhe im Kreis fliegen. Bei einem Schwarzen Loch ist das anders: Kommt man ihm zu nahe, gibt es keine stabile Kreisbahn mehr. Jeder kleine Stups lässt einen dann ins Loch spiralen.\n\nDiese Grenze liegt beim Dreifachen des Horizont-Radius. Der dünne Ring um ein Schwarzes Loch in der Simulation zeigt sie an.",
+    "lay": "Die allgemeine Relativitätstheorie sagt voraus, dass Kreisbahnen um ein Schwarzes Loch unterhalb von drei Schwarzschild-Radien instabil werden: die ISCO (innermost stable circular orbit). Materie in Akkretionsscheiben wandert bis dorthin nach innen und stürzt dann hinein – deshalb leuchten die innersten Bereiche von Quasaren so hell.\n\nDie Simulation nutzt eine einfache Näherung, die genau diesen Effekt nachbildet, ohne die vollen Einstein-Gleichungen zu lösen.",
+    "physics": "Paczyński-Wiita-Potential Φ = −GM/(r − r_s) als symmetrisches Paarpotential für Stern-Loch-Paare (r mit Softening). Es reproduziert die Schwarzschild-ISCO bei 3 r_s = 6GM/c² und die marginal gebundene Bahn bei 2 r_s; Präzession qualitativ.\n\nUnterhalb 1,5 r_s (Photonensphäre) ist die Kraft auf ihren dortigen Wert gekappt (Potential linear fortgesetzt). Kombiniert mit Eigengeschwindigkeits-Kinematik verschiebt sich die ISCO leicht. Getestet: Kreisbahn bei 6 r_s stabil, bei 2 r_s stürzt sie (Newtonsche Kontrolle bleibt gebunden)."
+  }
+}

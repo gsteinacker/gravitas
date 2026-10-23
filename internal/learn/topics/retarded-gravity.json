@@ -1,0 +1,11 @@
+{
+  "id": "retarded-gravity",
+  "title": "Ausbreitung der Gravitation",
+  "keys": "p",
+  "short": "Auch Gravitation breitet sich nur mit Lichtgeschwindigkeit aus – mit p ausprobieren.",
+  "levels": {
+    "school": "Wenn die Sonne plötzlich verschwände, würde die Erde es erst nach gut acht Minuten merken – so lange braucht die Nachricht „die Schwerkraft ist weg“, denn auch die Schwerkraft ist nicht schneller als das Licht.\n\nMit p schaltest du das in der Simulation ein. Setzt du dann ein neues Schwarzes Loch, siehst du, wie seine Anziehung sich wie eine Welle ausbreitet.",
+    "lay": "Seit der Beobachtung des Neutronenstern-Paares GW170817 weiß man: Gravitationswellen und Licht kamen fast gleichzeitig an, die Gravitation breitet sich also mit Lichtgeschwindigkeit aus.\n\nEinfach „verzögert“ darf man sie aber nicht rechnen. Schon Laplace zeigte 1805, dass dann Planetenbahnen auseinanderdriften würden – probier den Modus „retarded“ mit einem Paar Schwarzer Löcher aus! In Einsteins Theorie heben sich solche Effekte weitgehend auf; der Modus „retarded+v“ ahmt das nach.",
+    "physics": "Lichtkegel |x − x_h(t_r)| = c (t − t_r) per Fixpunktiteration (Toleranz 10⁻⁷) aus einem Ringpuffer je Loch; nur Kräfte von Löchern retardiert. Naive Retardierung erzeugt Aberration ~ ωΔt (Doppel-Loch bei 0,1c: +57 % Abstand nach einem Umlauf). retarded+v nutzt x_h(t_r) + v_h(t_r) Δt (für gleichförmige Bewegung exakt die aktuelle Position, vgl. Carlip 2000), Restdrift ~ (ωΔt)².\n\nKeine 1PN-Terme (EIH), keine Wellenabstrahlung; Energie und Impuls im retardierten Modus nicht erhalten (das Feld würde sie tragen). Siehe ADR-0005."
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "id": "lensing",
+  "title": "Gravitationslinse",
+  "keys": "l",
+  "short": "Masse krümmt den Raum – und lenkt dadurch Licht ab.",
+  "levels": {
+    "school": "Eine riesige Masse wie ein Schwarzes Loch verbiegt den Raum um sich herum, wie eine schwere Kugel auf einem Trampolin. Licht, das daran vorbeiläuft, folgt dieser Krümmung und wird abgelenkt.\n\nDadurch sehen Sterne hinter einem Schwarzen Loch verzerrt aus, manchmal sogar als leuchtender Ring. Mit l schaltest du diesen Effekt an und aus.",
+    "lay": "Einstein sagte voraus, dass Masse Licht ablenkt; 1919 wurde es bei einer Sonnenfinsternis gemessen. Heute nutzen Astronomen Galaxienhaufen als natürliche Teleskope, die dahinterliegende Galaxien vergrößern. Liegt eine Quelle genau hinter der Linse, erscheint sie als Einstein-Ring.\n\nIn der Simulation ist der Effekt eine Darstellung: Das Bild wird um jedes Schwarze Loch nach der Linsengleichung verzerrt.",
+    "physics": "Punktlinse: β = θ − θ_E² θ/|θ|², angewendet pro Bildpunkt im Shader, summiert über bis zu 16 Löcher. Einstein-Radius real θ_E = √(4GM/c² · D_ls/(D_l D_s)); hier als Darstellungsparameter θ_E = 5 r_s (projiziert), da Abstände von Quelle und Beobachter nicht modelliert sind.\n\nGrenzen: keine Tiefentrennung (auch Sterne vor dem Loch werden verzerrt), keine Verstärkung/Helligkeitserhaltung pro Bild, kein Photonenring aus Mehrfachumläufen."
+  }
+}

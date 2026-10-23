@@ -19,16 +19,18 @@ import (
 // a particle budget n gives the initial state. Angles are in degrees, everything else in simulation
 // units (G = 1) unless a field says otherwise.
 type Spec struct {
-	Name       string      `json:"name"`
-	Info       string      `json:"info,omitempty"`         // shown in the HUD, e.g. the physical units
-	YearsPer   float64     `json:"yearsPerUnit,omitempty"` // physical years per simulation time unit
-	KmPerS     float64     `json:"velocityUnit,omitempty"` // km/s per simulation velocity unit (gas temperatures)
-	GasFloorK  float64     `json:"gasFloorK,omitempty"`    // cooling floor temperature in K (sets params.gas.uFloor)
-	Params     sim.Params  `json:"params"`
-	Camera     *CameraSpec `json:"camera,omitempty"`
-	Effects    string      `json:"effects,omitempty"` // render effects to switch on, e.g. "glow,trails"
-	BulkRest   bool        `json:"removeBulkMotion,omitempty"`
-	Components []Component `json:"components"`
+	Name       string            `json:"name"`
+	Info       string            `json:"info,omitempty"`         // shown in the HUD, e.g. the physical units
+	Intro      map[string]string `json:"intro,omitempty"`        // introduction per audience: school, lay, physics
+	Topics     []string          `json:"topics,omitempty"`       // related topics of the learning mode (internal/learn)
+	YearsPer   float64           `json:"yearsPerUnit,omitempty"` // physical years per simulation time unit
+	KmPerS     float64           `json:"velocityUnit,omitempty"` // km/s per simulation velocity unit (gas temperatures)
+	GasFloorK  float64           `json:"gasFloorK,omitempty"`    // cooling floor temperature in K (sets params.gas.uFloor)
+	Params     sim.Params        `json:"params"`
+	Camera     *CameraSpec       `json:"camera,omitempty"`
+	Effects    string            `json:"effects,omitempty"` // render effects to switch on, e.g. "glow,trails"
+	BulkRest   bool              `json:"removeBulkMotion,omitempty"`
+	Components []Component       `json:"components"`
 }
 
 // CameraSpec is the initial view.

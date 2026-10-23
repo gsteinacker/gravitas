@@ -7,6 +7,7 @@ import (
 	"log"
 	"os"
 	"runtime/pprof"
+	"strings"
 	"time"
 
 	"github.com/hajimehoshi/ebiten/v2"
@@ -27,6 +28,7 @@ func main() {
 	theta := flag.Float64("theta", bh.DefaultTheta, "Barnes-Hut opening angle (smaller = more accurate)")
 	preset := flag.Int("preset", 1, "built-in start scene (1-based)")
 	sceneFile := flag.String("scene", "", "start scene from a JSON file (see docs/scenes.md)")
+	explain := flag.String("explain", "", "open the learning panel: school, lay or physics (optionally level:topic)")
 	loadFile := flag.String("load", "", "start from a saved state (.galaxy, written with F5)")
 	shot := flag.String("shot", "", "save a screenshot to this PNG file after -shot-after seconds and quit")
 	shotAfter := flag.Float64("shot-after", 4, "seconds before the screenshot is taken")
@@ -93,6 +95,10 @@ func main() {
 	game, err := ui.NewGame(runner, *n, spec)
 	if err != nil {
 		log.Fatal(err)
+	}
+	if *explain != "" {
+		level, topic, _ := strings.Cut(*explain, ":")
+		game.OpenExplanation(level, topic)
 	}
 	if *loadFile != "" {
 		if err := game.Load(*loadFile); err != nil {

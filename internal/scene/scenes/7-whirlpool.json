@@ -1,5 +1,16 @@
 {
   "name": "Whirlpool galaxy (M51)",
+  "intro": {
+    "school": "Die Whirlpool-Galaxie ist eine wunderschöne Spiralgalaxie. Ein kleiner Begleiter fliegt an ihr vorbei und rührt sie dabei kräftig um – so entstehen besonders deutliche Spiralarme.",
+    "lay": "Angelehnt an M51 mit ihrem Begleiter NGC 5195: Der Vorbeiflug des Begleiters regt in der großen Scheibe ausgeprägte Spiralarme an und zieht eine Brücke aus Sternen zu ihm hinüber.",
+    "physics": "Hauptgalaxie (Hernquist-Halo, Toomre-Scheibe mit Gas) und Begleiter mit 30 % der Masse auf gebundener Bahn unter der Scheibe; Geometrie angelehnt, nicht an Beobachtungen angepasst."
+  },
+  "topics": [
+    "spiral-arms",
+    "tides",
+    "star-formation",
+    "dust"
+  ],
   "info": "spiral with a companion passing below its disk, after models of the M51 / NGC 5195 encounter; read as 1 unit = 2.5 kpc, 2e10 Msun, c reduced to 10",
   "yearsPerUnit": 13200000.0,
   "params": {

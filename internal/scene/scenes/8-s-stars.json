@@ -1,5 +1,16 @@
 {
   "name": "S-stars around Sgr A*",
+  "intro": {
+    "school": "Ganz im Zentrum der Milchstraße sitzt ein riesiges Schwarzes Loch. Um es herum rasen Sterne auf engen Bahnen – der Stern S2 erreicht dabei fast 3 % der Lichtgeschwindigkeit! Mit < machst du die Lichtgeschwindigkeit kleiner und siehst, wie sich die Bahnen langsam drehen.",
+    "lay": "Die S-Sterne kreisen um Sagittarius A*, das Schwarze Loch im Zentrum der Milchstraße. Ihre Bahnen wurden über Jahrzehnte vermessen; daraus kennt man die Masse des Lochs (4,3 Millionen Sonnenmassen). Für diese Arbeit gab es 2020 den Nobelpreis für Physik.",
+    "physics": "Kepler-Elemente nach Gillessen et al. 2017 (gerundet, Phasen illustrativ), 1 LE = 1000 AE, echtes c. S2: a ≈ 1030 AE, e = 0,88, Perizentrum ~120 AE bei ~7700 km/s. Paczyński-Wiita gibt die Periheldrehung qualitativ; mit reduziertem c sichtbar."
+  },
+  "topics": [
+    "black-holes",
+    "isco",
+    "speed-of-light",
+    "units"
+  ],
   "info": "orbits of the S-stars, 1 unit = 1000 AU, real c; press < to shrink c and watch the orbits precess",
   "yearsPerUnit": 2.43,
   "params": {

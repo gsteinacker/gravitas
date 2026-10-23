@@ -1,0 +1,11 @@
+{
+  "id": "energy",
+  "title": "Energieerhaltung und Drift",
+  "keys": "",
+  "short": "Die Gesamtenergie sollte gleich bleiben – die Drift zeigt, wie genau gerechnet wird.",
+  "levels": {
+    "school": "Energie kann nicht einfach verschwinden oder entstehen. Wenn ein Stern auf ein Schwarzes Loch zufällt, wird er schneller, aber seine gesamte Energie bleibt gleich.\n\nDer Computer rechnet in kleinen Schritten und macht dabei winzige Fehler. Die Anzeige „energy drift“ zeigt, wie groß diese Fehler sind. Je kleiner die Zahl, desto genauer die Simulation.",
+    "lay": "Die Gesamtenergie (Bewegung + Lageenergie in der Schwerkraft) eines abgeschlossenen Systems ist erhalten. Die Drift zeigt die relative Abweichung seit dem Start oder der letzten Änderung (z. B. wenn du ein Loch setzt). Werte um 10⁻⁴ sind sehr gut, um 10⁻³ gut, ab 10⁻² wird es ungenau.\n\nBei Kühlung, retardierter Gravitation oder abgeschalteter Dunkler Materie ist die Energie physikalisch nicht erhalten – dann ist die Anzeige kein Fehlermaß mehr.",
+    "physics": "Drift = (E − E₀ − ΔE_extern)/|E₀|, E = Σ m c²(γ−1) + U + Σ m u (Gas). U exakt (paralleles O(N²)) bis N = 30.000, sonst Baum mit Quadrupolen (Fehler ~10⁻⁶). ΔE_extern bucht Akkretion exakt. Neue Basis bei jeder Epoche (Szene, hinzugefügte Körper, c-, DM- oder Gravitationsmodus-Wechsel); adaptives Messintervall ≤ 5 % Rechenzeit.\n\nLeapfrog: beschränkter, oszillierender Energiefehler ~ dt²; Drift entsteht vor allem durch enge Begegnungen, abgefangen durch RESPA-Unterschritte nahe Löchern."
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "id": "tides",
+  "title": "Gezeiten und Verschmelzungen",
+  "keys": "",
+  "short": "Bei Begegnungen ziehen Galaxien lange Schweife aus Sternen auseinander.",
+  "levels": {
+    "school": "Der Mond erzeugt auf der Erde Ebbe und Flut, weil er die Seite, die ihm zugewandt ist, stärker anzieht als die abgewandte. Wenn zwei Galaxien aneinander vorbeiziehen, passiert dasselbe – nur viel stärker: Sterne werden zu langen Schweifen und Brücken auseinandergezogen.\n\nDie Antennen-Galaxien haben ihren Namen von genau solchen Schweifen. Und eines Tages werden die Milchstraße und Andromeda zusammenstoßen und zu einer einzigen großen Galaxie verschmelzen.",
+    "lay": "Die Gezeitenkraft entsteht durch die unterschiedliche Anziehung auf nahe und ferne Teile einer Galaxie. Bei einer engen Begegnung, vor allem wenn die Scheibe sich in dieselbe Richtung dreht wie die Bahn, entstehen lange Gezeitenschweife (Toomre & Toomre 1972).\n\nDie Dunkle-Materie-Halos bremsen die Galaxien dabei ab (dynamische Reibung): Sie verlieren Bahnenergie, kommen sich immer wieder näher und verschmelzen nach einigen Umläufen. Sterne stoßen dabei so gut wie nie zusammen – dafür ist zu viel Platz zwischen ihnen.",
+    "physics": "Gezeitenbeschleunigung ≈ 2GM d / r³. Prograde Begegnungen erzeugen über Resonanz zwischen Bahn- und Rotationsfrequenz ausgeprägte Schweife. Dynamische Reibung nach Chandrasekhar: dv/dt ~ −G² M ρ ln Λ / v² — in der Simulation emergent aus den DM-Teilchen.\n\nLokale Gruppe (Hernquist-Halos): erste MW-M31-Begegnung nach ~4,8 Gyr (65 kpc), LMC-Apozentrum 130 kpc, Verschmelzung LMC–MW nach ~4,5 Gyr; vgl. van der Marel et al. 2012/2019, Cautun et al. 2019."
+  }
+}

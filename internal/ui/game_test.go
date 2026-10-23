@@ -5,9 +5,14 @@ import (
 	"math"
 	"os"
 	"path/filepath"
+	"slices"
+	"strings"
 	"testing"
 	"time"
 
+	"github.com/hajimehoshi/ebiten/v2/text/v2"
+
+	"galaxy/internal/learn"
 	"galaxy/internal/render"
 	"galaxy/internal/scene"
 	"galaxy/internal/sim"
@@ -186,4 +191,44 @@ func TestSaveAndLoadThroughTheGame(t *testing.T) {
 		t.Fatalf("simulation has not been restored to %d bodies", want)
 	}
 	waitLen(500)
+}
+
+func TestWrapKeepsLinesWithinWidth(t *testing.T) {
+	s := "Alles, was Masse hat, zieht sich gegenseitig an: die Erde dich, die Sonne die Erde.\n\nNeuer Absatz mit Umlauten äöü und θ."
+	lines := wrap(s, bodyFace, 200)
+	if len(lines) < 4 {
+		t.Fatalf("expected several lines, got %q", lines)
+	}
+	for _, l := range lines {
+		if w, _ := text.Measure(l, bodyFace, 0); w > 200 && strings.Contains(l, " ") {
+			t.Errorf("line %q is %.0f px wide", l, w)
+		}
+	}
+	if !slices.Contains(lines, "") {
+		t.Error("paragraph break must produce an empty line")
+	}
+}
+
+func TestTopicListStartsWithIntroAndSceneTopics(t *testing.T) {
+	list := topicList([]string{"dust", "gas"})
+	if list[0] != introTopic || list[1] != "dust" || list[2] != "gas" || len(list) != 1+len(learn.IDs()) {
+		t.Errorf("unexpected topic list %v", list)
+	}
+}
+
+func TestHintFocusesTopic(t *testing.T) {
+	g := &Game{scene: scene.Presets[0].Spec}
+	g.topics = topicList(g.scene.Topics)
+	g.applyChar('u')
+	g.hint(hintFor['u'])
+	if g.topics[g.topicIdx] != "dust" {
+		t.Errorf("focused %q, want dust", g.topics[g.topicIdx])
+	}
+	if n := g.message.Load(); n == nil || !strings.Contains(n.text, "Staub") {
+		t.Errorf("hint not shown: %+v", n)
+	}
+	title, body := g.currentExplanation()
+	if title != "Staub" || body == "" {
+		t.Errorf("explanation %q / %q", title, body)
+	}
 }

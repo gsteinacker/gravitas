@@ -1,0 +1,11 @@
+{
+  "id": "speed-of-light",
+  "title": "Lichtgeschwindigkeit",
+  "keys": "< >",
+  "short": "Nichts ist schneller als das Licht. Mit < und > verstellst du c, um seine Wirkung sichtbar zu machen.",
+  "levels": {
+    "school": "Licht ist das Schnellste, was es gibt: 300.000 Kilometer pro Sekunde. Kein Stern, kein Raumschiff kann schneller sein. In echten Galaxien sind Sterne aber 1000-mal langsamer als Licht, deshalb merkt man davon fast nichts.\n\nIn der Simulation kannst du die Lichtgeschwindigkeit mit < kleiner machen. Dann wachsen Schwarze Löcher, Sterne werden in ihrer Nähe fast so schnell wie das Licht, und du siehst Effekte, die es in der Natur wirklich gibt – nur viel kleiner.",
+    "lay": "Bei realem c bewegen sich Sterne mit ~0,1 % der Lichtgeschwindigkeit; relativistische Effekte sind dann unsichtbar. Die Simulation erlaubt deshalb ein reduziertes c als „Was-wäre-wenn“-Regler. Szenen mit echten Einheiten (Lokale Gruppe, S-Sterne) starten mit dem echten Wert, Spielszenen mit c = 10 Geschwindigkeitseinheiten – das steht jeweils in der Info-Zeile.\n\nEgal wie stark man beschleunigt: Die Geschwindigkeit nähert sich c, erreicht sie aber nie. Das bildet die Simulation korrekt nach.",
+    "physics": "Integriert wird die Eigengeschwindigkeit u = γv: du/dt = a, dx/dt = u/γ mit γ = √(1 + u²/c²). Symplektischer Leapfrog für H = Σ m c² (γ − 1) + U; |v| < c per Konstruktion, kinetische Energie m u²/(γ + 1), Impuls m u.\n\nDie Kräfte bleiben Newtonsch (plus Paczyński-Wiita, optional retardiert). Keine Lorentz-Kontraktion, keine Zeitdilatation zwischen Beobachtern, keine 1PN-Bewegungsgleichungen. Szenen geben Newtonsche Geschwindigkeiten vor (v << c gleichwertig), platzierte Objekte werden mit ProperVelocity umgerechnet."
+  }
+}

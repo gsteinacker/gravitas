@@ -1,0 +1,11 @@
+{
+  "id": "dark-matter",
+  "title": "Dunkle Materie",
+  "keys": "x v",
+  "short": "Unsichtbare Masse hält Galaxien zusammen – mit x abschalten, mit v sichtbar machen.",
+  "levels": {
+    "school": "Wenn man misst, wie schnell sich Sterne am Rand einer Galaxie um das Zentrum drehen, stellt man fest: viel zu schnell! Mit der Masse der sichtbaren Sterne allein müssten sie davonfliegen – so wie ein Karussell, das sich zu schnell dreht.\n\nEs muss also zusätzliche, unsichtbare Masse geben, die alles festhält: die Dunkle Materie. Niemand weiß bisher genau, woraus sie besteht. Probier es aus: Mit x schaltest du ihre Schwerkraft ab – und die Galaxie fliegt auseinander. Mit v machst du sie sichtbar (violett).",
+    "lay": "Rotationskurven von Galaxien bleiben weit außen flach: Die Sterne kreisen dort genauso schnell wie weiter innen. Nach Kepler müssten sie langsamer werden, wenn außen kaum noch Masse ist. Also steckt dort Masse, die nicht leuchtet – etwa fünfmal so viel wie normale Materie im Universum.\n\nWeitere Belege: Gravitationslinsen, die Bewegung von Galaxien in Haufen und das Muster der kosmischen Hintergrundstrahlung. In der Simulation bilden unsichtbare Teilchen einen kugelförmigen Halo um jede Galaxie, der viel größer ist als die sichtbare Scheibe. Er sorgt auch dafür, dass Galaxien bei Begegnungen abgebremst werden und verschmelzen (dynamische Reibung).",
+    "physics": "Halo als stoßfreie Teilchen (Körperart DarkMatter), Hernquist-Profil ρ ~ 1/(r (r+a)³), M(<r) = M r²/(r+a)², abgeschnitten nahe dem Virialradius. Isotrope Geschwindigkeiten aus der Jeans-Dispersion (Hernquist 1990). Ergibt für die Milchstraße v_c ≈ 220 km/s flach von 8 bis 50 kpc.\n\nKosmologische Halos folgen eher NFW (ρ ~ r⁻¹ innen, r⁻³ außen); Hernquist stimmt innen überein und fällt außen steiler (r⁻⁴). Halos sind real leicht triaxial.\n\nAbschalten (x): Quellmasse 0, Bewegung als Testteilchen. Numerische Grenze: DM-Teilchen ~15× schwerer als Sterne → Zweikörper-Aufheizung der Scheiben, abnehmend mit N."
+  }
+}

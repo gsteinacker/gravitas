@@ -1,0 +1,11 @@
+{
+  "id": "units",
+  "title": "Einheiten und Zeit",
+  "keys": "",
+  "short": "Die Simulation rechnet mit eigenen Einheiten; die Anzeige rechnet sie in Jahre um.",
+  "levels": {
+    "school": "Galaxien sind riesig und langsam: Eine Umdrehung der Milchstraße dauert über 200 Millionen Jahre. Die Simulation zeigt dir das in Sekunden.\n\nOben steht die Zeit „t“ in der Einheit der Simulation, dahinter in echten Jahren (yr = Jahre, Myr = Millionen Jahre, Gyr = Milliarden Jahre).",
+    "lay": "Statt mit Metern und Kilogramm rechnet die Simulation in Einheiten, in denen die Gravitationskonstante G = 1 ist. Jede Szene legt fest, was eine Längen- und eine Masseneinheit bedeuten, z. B. 2,5 Kiloparsec und 20 Milliarden Sonnenmassen. Daraus folgen Geschwindigkeits- und Zeiteinheit.\n\nSzenen wie die Lokale Gruppe oder die S-Sterne nutzen echte Abstände, Massen und die echte Lichtgeschwindigkeit; Spielszenen sind „skalenfrei“ und bekommen eine plausible Deutung.",
+    "physics": "G = 1; mit Längeneinheit L und Masseneinheit M folgen v = √(GM/L) und t = L/v. Beispiele: 2,5 kpc, 2·10¹⁰ Sonnenmassen → 185 km/s, 13,2 Myr; 100 kpc, 10¹² Sonnenmassen → 207 km/s, 0,47 Gyr; 1000 AE, 4,3·10⁶ Sonnenmassen → 1954 km/s, 2,43 yr. Reales c = 3·10⁵ km/s ÷ v.\n\nGas: Temperaturen in K über velocityUnit in u umgerechnet. Szenenformat siehe docs/scenes.md."
+  }
+}

@@ -1,5 +1,15 @@
 {
   "name": "Star cluster",
+  "intro": {
+    "school": "Ein Kugelsternhaufen: Hunderttausende Sterne, eng zusammengedrängt wie ein Bienenschwarm. Jeder Stern zieht alle anderen an, und gemeinsam bleiben sie zusammen. Setz ein Schwarzes Loch hinein und schau, was passiert!",
+    "lay": "Ein Sternhaufen im Gleichgewicht: Die Bewegung der Sterne hält ihrer gemeinsamen Anziehung genau die Waage (Virialgleichgewicht). Kugelsternhaufen enthalten praktisch keine Dunkle Materie. Klick, um ein Schwarzes Loch zu setzen.",
+    "physics": "Plummer-Kugel im Virialgleichgewicht (Aarseth, Hénon & Wielen 1974), 1 pc, 10⁵ Sonnenmassen, Salpeter-artige Massenverteilung. Gut zum Testen von Energieerhaltung und Relaxation."
+  },
+  "topics": [
+    "gravity",
+    "energy",
+    "units"
+  ],
   "info": "Plummer cluster read as 1 unit = 1 pc, 1e5 Msun (20.7 km/s); c reduced to 10 (real ~14500)",
   "yearsPerUnit": 47200.0,
   "params": {
