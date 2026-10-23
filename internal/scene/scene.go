@@ -21,13 +21,16 @@ type DiskConfig struct {
 	Thickness   float64 // vertical scale height
 	Softening   float64 // used for circular velocities
 	Dispersion  float64 // random velocity as a fraction of the circular velocity
-	HaloMass    float64 // mass of a Plummer dark matter halo around the disk (added separately)
-	HaloScale   float64 // its Plummer radius
-	Center      vec.Vec3
-	Velocity    vec.Vec3
-	Inclination float64 // rotation around x, radians
-	Orientation float64 // rotation around z after inclination, radians
-	Seed        uint64
+	HaloMass    float64 // mass of a dark matter halo around the disk (added separately)
+	HaloScale   float64 // its scale radius
+	// HaloHernquist selects a Hernquist profile; HaloMass is then the mass inside HaloMax.
+	HaloHernquist bool
+	HaloMax       float64
+	Center        vec.Vec3
+	Velocity      vec.Vec3
+	Inclination   float64 // rotation around x, radians
+	Orientation   float64 // rotation around z after inclination, radians
+	Seed          uint64
 }
 
 // AddDisk adds a disk galaxy to s.
@@ -67,9 +70,13 @@ func AddDisk(s *sim.State, c DiskConfig) {
 		r2 := r*r + z*z + eps2
 		m := enclosed
 		if c.HaloMass > 0 {
-			// Halo mass inside the star's (spherical) radius, analytic for a Plummer sphere.
+			// Halo mass inside the star's (spherical) radius, analytic for both profiles.
 			rr := r*r + z*z
-			m += c.HaloMass * rr * math.Sqrt(rr) / math.Pow(rr+c.HaloScale*c.HaloScale, 1.5)
+			if c.HaloHernquist {
+				m += hernquistEnclosed(c.HaloMass, c.HaloScale, c.HaloMax, math.Sqrt(rr))
+			} else {
+				m += c.HaloMass * rr * math.Sqrt(rr) / math.Pow(rr+c.HaloScale*c.HaloScale, 1.5)
+			}
 		}
 		vc := math.Sqrt(m * r * r / (r2 * math.Sqrt(r2)))
 		sinp, cosp := math.Sincos(phi)
@@ -122,6 +129,56 @@ func addPlummer(s *sim.State, n int, totalMass, a float64, center, velocity vec.
 			Vel:  randomDirection(rng).Scale(q * ve).Add(velocity),
 			Mass: masses[i],
 			Kind: kind,
+		})
+	}
+}
+
+// Hernquist (1990) halo: ρ ∝ 1/(r (r+a)³), M(<r) = M r²/(r+a)². Unlike Plummer it has a cusp and
+// an extended envelope, which gives flat rotation curves, e.g. ~220 km/s from 8 to 50 kpc for the
+// Milky Way. The profile is truncated at rmax; mass is the mass inside rmax.
+
+// hernquistTotal is the untruncated profile mass whose truncation at rmax holds mass.
+func hernquistTotal(mass, a, rmax float64) float64 {
+	u := rmax / (rmax + a)
+	return mass / (u * u)
+}
+
+func hernquistEnclosed(mass, a, rmax, r float64) float64 {
+	r = math.Min(r, rmax)
+	return hernquistTotal(mass, a, rmax) * r * r / ((r + a) * (r + a))
+}
+
+// hernquistSigma2 is the isotropic one-dimensional velocity dispersion of an untruncated
+// Hernquist sphere of total mass m (Hernquist 1990, eq. 10).
+func hernquistSigma2(m, a, r float64) float64 {
+	x := r / a
+	return m / (12 * a) * (12*x*math.Pow(1+x, 3)*math.Log((1+x)/x) - x/(1+x)*(25+52*x+42*x*x+12*x*x*x))
+}
+
+// AddHernquistHalo adds an invisible dark matter halo with a Hernquist profile truncated at rmax.
+// Velocities are drawn from a Gaussian with the local isotropic Jeans dispersion and capped below the
+// local escape speed; that is close to, though not exactly, equilibrium.
+func AddHernquistHalo(s *sim.State, n int, mass, a, rmax float64, center, velocity vec.Vec3, seed uint64) {
+	rng := rand.New(rand.NewPCG(seed, 0x4e57))
+	mTot := hernquistTotal(mass, a, rmax)
+	smax := math.Sqrt(mass / mTot) // s = r/(r+a) at rmax; the enclosed fraction is s², uniform in mass
+	for range n {
+		su := smax * math.Sqrt(rng.Float64())
+		r := a * su / (1 - su)
+		sigma := math.Sqrt(math.Max(0, hernquistSigma2(mTot, a, r)))
+		vesc := math.Sqrt(2 * mTot / (r + a))
+		var v vec.Vec3
+		for {
+			v = vec.Vec3{X: rng.NormFloat64(), Y: rng.NormFloat64(), Z: rng.NormFloat64()}.Scale(sigma)
+			if v.Len() < 0.95*vesc {
+				break
+			}
+		}
+		s.Add(sim.Body{
+			Pos:  randomDirection(rng).Scale(r).Add(center),
+			Vel:  v.Add(velocity),
+			Mass: mass / float64(n),
+			Kind: sim.DarkMatter,
 		})
 	}
 }

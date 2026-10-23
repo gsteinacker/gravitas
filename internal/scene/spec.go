@@ -55,8 +55,10 @@ type Component struct {
 	DiskMax      float64 `json:"diskMax,omitempty"`
 	Thickness    float64 `json:"thickness,omitempty"`
 	Dispersion   float64 `json:"dispersion,omitempty"`
-	HaloScale    float64 `json:"haloScale,omitempty"`    // Plummer radius of the halo
-	HaloCut      float64 `json:"haloCut,omitempty"`      // halo mass fraction kept (0 means 0.99)
+	HaloScale    float64 `json:"haloScale,omitempty"`    // scale radius of the halo
+	HaloProfile  string  `json:"haloProfile,omitempty"`  // "plummer" (default) or "hernquist"
+	HaloCut      float64 `json:"haloCut,omitempty"`      // plummer: halo mass fraction kept (0 means 0.99)
+	HaloMax      float64 `json:"haloMax,omitempty"`      // hernquist: truncation radius (0 means 10 haloScale)
 	DarkFraction float64 `json:"darkFraction,omitempty"` // share of the galaxy's particles in the halo
 	HoleMass     float64 `json:"holeMass,omitempty"`
 	Inclination  float64 `json:"inclination,omitempty"` // degrees, around x
@@ -101,6 +103,9 @@ func ParseSpec(data []byte) (*Spec, error) {
 	for i, c := range s.Components {
 		switch c.Type {
 		case "galaxy", "plummer", "hole", "orbits":
+			if p := c.HaloProfile; p != "" && p != "plummer" && p != "hernquist" {
+				return nil, fmt.Errorf("scene %q: component %d: unknown halo profile %q", s.Name, i, p)
+			}
 		default:
 			return nil, fmt.Errorf("scene %q: component %d: unknown type %q", s.Name, i, c.Type)
 		}
@@ -166,15 +171,23 @@ func addGalaxy(s *sim.State, c Component, n int, p sim.Params) {
 	if haloMass > 0 {
 		nDark = int(float64(n) * c.DarkFraction)
 	}
+	hernquist := c.HaloProfile == "hernquist"
+	haloMax := c.HaloMax
+	if haloMax == 0 {
+		haloMax = 10 * c.HaloScale
+	}
 	AddDisk(s, DiskConfig{
 		N: n - nDark, StarMass: diskMass, BHMass: c.HoleMass,
+		HaloHernquist: hernquist, HaloMax: haloMax,
 		ScaleRadius: c.DiskScale, MinRadius: c.DiskMin, MaxRadius: c.DiskMax,
 		Thickness: c.Thickness, Softening: p.Softening, Dispersion: c.Dispersion,
 		HaloMass: haloMass, HaloScale: c.HaloScale,
 		Center: v3(c.Position), Velocity: v3(c.Velocity),
 		Inclination: c.Inclination * deg, Orientation: c.Orientation * deg, Seed: c.Seed,
 	})
-	if nDark > 0 {
+	if nDark > 0 && hernquist {
+		AddHernquistHalo(s, nDark, haloMass, c.HaloScale, haloMax, v3(c.Position), v3(c.Velocity), c.Seed+1000)
+	} else if nDark > 0 {
 		cut := c.HaloCut
 		if cut == 0 {
 			cut = 0.99

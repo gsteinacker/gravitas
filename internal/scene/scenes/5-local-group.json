@@ -1,6 +1,6 @@
 {
   "name": "Local Group",
-  "info": "real distances and velocities, 1 unit = 100 kpc, real c, dark matter halos (invisible)",
+  "info": "real distances and velocities, 1 unit = 100 kpc, real c, Hernquist dark matter halos (invisible)",
   "yearsPerUnit": 470000000.0,
   "params": {
     "dt": 0.002,
@@ -30,11 +30,13 @@
       "diskMax": 0.15,
       "thickness": 0.003,
       "dispersion": 0.1,
-      "haloScale": 0.2,
+      "haloProfile": "hernquist",
+      "haloScale": 0.3,
+      "haloMax": 3.0,
       "darkFraction": 0.5,
       "holeMass": 4.3e-06,
       "seed": 11,
-      "note": "Units: length 100 kpc, mass 1e12 Msun, so velocity 207 km/s and time 0.47 Gyr; c = 3e5/207. Galactic coordinates, disk in the xy plane. Sgr A* 4.3e6 Msun."
+      "note": "Units: length 100 kpc, mass 1e12 Msun, so velocity 207 km/s and time 0.47 Gyr; c = 3e5/207. Galactic coordinates, disk in the xy plane. Sgr A* 4.3e6 Msun. Hernquist halos (flat rotation curve ~220 km/s from 8 to 50 kpc); scale radii after common models, truncation near the virial radius (smaller for the tidally limited LMC/SMC)."
     },
     {
       "type": "galaxy",
@@ -47,7 +49,9 @@
       "diskMax": 0.25,
       "thickness": 0.004,
       "dispersion": 0.1,
-      "haloScale": 0.25,
+      "haloProfile": "hernquist",
+      "haloScale": 0.35,
+      "haloMax": 3.5,
       "darkFraction": 0.5,
       "holeMass": 0.00014,
       "inclination": 77,
@@ -76,7 +80,9 @@
       "diskMax": 0.08,
       "thickness": 0.002,
       "dispersion": 0.1,
-      "haloScale": 0.06,
+      "haloProfile": "hernquist",
+      "haloScale": 0.08,
+      "haloMax": 1.0,
       "darkFraction": 0.5,
       "inclination": 54,
       "orientation": 23,
@@ -104,7 +110,9 @@
       "diskMax": 0.06,
       "thickness": 0.002,
       "dispersion": 0.15,
-      "haloScale": 0.05,
+      "haloProfile": "hernquist",
+      "haloScale": 0.15,
+      "haloMax": 0.6,
       "darkFraction": 0.5,
       "inclination": 35,
       "position": [
@@ -131,7 +139,9 @@
       "diskMax": 0.03,
       "thickness": 0.003,
       "dispersion": 0.2,
-      "haloScale": 0.02,
+      "haloProfile": "hernquist",
+      "haloScale": 0.04,
+      "haloMax": 0.15,
       "darkFraction": 0.5,
       "inclination": 64,
       "position": [

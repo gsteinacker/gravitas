@@ -46,3 +46,22 @@ func TestPresetsBuildAndStayBound(t *testing.T) {
 		})
 	}
 }
+
+func TestHernquistHaloIsNearEquilibriumAndFlat(t *testing.T) {
+	// Untruncated limit (large rmax): virial ratio ≈ 1.
+	s := sim.NewState(20000)
+	AddHernquistHalo(s, 20000, 1, 0.3, 60, vec.Vec3{}, vec.Vec3{}, 7)
+	RemoveBulkMotion(s)
+	k := sim.KineticEnergy(s, 0)
+	u := sim.PotentialEnergyParallel(s, sim.Params{Softening: 0.01})
+	if ratio := 2 * k / -u; math.Abs(ratio-1) > 0.1 {
+		t.Errorf("virial ratio 2K/|U| = %.3f, want ≈ 1", ratio)
+	}
+	// Milky Way-like halo (1e12 Msun inside 300 kpc, a = 30 kpc) plus a 6e10 disk: flat rotation curve.
+	for _, r := range []float64{0.08, 0.2, 0.5} {
+		m := hernquistEnclosed(0.94, 0.3, 3, r) + 0.06*(1-math.Exp(-r/0.03)*(1+r/0.03))
+		if v := math.Sqrt(m/r) * 207; v < 180 || v > 240 {
+			t.Errorf("v_c(%.0f kpc) = %.0f km/s, want ~200-230", r*100, v)
+		}
+	}
+}

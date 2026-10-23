@@ -24,8 +24,17 @@ Loch die Scheiben stabilisiert.
 ## Alternativen
 - Statisches analytisches Halo-Potential: billiger, aber keine dynamische Reibung, und Halos könnten nicht
   verschmelzen. Gerade das macht die Lokale Gruppe interessant.
-- Hernquist- oder NFW-Profile: realistischer im Zentrum. Für Plummer gibt es aber eine exakte, einfache
-  Verteilungsfunktion (Gleichgewicht ohne Jeans-Integration). Möglicher Ausbau.
+- NFW-Profile: noch realistischer, aber ohne geschlossene Masse bis unendlich und ohne einfache
+  Verteilungsfunktion.
+
+## Nachtrag (2026-10-23): Hernquist-Halos
+Plummer-Halos sind zu zentral konzentriert. Bei der Milchstraße lagen 80 % der Masse innerhalb von 50 kpc
+(real ~45 %). Dadurch war die LMC-Bahn zu eng (Apozentrum 67 kpc), und die Wolken verschmolzen nach 2 Gyr.
+Szenen können jetzt `"haloProfile": "hernquist"` wählen (abgeschnitten bei `haloMax`, Geschwindigkeiten aus der
+isotropen Jeans-Dispersion nach Hernquist 1990, unter der Fluchtgeschwindigkeit gekappt). Die Milchstraße hat damit
+eine flache Rotationskurve von ~220 km/s zwischen 8 und 50 kpc. Lokale Gruppe danach: LMC-Apozentrum 130 kpc,
+Verschmelzung nach ~4,5 Gyr, erste MW-M31-Begegnung nach 4,8 Gyr bei 65 kpc. Die Werte liegen im Bereich
+veröffentlichter Modelle.
 
 ## Konsequenzen
 - Doppelte Teilchenzahl für gleich viele sichtbare Sterne (`darkFraction` ~0,4–0,5).
