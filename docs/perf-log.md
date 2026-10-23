@@ -9,6 +9,19 @@ Maschine: M4 Pro, GOMAXPROCS=12, Go 1.27.x
 Fazit: …
 ```
 
+## 2026-10-23 · T-027 · Gruppen-Walk – verworfen
+
+Ohne Last, 100k (alter Walk gegen Gruppen-Walk mit Blättern als Gruppen):
+
+```
+Accelerations t=0:     17.3 ms → 25.0 ms   (+45 %)
+AccelerationsEvolved:  29.0 ms → 41.0 ms   (+41 %)
+Wechselwirkungen/Stern: pro Stern 530 | Gruppen à 4: 634 | à 8: 693 | à 24: 757
+```
+
+Fazit: Die Laufzeit ist proportional zu den Wechselwirkungen. Das konservative Gruppenkriterium kostet mehr, als
+die gesparte Traversierung bringt (skalarer Code). Nicht übernommen. Nächster Hebel: Quadrupol-Momente (T-028).
+
 ## 2026-10-23 · T-025 · Mehrfach-Zeitschritte nahe Schwarzer Löcher
 
 Relativ gemessen (App lief parallel), 100k-Galaxie mit 2 BHs, vollständiger `Step`:
