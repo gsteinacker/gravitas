@@ -21,10 +21,11 @@ type StarRenderer struct {
 	sprite  *ebiten.Image
 	verts   []ebiten.Vertex
 	indices []uint32
-	bhs     []blackHole
+	bhs     []Hole
+	world   []worldHole
 }
 
-type blackHole struct{ x, y, r float32 }
+type worldHole struct{ x, y, z, rs, m float64 }
 
 func NewStarRenderer() *StarRenderer {
 	return &StarRenderer{sprite: glowSprite()}
@@ -54,36 +55,60 @@ func starColor(rel float64) (r, g, b float32) {
 	return 1 - 0.35*t, 0.75 + 0.15*t, 0.45 + 0.55*t
 }
 
-// Draw renders all bodies of sn as seen by cam.
-func (sr *StarRenderer) Draw(dst *ebiten.Image, cam *Camera, sn *sim.Snapshot) {
+// Hole is a black hole as projected on screen.
+type Hole struct {
+	X, Y float32 // screen position
+	R    float32 // horizon radius in pixels (at least minHolePixels)
+}
+
+// Holes returns the black holes collected by the last DrawStars call.
+func (sr *StarRenderer) Holes() []Hole { return sr.bhs }
+
+// DrawStars renders all stars of sn as seen by cam into dst and collects the black holes.
+// With doppler set, star colors and brightness follow the relativistic frequency shift.
+func (sr *StarRenderer) DrawStars(dst *ebiten.Image, cam *Camera, sn *sim.Snapshot, doppler bool) {
 	n := sn.Len()
 	var starMass float64
 	stars := 0
+	sr.world = sr.world[:0]
 	for i := range n {
 		if sn.Kind[i] == sim.Star {
 			starMass += float64(sn.Mass[i])
 			stars++
+		} else {
+			sr.world = append(sr.world, worldHole{
+				x: float64(sn.X[i]), y: float64(sn.Y[i]), z: float64(sn.Z[i]),
+				rs: sim.SchwarzschildRadius(float64(sn.Mass[i]), sn.C), m: float64(sn.Mass[i]),
+			})
 		}
 	}
 	meanMass := starMass / math.Max(1, float64(stars))
 	// Keep the total brightness roughly constant: dense scenes would otherwise saturate to white.
 	exposure := math.Max(0.12, math.Min(1, math.Sqrt(10000/math.Max(1, float64(stars)))))
+	camPos := cam.Position()
+	doppler = doppler && sn.C > 0
 
 	sr.verts, sr.bhs = sr.verts[:0], sr.bhs[:0]
 	focal := cam.focal()
-	for i := range n {
-		sx, sy, depth, ok := cam.Project(float64(sn.X[i]), float64(sn.Y[i]), float64(sn.Z[i]))
+	for _, h := range sr.world {
+		sx, sy, depth, ok := cam.Project(h.x, h.y, h.z)
 		if !ok {
 			continue
 		}
-		if sn.Kind[i] == sim.BlackHole {
-			// With a finite c the black disk is the event horizon r_s; without, a symbolic size.
-			r := 0.06 * math.Sqrt(float64(sn.Mass[i]))
-			if sn.C > 0 {
-				r = sim.SchwarzschildRadius(float64(sn.Mass[i]), sn.C)
-			}
-			px := float32(math.Max(minHolePixels, r*focal/depth))
-			sr.bhs = append(sr.bhs, blackHole{float32(sx), float32(sy), px})
+		// With a finite c the black disk is the event horizon r_s; without, a symbolic size.
+		r := h.rs
+		if r == 0 {
+			r = 0.06 * math.Sqrt(h.m)
+		}
+		sr.bhs = append(sr.bhs, Hole{float32(sx), float32(sy), float32(math.Max(minHolePixels, r*focal/depth))})
+	}
+	for i := range n {
+		if sn.Kind[i] != sim.Star {
+			continue
+		}
+		x, y, z := float64(sn.X[i]), float64(sn.Y[i]), float64(sn.Z[i])
+		sx, sy, depth, ok := cam.Project(x, y, z)
+		if !ok {
 			continue
 		}
 		rel := float64(sn.Mass[i]) / meanMass
@@ -94,21 +119,37 @@ func (sr *StarRenderer) Draw(dst *ebiten.Image, cam *Camera, sn *sim.Snapshot) {
 		}
 		cr, cg, cb := starColor(rel)
 		alpha := float32(exposure * math.Min(1, 0.55+0.2*rel))
+		if doppler {
+			grav := 1.0
+			for _, h := range sr.world {
+				dx, dy, dz := x-h.x, y-h.y, z-h.z
+				grav *= gravShift(math.Sqrt(dx*dx+dy*dy+dz*dz), h.rs)
+			}
+			nx, ny, nz := camPos.X-x, camPos.Y-y, camPos.Z-z
+			l := math.Sqrt(nx*nx + ny*ny + nz*nz)
+			f := frequencyShift(float64(sn.VX[i]), float64(sn.VY[i]), float64(sn.VZ[i]), nx/l, ny/l, nz/l, sn.C, grav)
+			var beam float32
+			cr, cg, cb, beam = shiftColor(cr, cg, cb, f)
+			alpha = min(1, alpha*beam)
+		}
 		sr.appendQuad(float32(sx), float32(sy), float32(size/2), cr, cg, cb, alpha)
 	}
 	sr.flush(dst)
+}
 
+// DrawHoles draws the black holes collected by the last DrawStars call.
+func (sr *StarRenderer) DrawHoles(dst *ebiten.Image) {
 	for _, bh := range sr.bhs {
 		// Additive glow out to the shadow edge (~2.6 r_s), the ISCO at 3 r_s, the photon sphere at
 		// 1.5 r_s, and the horizon. The glow uses a premultiplied color with zero alpha, so it adds light.
-		ring := float32(math.Max(1.5, float64(bh.r)*0.25))
-		vector.FillCircle(dst, bh.x, bh.y, bh.r*2.6, color.RGBA{18, 7, 2, 0}, true)
-		if bh.r > minHolePixels {
+		ring := float32(math.Max(1.5, float64(bh.R)*0.25))
+		vector.FillCircle(dst, bh.X, bh.Y, bh.R*2.6, color.RGBA{18, 7, 2, 0}, true)
+		if bh.R > minHolePixels {
 			// Innermost stable circular orbit of the Paczyński-Wiita potential: stars inside plunge.
-			vector.StrokeCircle(dst, bh.x, bh.y, bh.r*3, 1, color.RGBA{90, 60, 40, 120}, true)
+			vector.StrokeCircle(dst, bh.X, bh.Y, bh.R*3, 1, color.RGBA{90, 60, 40, 120}, true)
 		}
-		vector.StrokeCircle(dst, bh.x, bh.y, bh.r*1.5, ring, color.RGBA{255, 150, 50, 220}, true)
-		vector.FillCircle(dst, bh.x, bh.y, bh.r, color.Black, true)
+		vector.StrokeCircle(dst, bh.X, bh.Y, bh.R*1.5, ring, color.RGBA{255, 150, 50, 220}, true)
+		vector.FillCircle(dst, bh.X, bh.Y, bh.R, color.Black, true)
 	}
 }
 

@@ -42,6 +42,18 @@ func (c *Camera) Project(x, y, z float64) (sx, sy, depth float64, ok bool) {
 	return c.W/2 + f*x1, c.H/2 - f*up, depth, true
 }
 
+// Forward returns the unit view direction in world space.
+func (c *Camera) Forward() vec.Vec3 {
+	sy, cy := math.Sincos(c.Yaw)
+	sp, cp := math.Sincos(c.Pitch)
+	return vec.Vec3{X: cp * sy, Y: cp * cy, Z: -sp}
+}
+
+// Position returns the camera position in world space.
+func (c *Camera) Position() vec.Vec3 {
+	return c.Target.Sub(c.Forward().Scale(c.Distance))
+}
+
 // Unproject maps a screen position to the world point in the focal plane, the plane through
 // Target perpendicular to the view direction.
 func (c *Camera) Unproject(sx, sy float64) vec.Vec3 {

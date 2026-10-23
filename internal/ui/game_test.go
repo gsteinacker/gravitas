@@ -62,6 +62,19 @@ func TestToolSelection(t *testing.T) {
 	}
 }
 
+func TestEffectToggles(t *testing.T) {
+	g := &Game{}
+	for _, r := range "gtld" {
+		g.applyChar(r)
+	}
+	if !g.fx.Glow || !g.fx.Trails || !g.fx.Lensing || !g.fx.Doppler {
+		t.Errorf("all effects should be on after g t l d: %+v", g.fx)
+	}
+	if got := effectsText(g.fx); got != "effects:*glow(g)*trails(t)*lens(l)*doppler(d)" {
+		t.Errorf("effectsText = %q", got)
+	}
+}
+
 func TestDriftText(t *testing.T) {
 	if got := driftText(1.234e-3, sim.EnergyExact); got != "energy drift +1.2e-03" {
 		t.Errorf("exact: %q", got)
@@ -84,7 +97,10 @@ func TestPlaceClusterAddsBoundGroupAtCursor(t *testing.T) {
 	defer cancel()
 	go r.Run(ctx)
 
-	g := NewGame(r, 1000, 0)
+	g, err := NewGame(r, 1000, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
 	g.cam.W, g.cam.H, g.cam.Pitch = 1000, 800, math.Pi/2
 	g.tool, g.bhMass = toolCluster, 0.5
 	g.place(700, 400, vec.Vec3{Y: 0.3})

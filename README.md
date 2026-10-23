@@ -6,6 +6,8 @@ Go + Ebitengine.
 ```sh
 make run                       # Start (50.000 Sterne, Spiralgalaxie)
 go run ./cmd/galaxy -n 50000 -c 2.5        # kleines c: das zentrale Loch frisst die Galaxie
+go run ./cmd/galaxy -preset 4 -c 3         # Doppel-Loch mit Linseneffekt
+go run ./cmd/galaxy -preset 2 -fx glow,doppler,trails   # Kollision mit Bahnspuren
 go run ./cmd/galaxy -n 100000 -preset 2   # Barnes-Hut (Default), -solver direct für Referenz
 make plan                      # Fortschritt im Backlog
 make check                     # fmt, vet, tests, Backlog-Validierung
@@ -19,6 +21,7 @@ make check                     # fmt, vet, tests, Backlog-Validierung
 | Ziehen / Shift-Ziehen / Rad | Rotieren / Verschieben / Zoom |
 | `<` `>` | Lichtgeschwindigkeit verringern / erhöhen (kleines c → große Horizonte) |
 | `Leertaste` `.` `+` `-` `r` | Pause, Einzelschritt, Tempo, Neustart |
+| `g` `t` `l` `d` | Effekte: Glow, Spuren, Gravitationslinse, Doppler-Farben |
 | `h` `?`/`F1` `f` `c` | HUD, Hilfe, Vollbild, Ansicht zentrieren |
 
 Doku: [Stack-Analyse](docs/analysis/01-tech-stack.md) · [Architektur](docs/architecture.md) ·

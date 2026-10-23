@@ -26,6 +26,19 @@ func TestUnprojectInvertsProject(t *testing.T) {
 	}
 }
 
+func TestPositionAndForwardMatchProjection(t *testing.T) {
+	c := testCamera()
+	// The target projects to the screen center at depth Distance; the camera sits at depth 0.
+	tp := c.Position().Add(c.Forward().Scale(c.Distance))
+	if sx, sy, depth, _ := c.Project(tp.X, tp.Y, tp.Z); math.Abs(sx-c.W/2) > 1e-9 || math.Abs(sy-c.H/2) > 1e-9 || math.Abs(depth-c.Distance) > 1e-9 {
+		t.Errorf("target projects to (%v, %v) at depth %v", sx, sy, depth)
+	}
+	p := c.Position().Add(c.Forward().Scale(0.1))
+	if _, _, depth, _ := c.Project(p.X, p.Y, p.Z); math.Abs(depth-0.1) > 1e-9 {
+		t.Errorf("point 0.1 in front of the camera has depth %v", depth)
+	}
+}
+
 func TestTopDownViewKeepsOrientation(t *testing.T) {
 	c := NewCamera()
 	c.W, c.H, c.Pitch = 800, 800, math.Pi/2

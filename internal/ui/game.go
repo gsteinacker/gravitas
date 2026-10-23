@@ -87,7 +87,8 @@ type Game struct {
 
 	runner   *sim.Runner
 	cam      render.Camera
-	stars    *render.StarRenderer
+	pipeline *render.Pipeline
+	fx       render.Effects
 	n        int
 	preset   int
 	speed    int
@@ -111,12 +112,20 @@ type Game struct {
 	substeps           int
 }
 
-func NewGame(runner *sim.Runner, n, preset int) *Game {
-	return &Game{
-		runner: runner, cam: render.NewCamera(), stars: render.NewStarRenderer(),
-		n: n, preset: preset, speed: len(speedLevels) - 1, bhMass: 0.5,
-		showHUD: true, showHelp: true,
+// SetEffects replaces the active render effects.
+func (g *Game) SetEffects(fx render.Effects) { g.fx = fx }
+
+func NewGame(runner *sim.Runner, n, preset int) (*Game, error) {
+	pipeline, err := render.NewPipeline()
+	if err != nil {
+		return nil, err
 	}
+	return &Game{
+		runner: runner, cam: render.NewCamera(), pipeline: pipeline,
+		fx: render.Effects{Glow: true, Doppler: true, Lensing: true},
+		n:  n, preset: preset, speed: len(speedLevels) - 1, bhMass: 0.5,
+		showHUD: true, showHelp: true,
+	}, nil
 }
 
 // LoadPreset replaces the running scene.
@@ -183,6 +192,14 @@ func (g *Game) applyChar(r rune) {
 		g.scaleC(1 / cStep)
 	case '>':
 		g.scaleC(cStep)
+	case 'g', 'G':
+		g.fx.Glow = !g.fx.Glow
+	case 't', 'T':
+		g.fx.Trails = !g.fx.Trails
+	case 'l', 'L':
+		g.fx.Lensing = !g.fx.Lensing
+	case 'd', 'D':
+		g.fx.Doppler = !g.fx.Doppler
 	case 'r', 'R':
 		g.LoadPreset(g.preset)
 	case 'h', 'H':
@@ -283,7 +300,7 @@ func (g *Game) Draw(screen *ebiten.Image) {
 	screen.Fill(color.RGBA{2, 2, 8, 255})
 	g.cam.W, g.cam.H = float64(g.screenW), float64(g.screenH)
 	g.runner.View(func(sn *sim.Snapshot) {
-		g.stars.Draw(screen, &g.cam, sn)
+		g.pipeline.Draw(screen, &g.cam, sn, g.fx)
 		g.bodies, g.blackHoles, g.simTime, g.c, g.substeps = sn.Len(), 0, sn.Time, sn.C, sn.Substeps
 		for _, k := range sn.Kind {
 			if k == sim.BlackHole {
@@ -327,10 +344,10 @@ func (g *Game) drawHUD(screen *ebiten.Image) {
 		state = "  [PAUSED]"
 	}
 	ebitenutil.DebugPrintAt(screen, fmt.Sprintf(
-		"%s%s\nbodies %d (black holes %d)   t = %.2f\nsteps/s %.0f (limit %s)   substeps near holes %d   FPS %.0f\n%s\n%s\n\ntool: %s, mass %.2f   (b/k/tab, m/n)",
+		"%s%s\nbodies %d (black holes %d)   t = %.2f\nsteps/s %.0f (limit %s)   substeps near holes %d   FPS %.0f\n%s\n%s\n%s\n\ntool: %s, mass %.2f   (b/k/tab, m/n)",
 		scene.Presets[g.preset].Name, state, g.bodies, g.blackHoles, g.simTime,
 		g.runner.StepsPerSecond(), speed, g.substeps, ebiten.ActualFPS(), driftText(g.runner.EnergyDrift()),
-		lightText(g.c, g.bhMass), g.tool, g.bhMass), 10, 8)
+		lightText(g.c, g.bhMass), effectsText(g.fx), g.tool, g.bhMass), 10, 8)
 	if g.showHelp {
 		var b strings.Builder
 		for i, p := range scene.Presets {
@@ -338,10 +355,22 @@ func (g *Game) drawHUD(screen *ebiten.Image) {
 		}
 		b.WriteString("\nb k tab     tool: black hole / star cluster\nclick       place\nalt+drag    launch with velocity\nm n         mass +/-\n" +
 			"drag        rotate\nshift/right drag  pan\nwheel       zoom\n" +
-			"< >         speed of light\nspace       pause\n.           single step\n+ -         speed\nr           restart\nc           center view\n" +
+			"< >         speed of light\ng t l d     glow, trails, lens, doppler\nspace       pause\n.           single step\n+ -         speed\nr           restart\nc           center view\n" +
 			"f           fullscreen\nh           hide HUD\n? F1        hide this help")
 		ebitenutil.DebugPrintAt(screen, b.String(), 10, g.screenH-16*strings.Count(b.String(), "\n")-28)
 	}
+}
+
+// effectsText lists the render effects with their keys; active ones are marked with *.
+func effectsText(fx render.Effects) string {
+	mark := func(on bool, name string) string {
+		if on {
+			return "*" + name
+		}
+		return " " + name
+	}
+	return "effects:" + mark(fx.Glow, "glow(g)") + mark(fx.Trails, "trails(t)") +
+		mark(fx.Lensing, "lens(l)") + mark(fx.Doppler, "doppler(d)")
 }
 
 // lightText shows the speed of light and the horizon size of the next placed black hole.

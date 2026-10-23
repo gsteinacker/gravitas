@@ -11,6 +11,7 @@ import (
 // Snapshot is a render-friendly copy of the state, published after every step.
 type Snapshot struct {
 	X, Y, Z, Mass  []float32
+	VX, VY, VZ     []float32 // coordinate velocities v = u/γ
 	Kind           []Kind
 	Time           float64
 	Steps          int
@@ -25,12 +26,17 @@ func (sn *Snapshot) fill(m *Simulation) {
 	s := m.State
 	n := s.Len()
 	sn.X, sn.Y, sn.Z, sn.Mass = sn.X[:0], sn.Y[:0], sn.Z[:0], sn.Mass[:0]
+	sn.VX, sn.VY, sn.VZ = sn.VX[:0], sn.VY[:0], sn.VZ[:0]
 	sn.Kind = append(sn.Kind[:0], s.Kind...)
 	for i := range n {
 		sn.X = append(sn.X, float32(s.PosX[i]))
 		sn.Y = append(sn.Y, float32(s.PosY[i]))
 		sn.Z = append(sn.Z, float32(s.PosZ[i]))
 		sn.Mass = append(sn.Mass, float32(s.Mass[i]))
+		g := gamma(s.VelX[i], s.VelY[i], s.VelZ[i], m.Params.C)
+		sn.VX = append(sn.VX, float32(s.VelX[i]/g))
+		sn.VY = append(sn.VY, float32(s.VelY[i]/g))
+		sn.VZ = append(sn.VZ, float32(s.VelZ[i]/g))
 	}
 	sn.Time, sn.Steps, sn.C, sn.Substeps = m.Time, m.Steps, m.Params.C, m.Substeps
 }

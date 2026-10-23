@@ -10,6 +10,7 @@ import (
 
 	"github.com/hajimehoshi/ebiten/v2"
 
+	"galaxy/internal/render"
 	"galaxy/internal/scene"
 	"galaxy/internal/sim"
 	"galaxy/internal/sim/bh"
@@ -25,6 +26,7 @@ func main() {
 	shot := flag.String("shot", "", "save a screenshot to this PNG file after -shot-after seconds and quit")
 	shotAfter := flag.Float64("shot-after", 4, "seconds before the screenshot is taken")
 	speedOfLight := flag.Float64("c", 0, "speed of light (0 = scene default, -1 = Newtonian)")
+	effects := flag.String("fx", "glow,lens,doppler", "render effects: glow, lens, doppler, trails")
 	cpuprofile := flag.String("cpuprofile", "", "write a CPU profile of the whole run to this file")
 	flag.Parse()
 	if *cpuprofile != "" {
@@ -62,7 +64,15 @@ func main() {
 	ebiten.SetWindowTitle("Galaxy")
 	ebiten.SetWindowSize(1440, 900)
 	ebiten.SetWindowResizingMode(ebiten.WindowResizingModeEnabled)
-	game := ui.NewGame(runner, *n, p)
+	game, err := ui.NewGame(runner, *n, p)
+	if err != nil {
+		log.Fatal(err)
+	}
+	fx, err := render.ParseEffects(*effects)
+	if err != nil {
+		log.Fatal(err)
+	}
+	game.SetEffects(fx)
 	game.ShotPath, game.ShotAfter = *shot, int(*shotAfter*60)
 	if err := ebiten.RunGame(game); err != nil {
 		pprof.StopCPUProfile()

@@ -21,6 +21,14 @@ tools/plan/          Projektplanungs-CLI (Backlog in planning/)
 Abhängigkeiten zeigen nur nach unten: `cmd → ui → render, scene → sim → vec`.
 **`sim` kennt Ebitengine nicht.** Die Physik ist headless test- und benchmarkbar.
 
+## Rendering (M4)
+
+`render.Pipeline` pro Frame: Sterne additiv in ein Offscreen-Bild (Farbe nach Masse, optional Doppler-Verschiebung)
+→ optional Spuren (max-Blending mit verblassendem Vorbild) → über opaken Sternhimmel → optional
+Gravitationslinse (Kage-Shader, Punktlinse) → Bildschirm → optional Bloom (Downsample, 2× Gauß, additiv)
+→ Löcher, Ringe, HUD. Effekte per Taste (`g t l d`) oder `-fx`. Shader-Ausgaben verwenden `BlendCopy`,
+der Hintergrund ist opak. Sonst akkumulieren Bilder über Frames.
+
 ## Kern-Datenmodell
 
 ```go
