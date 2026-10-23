@@ -35,8 +35,9 @@ type State struct {
     Alive      []bool // absorbierte Körper werden periodisch kompaktiert
 }
 
+// Solver liefert nur Stern-Stern-Kräfte. Alles mit Schwarzen Löchern übernimmt der Integrator
+// (sim/split.go: direkt summiert, mit Unterschritten nahe den Löchern).
 type Solver interface {
-    // Accelerations füllt s.Acc* für alle lebenden Körper.
     Accelerations(s *State, p Params)
 }
 ```

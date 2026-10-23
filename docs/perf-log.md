@@ -9,6 +9,17 @@ Maschine: M4 Pro, GOMAXPROCS=12, Go 1.27.x
 Fazit: …
 ```
 
+## 2026-10-23 · T-025 · Mehrfach-Zeitschritte nahe Schwarzer Löcher
+
+Relativ gemessen (App lief parallel), 100k-Galaxie mit 2 BHs, vollständiger `Step`:
+
+```
+alter Commit (fester dt):      50.97 ms/step (Mittel aus 6)
+neu (16 Unterschritte):        51.82 ms/step (Mittel aus 6)   → +1.7 %
+```
+
+Energie-Drift nach 500 Schritten (N = 2000, c = 10): direkt 0,297 → 0,00047, Barnes-Hut 0,222 → 0,00075.
+
 ## 2026-10-23 · T-024/T-010 · Triple-Buffer, Blattgröße, entwickelter Zustand
 
 Profil der laufenden App (100k, 20 s): `walk` 78 %, Rendern 8 %, Energie-Diagnose 5 %.

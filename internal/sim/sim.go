@@ -9,9 +9,10 @@ type Params struct {
 	C         float64 // speed of light; 0 disables relativistic effects (see relativity.go)
 }
 
-// Solver computes gravitational accelerations.
+// Solver computes star–star gravitational accelerations. Pairs involving a black hole are
+// ignored by solvers (holes get zero); the integrator adds them (split.go).
 type Solver interface {
-	// Accelerations fills s.Acc* for all bodies.
+	// Accelerations fills s.Acc* for all bodies from star–star forces.
 	Accelerations(s *State, p Params)
 }
 
@@ -29,8 +30,17 @@ type Simulation struct {
 	// computed exactly at each event. Integration error is E - E0 - ExternalEnergy.
 	ExternalEnergy float64
 
+	// Substeps is the number of inner substeps used near black holes in the last step.
+	Substeps int
+
 	accValid bool
-	holes    []int // scratch buffer for accrete
+	holes    []int // alive black holes, refreshed every step
+
+	// Multiple time stepping buffers (split.go).
+	isNear              []bool
+	near                []int
+	farX, farY, farZ    []float64
+	fastX, fastY, fastZ []float64
 }
 
 func New(s *State, solver Solver, p Params) *Simulation {
@@ -53,16 +63,22 @@ func (m *Simulation) AddBody(b Body) int {
 // Step advances the simulation by one time step.
 func (m *Simulation) Step() {
 	s, dt := m.State, m.Params.Dt
-	if !m.accValid {
+	m.collectHoles()
+	if len(m.holes) > 0 {
+		m.stepSplit()
+		if m.Params.C > 0 {
+			m.accrete()
+		}
+	} else {
+		if !m.accValid {
+			m.Solver.Accelerations(s, m.Params)
+			m.accValid = true
+		}
+		kick(s, 0.5*dt)
+		drift(s, dt, m.Params.C)
 		m.Solver.Accelerations(s, m.Params)
-		m.accValid = true
-	}
-	kick(s, 0.5*dt)
-	drift(s, dt, m.Params.C)
-	m.Solver.Accelerations(s, m.Params)
-	kick(s, 0.5*dt)
-	if m.Params.C > 0 {
-		m.accrete()
+		kick(s, 0.5*dt)
+		m.Substeps = 1
 	}
 	m.Time += dt
 	m.Steps++
@@ -70,6 +86,16 @@ func (m *Simulation) Step() {
 
 // kick changes the velocities by h·a. With C > 0 the stored velocity is the proper velocity
 // u = γv, for which du/dt = a holds exactly (see relativity.go).
+func (m *Simulation) collectHoles() {
+	s := m.State
+	m.holes = m.holes[:0]
+	for i := range s.Len() {
+		if s.Alive[i] && s.Kind[i] == BlackHole {
+			m.holes = append(m.holes, i)
+		}
+	}
+}
+
 func kick(s *State, h float64) {
 	n := s.Len()
 	vx, vy, vz := s.VelX[:n], s.VelY[:n], s.VelZ[:n]

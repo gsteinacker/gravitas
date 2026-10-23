@@ -15,6 +15,7 @@ type Snapshot struct {
 	Time           float64
 	Steps          int
 	C              float64 // speed of light of the run, 0 = Newtonian
+	Substeps       int     // inner substeps near black holes in the last step
 	StepsPerSecond float64
 }
 
@@ -31,7 +32,7 @@ func (sn *Snapshot) fill(m *Simulation) {
 		sn.Z = append(sn.Z, float32(s.PosZ[i]))
 		sn.Mass = append(sn.Mass, float32(s.Mass[i]))
 	}
-	sn.Time, sn.Steps, sn.C = m.Time, m.Steps, m.Params.C
+	sn.Time, sn.Steps, sn.C, sn.Substeps = m.Time, m.Steps, m.Params.C, m.Substeps
 }
 
 // Runner steps a Simulation in its own goroutine, decoupled from rendering.

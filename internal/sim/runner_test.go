@@ -77,15 +77,19 @@ func TestRunnerReportsEnergyDriftAndRebaselines(t *testing.T) {
 	})
 }
 
-// pairSolver is an exact solver for tests inside package sim (which cannot import direct).
+// pairSolver is an exact star–star solver for tests inside package sim (which cannot import
+// direct). Like every Solver it leaves pairs involving holes to the integrator.
 type pairSolver struct{}
 
 func (pairSolver) Accelerations(s *State, p Params) {
 	n := s.Len()
 	for i := range n {
 		s.AccX[i], s.AccY[i], s.AccZ[i] = 0, 0, 0
+		if s.Kind[i] == BlackHole {
+			continue
+		}
 		for j := range n {
-			if i == j {
+			if i == j || s.Kind[j] == BlackHole {
 				continue
 			}
 			dx, dy, dz := s.PosX[j]-s.PosX[i], s.PosY[j]-s.PosY[i], s.PosZ[j]-s.PosZ[i]

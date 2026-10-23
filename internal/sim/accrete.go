@@ -12,12 +12,7 @@ import "sync"
 // evaluation per step with accretion.
 func (m *Simulation) accrete() {
 	s, c := m.State, m.Params.C
-	m.holes = m.holes[:0]
-	for i := range s.Len() {
-		if s.Alive[i] && s.Kind[i] == BlackHole {
-			m.holes = append(m.holes, i)
-		}
-	}
+	m.collectHoles()
 	if len(m.holes) == 0 {
 		return
 	}

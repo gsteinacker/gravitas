@@ -118,3 +118,27 @@ func TestNoAccretionWithoutSpeedOfLight(t *testing.T) {
 		t.Errorf("bodies absorbed although c = 0: %d left", s.Len())
 	}
 }
+
+func TestSubstepsFollowClosestEncounter(t *testing.T) {
+	p := Params{Dt: 0.004, Softening: 0.01, C: 0}
+	build := func(r float64) *Simulation {
+		s := NewState(3)
+		s.Add(Body{Mass: 2, Kind: BlackHole})
+		s.Add(Body{Pos: vec.Vec3{X: r}, Mass: 1e-6})
+		s.Add(Body{Pos: vec.Vec3{X: 50}, Mass: 1e-6})
+		return New(s, pairSolver{}, p)
+	}
+	far, close := build(5), build(0.05)
+	far.Step()
+	close.Step()
+	if far.Substeps != 1 {
+		t.Errorf("distant star: %d substeps, want 1", far.Substeps)
+	}
+	// τ = √(r³/M) ≈ 0.0079 at r = 0.05 → 20·dt/τ ≈ 10 → next power of two.
+	if close.Substeps != 16 {
+		t.Errorf("close star: %d substeps, want 16", close.Substeps)
+	}
+	if !close.isNear[1] || close.isNear[2] {
+		t.Errorf("near flags %v, want only the close star near", close.isNear)
+	}
+}

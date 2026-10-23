@@ -2,7 +2,7 @@
 //
 // Stars are sorted by Morton key, the tree is built top-down from the sorted ranges, and
 // every node stores a skip pointer, so the force walk needs neither recursion nor a stack.
-// Black holes are kept out of the tree and always summed directly (see docs/physics.md).
+// Black holes are kept out of the tree; forces involving them are summed by the integrator.
 package bh
 
 import (
@@ -62,32 +62,13 @@ func (b *Solver) Accelerations(s *sim.State, p sim.Params) {
 	sim.ParallelFor(len(b.order), grain, b.Workers, func(lo, hi int) {
 		for k := lo; k < hi; k++ {
 			i := b.order[k]
-			ax, ay, az := b.walk(b.sx[k], b.sy[k], b.sz[k], int32(k), eps2)
-			bx, by, bz := b.holeAcc(s, i, p.C, eps2)
-			s.AccX[i], s.AccY[i], s.AccZ[i] = ax+bx, ay+by, az+bz
+			s.AccX[i], s.AccY[i], s.AccZ[i] = b.walk(b.sx[k], b.sy[k], b.sz[k], int32(k), eps2)
 		}
 	})
-	// Holes feel every star directly through the same (Paczyński-Wiita) pair force the stars
-	// feel from them, so star–hole forces are exactly symmetric and momentum is conserved.
+	// Forces involving holes are summed by the integrator (sim.Solver).
 	for _, i := range b.holes {
-		ax, ay, az := b.starsOnHole(s, i, p.C, eps2)
-		bx, by, bz := b.holeAcc(s, i, p.C, eps2)
-		s.AccX[i], s.AccY[i], s.AccZ[i] = ax+bx, ay+by, az+bz
+		s.AccX[i], s.AccY[i], s.AccZ[i] = 0, 0, 0
 	}
-}
-
-// starsOnHole returns the acceleration on hole i from all stars, summed directly.
-func (b *Solver) starsOnHole(s *sim.State, i int32, c, eps2 float64) (ax, ay, az float64) {
-	x, y, z := s.PosX[i], s.PosY[i], s.PosZ[i]
-	rs := sim.SchwarzschildRadius(s.Mass[i], c)
-	for k := range b.order {
-		dx, dy, dz := b.sx[k]-x, b.sy[k]-y, b.sz[k]-z
-		f := sim.PairForce(b.sm[k], dx*dx+dy*dy+dz*dz, eps2, rs)
-		ax += f * dx
-		ay += f * dy
-		az += f * dz
-	}
-	return ax, ay, az
 }
 
 // walk returns the acceleration at (x, y, z) from all stars in the tree, skipping the star at
@@ -126,24 +107,6 @@ func (b *Solver) walk(x, y, z float64, self int32, eps2 float64) (ax, ay, az flo
 			az += f * dz
 		}
 		i = nd.next
-	}
-	return ax, ay, az
-}
-
-// holeAcc returns the acceleration on body i from all black holes except itself: Paczyński-Wiita
-// for a star, Newtonian between holes (sim.PairRS).
-func (b *Solver) holeAcc(s *sim.State, i int32, c, eps2 float64) (ax, ay, az float64) {
-	x, y, z := s.PosX[i], s.PosY[i], s.PosZ[i]
-	for _, h := range b.holes {
-		if h == i {
-			continue
-		}
-		dx, dy, dz := s.PosX[h]-x, s.PosY[h]-y, s.PosZ[h]-z
-		rs := sim.PairRS(s.Kind[i], s.Mass[i], sim.BlackHole, s.Mass[h], c)
-		f := sim.PairForce(s.Mass[h], dx*dx+dy*dy+dz*dz, eps2, rs)
-		ax += f * dx
-		ay += f * dy
-		az += f * dz
 	}
 	return ax, ay, az
 }

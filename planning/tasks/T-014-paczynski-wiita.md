@@ -22,3 +22,4 @@ Realistischere Bahnen nahe dem Horizont (ISCO bei 3 r_s).
 - Dabei gefundener Fehler aus T-013: Ohne Neuberechnung der Beschleunigungen nach einer Absorption wird der Impuls verletzt. Behoben, mit Regressionstest (schlägt ohne Fix fehl).
 - Kraft = numerischer Gradient des Potentials, auch im gekappten Bereich (`TestPairForceIsGradientOfPotential`). Energie-Drift der PW-Bahn ~1e-6, beschränkt.
 - ISCO-Ring (3 r_s) wird gezeichnet. Kosten +2,5 %, relativ gemessen, weil die App parallel lief.
+- Nachtrag (T-025): PW bei c = 10 machte die Integration nahe dem zentralen Loch unaufgelöst (Drift 0,3). Unbemerkt, weil der Drift-Test die Newtonsche Energie maß. In T-025 behoben.

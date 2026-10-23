@@ -21,9 +21,14 @@ Simulationseinheiten mit `G = 1`. Längen, Massen und Zeiten sind dimensionslos.
 
 ## Integration
 
-- **Leapfrog KDK** (kick-drift-kick), symplektisch, feste globale Schrittweite `dt`.
+- **Leapfrog KDK** (kick-drift-kick), symplektisch, feste globale Schrittweite `dt` für Stern-Stern-Kräfte.
+- **Mehrfach-Zeitschritte nahe Schwarzer Löcher** (`sim/split.go`, RESPA): Die Löser liefern nur Stern-Stern-
+  Kräfte. Alle Kräfte mit einem Loch summiert der Integrator direkt. Sterne mit τ = √(r/a) < 20·dt an einem
+  Loch sowie alle Löcher bekommen diese Kräfte in n Unterschritten (Zweierpotenz, n ≥ 20·dt/τ_min, ≤ 256),
+  alle anderen Sterne an den äußeren Kicks. Beide Partner eines Paars werden immer gleichzeitig gekickt, der
+  Impuls bleibt also exakt erhalten.
+  Gemessen: Drift der Testgalaxie (c = 10) von 0,30 auf 5·10⁻⁴ in 500 Schritten, +1,7 % Rechenzeit.
 - Diagnose: Gesamtenergie, Impuls, Drehimpuls. Ein Energie-Drift-Test ist Pflicht für jede Solver-Änderung.
-- Später optional: hierarchische Zeitschritte für Körper nahe Schwarzer Löcher.
 
 ## Lichtgeschwindigkeit: was wir berücksichtigen
 

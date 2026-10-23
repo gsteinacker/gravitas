@@ -108,6 +108,7 @@ type Game struct {
 	bodies, blackHoles int
 	simTime            float64
 	c                  float64
+	substeps           int
 }
 
 func NewGame(runner *sim.Runner, n, preset int) *Game {
@@ -283,7 +284,7 @@ func (g *Game) Draw(screen *ebiten.Image) {
 	g.cam.W, g.cam.H = float64(g.screenW), float64(g.screenH)
 	g.runner.View(func(sn *sim.Snapshot) {
 		g.stars.Draw(screen, &g.cam, sn)
-		g.bodies, g.blackHoles, g.simTime, g.c = sn.Len(), 0, sn.Time, sn.C
+		g.bodies, g.blackHoles, g.simTime, g.c, g.substeps = sn.Len(), 0, sn.Time, sn.C, sn.Substeps
 		for _, k := range sn.Kind {
 			if k == sim.BlackHole {
 				g.blackHoles++
@@ -326,9 +327,9 @@ func (g *Game) drawHUD(screen *ebiten.Image) {
 		state = "  [PAUSED]"
 	}
 	ebitenutil.DebugPrintAt(screen, fmt.Sprintf(
-		"%s%s\nbodies %d (black holes %d)   t = %.2f\nsteps/s %.0f (limit %s)   FPS %.0f\n%s\n%s\n\ntool: %s, mass %.2f   (b/k/tab, m/n)",
+		"%s%s\nbodies %d (black holes %d)   t = %.2f\nsteps/s %.0f (limit %s)   substeps near holes %d   FPS %.0f\n%s\n%s\n\ntool: %s, mass %.2f   (b/k/tab, m/n)",
 		scene.Presets[g.preset].Name, state, g.bodies, g.blackHoles, g.simTime,
-		g.runner.StepsPerSecond(), speed, ebiten.ActualFPS(), driftText(g.runner.EnergyDrift()),
+		g.runner.StepsPerSecond(), speed, g.substeps, ebiten.ActualFPS(), driftText(g.runner.EnergyDrift()),
 		lightText(g.c, g.bhMass), g.tool, g.bhMass), 10, 8)
 	if g.showHelp {
 		var b strings.Builder

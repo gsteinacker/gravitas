@@ -86,10 +86,38 @@ func TestTinyThetaMatchesDirect(t *testing.T) {
 	}
 }
 
+// withHolePull adds the (exactly summed) pull of all holes to each star's acceleration, so errors
+// are measured relative to the total force a star feels, as before the force split (T-025).
+func withHolePull(s *sim.State, p sim.Params, acc [][3]float64) [][3]float64 {
+	eps2 := p.Softening * p.Softening
+	for i := range acc {
+		for h := range s.Len() {
+			if s.Kind[h] != sim.BlackHole || s.Kind[i] != sim.Star {
+				continue
+			}
+			dx, dy, dz := s.PosX[h]-s.PosX[i], s.PosY[h]-s.PosY[i], s.PosZ[h]-s.PosZ[i]
+			f := sim.PairForce(s.Mass[h], dx*dx+dy*dy+dz*dz, eps2, sim.SchwarzschildRadius(s.Mass[h], p.C))
+			acc[i][0], acc[i][1], acc[i][2] = acc[i][0]+f*dx, acc[i][1]+f*dy, acc[i][2]+f*dz
+		}
+	}
+	return acc
+}
+
+func starsOnly(s *sim.State, acc [][3]float64) [][3]float64 {
+	var out [][3]float64
+	for i, a := range acc {
+		if s.Kind[i] == sim.Star {
+			out = append(out, a)
+		}
+	}
+	return out
+}
+
 func TestDefaultThetaAccuracy(t *testing.T) {
 	s, p := galaxy(5000)
-	want := accelerations(s, &direct.Solver{}, p)
-	got := accelerations(s, &Solver{}, p)
+	want := withHolePull(s, p, accelerations(s, &direct.Solver{}, p))
+	got := withHolePull(s, p, accelerations(s, &Solver{}, p))
+	want, got = starsOnly(s, want), starsOnly(s, got) // holes get no solver force
 	median, maxErr := relErrors(got, want)
 	t.Logf("θ=%.2f: median relative error %.2g, max %.2g", DefaultTheta, median, maxErr)
 	// Measured for monopole-only cells: θ=0.3 → 0.06 %, 0.6 → 0.25 %, 0.9 → 0.5 % median.
@@ -98,13 +126,14 @@ func TestDefaultThetaAccuracy(t *testing.T) {
 	}
 }
 
-func TestBlackHolesAreSummedDirectly(t *testing.T) {
-	// A single star next to a black hole: the tree has one leaf, the hole is not in it.
-	s := sim.NewState(2)
+func TestSolverLeavesHolesToTheIntegrator(t *testing.T) {
+	// Two stars and a hole: the solver only sees the star pair; the hole gets nothing from it.
+	s := sim.NewState(3)
 	s.Add(sim.Body{Pos: vec.Vec3{X: 1}, Mass: 1})
+	s.Add(sim.Body{Pos: vec.Vec3{X: 2}, Mass: 2})
 	s.Add(sim.Body{Mass: 4, Kind: sim.BlackHole})
 	got := accelerations(s, &Solver{}, sim.Params{})
-	if got[0] != [3]float64{-4, 0, 0} || got[1] != [3]float64{1, 0, 0} {
+	if got[0] != [3]float64{2, 0, 0} || got[1] != [3]float64{-1, 0, 0} || got[2] != [3]float64{} {
 		t.Errorf("unexpected accelerations %v", got)
 	}
 }
@@ -129,19 +158,27 @@ func TestEnergyDriftComparableToDirect(t *testing.T) {
 	drift := func(solver sim.Solver) float64 {
 		s, p := galaxy(2000)
 		m := sim.New(s, solver, p)
-		k, u := sim.Energy(s, p.Softening)
-		e0 := k + u
+		e0 := modelEnergy(m)
 		for range 500 {
 			m.Step()
 		}
-		k, u = sim.Energy(s, p.Softening)
-		return math.Abs((k + u - e0) / e0)
+		return math.Abs((modelEnergy(m) - e0) / e0)
 	}
 	ref, got := drift(&direct.Solver{}), drift(&Solver{})
 	t.Logf("relative energy drift after 500 steps: direct %.3g, Barnes-Hut %.3g", ref, got)
+	// Before multiple time stepping near holes (T-025) this was 0.3 with c = 10.
+	if ref > 5e-3 {
+		t.Errorf("direct solver drift %.3g: close encounters with holes are under-resolved", ref)
+	}
 	if got > 2*ref+1e-4 {
 		t.Errorf("Barnes-Hut drift %.3g much larger than direct %.3g", got, ref)
 	}
+}
+
+// modelEnergy is the exact energy of the full model (relativistic kinetic, pair potential) minus
+// the energy changes booked for accretion, i.e. what integration must conserve.
+func modelEnergy(m *sim.Simulation) float64 {
+	return sim.KineticEnergy(m.State, m.Params.C) + sim.PotentialEnergyParallel(m.State, m.Params) - m.ExternalEnergy
 }
 
 func TestParallelMatchesSerial(t *testing.T) {
@@ -202,6 +239,18 @@ func BenchmarkPotentialEnergy(b *testing.B) {
 	for b.Loop() {
 		solver.PotentialEnergy(s, p)
 	}
+}
+
+// BenchmarkStep measures a full integration step (tree forces, hole forces with substeps) of a
+// 100k galaxy with two holes.
+func BenchmarkStep(b *testing.B) {
+	s, p := galaxy(100_000)
+	m := sim.New(s, &Solver{}, p)
+	m.Step()
+	for b.Loop() {
+		m.Step()
+	}
+	b.ReportMetric(float64(m.Substeps), "substeps")
 }
 
 func BenchmarkBuild(b *testing.B) {
