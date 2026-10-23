@@ -335,3 +335,28 @@ func TestQuadrupoleForceIsGradientOfPotential(t *testing.T) {
 		}
 	}
 }
+
+func TestParallelRadixSortIsStableAndCorrect(t *testing.T) {
+	rng := rand.New(rand.NewPCG(8, 9))
+	n := 200_000
+	keys, idx := make([]uint64, n), make([]int32, n)
+	for i := range keys {
+		keys[i], idx[i] = rng.Uint64N(1<<20)<<40, int32(i) // many duplicates, low bits constant
+	}
+	want, wantIdx := slices.Clone(keys), slices.Clone(idx)
+	radixSort(want, wantIdx, make([]uint64, n), make([]int32, n))
+	var hist [][256]int
+	radixSortParallel(keys, idx, make([]uint64, n), make([]int32, n), 7, &hist)
+	if !slices.Equal(keys, want) || !slices.Equal(idx, wantIdx) {
+		t.Fatal("parallel radix sort differs from the serial (stable) one")
+	}
+}
+
+func TestBuildIndependentOfWorkers(t *testing.T) {
+	s, p := galaxy(60_000) // above parallelMin
+	a := accelerations(s, &Solver{Workers: 1}, p)
+	b := accelerations(s, &Solver{Workers: 12}, p)
+	if !slices.Equal(a, b) {
+		t.Error("result depends on the number of workers")
+	}
+}

@@ -10,7 +10,11 @@ import (
 // PotentialEnergy estimates the total softened potential energy with a tree walk, using an
 // opening angle of at most diagTheta. Cost is a few force evaluations.
 func (b *Solver) PotentialEnergy(s *sim.State, p sim.Params) float64 {
-	b.build(s, min(b.theta(), diagTheta))
+	return b.potentialWith(s, p, min(b.theta(), diagTheta))
+}
+
+func (b *Solver) potentialWith(s *sim.State, p sim.Params, theta float64) float64 {
+	b.build(s, theta)
 	eps2 := p.Softening * p.Softening
 	var mu sync.Mutex
 	var sum float64 // −Σ_i Σ_j U_ij over ordered pairs, so U = −sum / 2

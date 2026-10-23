@@ -25,19 +25,18 @@ func (sn *Snapshot) Len() int { return len(sn.Mass) }
 func (sn *Snapshot) fill(m *Simulation) {
 	s := m.State
 	n := s.Len()
-	sn.X, sn.Y, sn.Z, sn.Mass = sn.X[:0], sn.Y[:0], sn.Z[:0], sn.Mass[:0]
-	sn.VX, sn.VY, sn.VZ = sn.VX[:0], sn.VY[:0], sn.VZ[:0]
+	sn.X, sn.Y, sn.Z, sn.Mass = resize(sn.X, n), resize(sn.Y, n), resize(sn.Z, n), resize(sn.Mass, n)
+	sn.VX, sn.VY, sn.VZ = resize(sn.VX, n), resize(sn.VY, n), resize(sn.VZ, n)
 	sn.Kind = append(sn.Kind[:0], s.Kind...)
-	for i := range n {
-		sn.X = append(sn.X, float32(s.PosX[i]))
-		sn.Y = append(sn.Y, float32(s.PosY[i]))
-		sn.Z = append(sn.Z, float32(s.PosZ[i]))
-		sn.Mass = append(sn.Mass, float32(s.Mass[i]))
-		g := gamma(s.VelX[i], s.VelY[i], s.VelZ[i], m.Params.C)
-		sn.VX = append(sn.VX, float32(s.VelX[i]/g))
-		sn.VY = append(sn.VY, float32(s.VelY[i]/g))
-		sn.VZ = append(sn.VZ, float32(s.VelZ[i]/g))
-	}
+	c := m.Params.C
+	ParallelFor(n, 8192, 0, func(lo, hi int) {
+		for i := lo; i < hi; i++ {
+			sn.X[i], sn.Y[i], sn.Z[i] = float32(s.PosX[i]), float32(s.PosY[i]), float32(s.PosZ[i])
+			sn.Mass[i] = float32(s.Mass[i])
+			g := gamma(s.VelX[i], s.VelY[i], s.VelZ[i], c)
+			sn.VX[i], sn.VY[i], sn.VZ[i] = float32(s.VelX[i]/g), float32(s.VelY[i]/g), float32(s.VelZ[i]/g)
+		}
+	})
 	sn.Time, sn.Steps, sn.C, sn.Substeps = m.Time, m.Steps, m.Params.C, m.Substeps
 }
 
@@ -64,10 +63,16 @@ type Runner struct {
 	epoch       int
 	e0, ext0    float64 // baseline energy and ExternalEnergy at that moment
 	lastMeasure time.Time
+	measureCost time.Duration // duration of the last energy measurement
 }
 
-// energyInterval is how often the (comparatively expensive) total energy is measured.
-const energyInterval = 2 * time.Second
+// energyInterval is the minimum time between two (comparatively expensive) energy measurements.
+// energyBudget caps their share of the run: at 1M stars one measurement takes ~0.2–0.3 s, and a
+// fixed 2 s interval let them dominate the CPU (T-023).
+const (
+	energyInterval = 2 * time.Second
+	energyBudget   = 0.05
+)
 
 func NewRunner(m *Simulation) *Runner {
 	r := &Runner{sim: m, cmds: make(chan func(*Simulation), 64), writing: &Snapshot{}, latest: &Snapshot{}, reading: &Snapshot{}}
@@ -130,7 +135,7 @@ func (r *Runner) Run(ctx context.Context) {
 			r.measureEnergy() // baseline before the first step of a new epoch
 		}
 		r.sim.Step()
-		if time.Since(r.lastMeasure) > energyInterval {
+		if time.Since(r.lastMeasure) > max(energyInterval, time.Duration(float64(r.measureCost)/energyBudget)) {
 			r.measureEnergy()
 		}
 		r.publish()
@@ -155,6 +160,7 @@ func (r *Runner) Run(ctx context.Context) {
 
 func (r *Runner) measureEnergy() {
 	r.lastMeasure = time.Now()
+	defer func() { r.measureCost = time.Since(r.lastMeasure) }()
 	e, q := TotalEnergy(r.sim)
 	r.quality.Store(int32(q))
 	if r.sim.Epoch != r.epoch {

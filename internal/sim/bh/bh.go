@@ -18,8 +18,9 @@ const (
 	// 12 → 40.5 ms, 24 → 36.0 ms, 32 → 35.7 ms per force evaluation.
 	leafSize = 24
 	// diagTheta caps the opening angle for energy diagnostics: the potential's systematic error
-	// must stay well below the integration drift it is meant to reveal.
-	diagTheta = 0.6
+	// must stay well below the integration drift it is meant to reveal. With quadrupoles θ = 0.9
+	// gives 1.2e-6 (θ = 0.6: 1.5e-6 at twice the cost).
+	diagTheta = 0.9
 	// grain is the minimum number of target bodies per parallel chunk.
 	grain = 128
 )
@@ -32,6 +33,9 @@ type Solver struct {
 	Workers int // 0 means GOMAXPROCS
 	// MonopoleOnly drops the quadrupole term of accepted nodes (for comparisons).
 	MonopoleOnly bool
+	// GPU runs the tree walk on the GPU (Metal, float32) when GPUAvailable() is nil; the tree is
+	// still built on the CPU. Spike T-023.
+	GPU bool
 
 	nodes      []node
 	keys       []uint64
@@ -40,7 +44,12 @@ type Solver struct {
 	tmpI       []int32
 	sx, sy, sz []float64 // star positions and masses in sorted order
 	sm         []float64
-	holes      []int32 // state indices of black holes
+	holes      []int32    // state indices of black holes
+	ax, ay, az []float64  // GPU accelerations in sorted order
+	hist       [][256]int // radix sort histograms per worker
+	parts      []part     // per-chunk results of collect
+	offsets    []int
+	gpu        gpuBuffers
 }
 
 type node struct {
@@ -63,6 +72,16 @@ func (b *Solver) theta() float64 {
 func (b *Solver) Accelerations(s *sim.State, p sim.Params) {
 	b.build(s, b.theta())
 	eps2 := p.Softening * p.Softening
+	if b.GPU && len(b.nodes) > 0 && GPUAvailable() == nil {
+		b.walkGPU(eps2)
+		for k, i := range b.order {
+			s.AccX[i], s.AccY[i], s.AccZ[i] = b.ax[k], b.ay[k], b.az[k]
+		}
+		for _, i := range b.holes {
+			s.AccX[i], s.AccY[i], s.AccZ[i] = 0, 0, 0
+		}
+		return
+	}
 	sim.ParallelFor(len(b.order), grain, b.Workers, func(lo, hi int) {
 		for k := lo; k < hi; k++ {
 			i := b.order[k]

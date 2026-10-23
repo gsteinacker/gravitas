@@ -9,6 +9,7 @@ import (
 	"math"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
@@ -78,9 +79,11 @@ func launchVelocity(cam *render.Camera, x0, y0, x1, y1 float64) vec.Vec3 {
 }
 
 type Game struct {
-	// ShotPath, if set, saves a screenshot after ShotAfter frames and quits.
+	// ShotPath, if set, saves a screenshot ShotAfter after the first frame and quits. Wall-clock
+	// time, not frames: at low frame rates a frame count would take arbitrarily long.
 	ShotPath  string
-	ShotAfter int
+	ShotAfter time.Duration
+	started   time.Time
 	frame     int
 	shotErr   error
 	shotDone  bool
@@ -141,6 +144,9 @@ func (g *Game) Update() error {
 			return g.shotErr
 		}
 		return ebiten.Termination
+	}
+	if g.ShotPath != "" {
+		return nil // screenshots must be reproducible: ignore stray input on the window
 	}
 	g.handleKeys()
 	g.handleMouse()
@@ -315,7 +321,10 @@ func (g *Game) Draw(screen *ebiten.Image) {
 		g.drawHUD(screen)
 	}
 	g.frame++
-	if g.ShotPath != "" && !g.shotDone && g.frame >= g.ShotAfter {
+	if g.started.IsZero() {
+		g.started = time.Now()
+	}
+	if g.ShotPath != "" && !g.shotDone && time.Since(g.started) >= g.ShotAfter {
 		g.shotErr, g.shotDone = saveScreenshot(screen, g.ShotPath), true
 	}
 }

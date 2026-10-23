@@ -9,6 +9,22 @@ Maschine: M4 Pro, GOMAXPROCS=12, Go 1.27.x
 Fazit: …
 ```
 
+## 2026-10-23 · T-023 · GPU-Baumdurchlauf (Metal) + paralleler Baumaufbau
+
+Ohne Last:
+
+```
+                    CPU        GPU-Hybrid   Kernel
+N=100k            11.8 ms       4.6 ms     1.2 ms
+N=1M             155   ms      40   ms    16   ms
+Build 100k:  3.3 → 2.1 ms (parallel: collect, keys, radix sort, copies)
+Build 1M Phasen (seriell, vorher): collect 8.7, keys 5.5, sort 10.7, copy 6.2, nodes 9.6 ms
+```
+
+App mit 1M: Zuerst dominierte die Energie-Diagnose (`walkPotential` 66 % CPU), weil eine Messung länger dauerte als
+ihr 2-s-Intervall. Danach adaptives Intervall (≤ 5 %) und Diagnose-θ 0,9 (Fehler 1,2e-6, halbe Kosten).
+Ergebnis: 1M Sterne mit 12–13 Schritten/s und 12–18 FPS, alle Effekte.
+
 ## 2026-10-23 · T-028 · Quadrupol-Momente, θ 0,6 → 0,9
 
 Ohne Last, 100k. θ-Scan am entwickelten Zustand (Median / Max des relativen Kraftfehlers, ms pro Kraftberechnung):

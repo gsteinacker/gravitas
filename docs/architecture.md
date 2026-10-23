@@ -21,6 +21,12 @@ tools/plan/          Projektplanungs-CLI (Backlog in planning/)
 Abhängigkeiten zeigen nur nach unten: `cmd → ui → render, scene → sim → vec`.
 **`sim` kennt Ebitengine nicht.** Die Physik ist headless test- und benchmarkbar.
 
+## GPU (ADR-0004)
+
+Auf macOS führt Metal den Baumdurchlauf aus (`bh.Solver.GPU`, Standard in der App). Der Baumaufbau bleibt auf
+der CPU und ist parallelisiert: Sammeln, Morton-Keys, stabiler paralleler Radix-Sort, sortierte Kopien. Die
+Rekursion über die Knoten läuft noch seriell.
+
 ## Rendering (M4)
 
 `render.Pipeline` pro Frame: Sterne additiv in ein Offscreen-Bild (Farbe nach Masse, optional Doppler-Verschiebung)

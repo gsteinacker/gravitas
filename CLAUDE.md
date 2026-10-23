@@ -38,7 +38,8 @@ Stack: **Go 1.27 + Ebitengine v2**, Physik auf der CPU (siehe `docs/adr/0001-go-
   Mit `testing.AllocsPerRun` oder `b.ReportAllocs()` absichern.
 - Parallelität über Chunking auf `runtime.GOMAXPROCS(0)` Worker. Jede parallele Änderung braucht `make race`.
 - Physik-Änderungen brauchen einen Invarianten-Test aus `docs/physics.md` (Energie-Drift, Impuls, |v| < c).
-- Nur Standardbibliothek plus Ebitengine. Neue Abhängigkeiten nur per ADR.
+- Nur Standardbibliothek plus Ebitengine. Neue Abhängigkeiten nur per ADR. Ausnahme per ADR-0004: Metal über
+  cgo in `internal/sim/bh/gpu_darwin.go`. Jede GPU-Änderung braucht `TestGPUWalkMatchesCPU`.
 - Simulationseinheiten: G = 1. `c` ist ein Parameter und keine Konstante.
 - Tastenbelegung über `ebiten.AppendInputChars` (eingegebene Zeichen), **nicht** über `ebiten.Key*`-Konstanten,
   die US-Positionen sind. Ausnahme: layoutunabhängige Tasten (Leertaste, F-Tasten, Pfeile). Der Nutzer hat ein

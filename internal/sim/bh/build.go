@@ -2,29 +2,14 @@ package bh
 
 import (
 	"math"
+	"runtime"
 
 	"galaxy/internal/sim"
 )
 
 // build sorts the stars by Morton key and rebuilds the tree, reusing all buffers.
 func (b *Solver) build(s *sim.State, theta float64) {
-	b.order, b.holes = b.order[:0], b.holes[:0]
-	minX, minY, minZ := math.Inf(1), math.Inf(1), math.Inf(1)
-	maxX, maxY, maxZ := math.Inf(-1), math.Inf(-1), math.Inf(-1)
-	for i := range s.Len() {
-		if !s.Alive[i] {
-			continue
-		}
-		if s.Kind[i] == sim.BlackHole {
-			b.holes = append(b.holes, int32(i))
-			continue
-		}
-		b.order = append(b.order, int32(i))
-		x, y, z := s.PosX[i], s.PosY[i], s.PosZ[i]
-		minX, maxX = math.Min(minX, x), math.Max(maxX, x)
-		minY, maxY = math.Min(minY, y), math.Max(maxY, y)
-		minZ, maxZ = math.Min(minZ, z), math.Max(maxZ, z)
-	}
+	minX, minY, minZ, maxX, maxY, maxZ := b.collect(s)
 	b.nodes = b.nodes[:0]
 	n := len(b.order)
 	if n == 0 {
@@ -38,19 +23,94 @@ func (b *Solver) build(s *sim.State, theta float64) {
 	cell := func(v, lo float64) uint64 {
 		return uint64(min(float64(1<<mortonBits-1), math.Max(0, (v-lo)*scale)))
 	}
-	for k, i := range b.order {
-		b.keys[k] = mortonKey(cell(s.PosX[i], minX), cell(s.PosY[i], minY), cell(s.PosZ[i], minZ))
-	}
-	radixSort(b.keys, b.order, b.tmpK, b.tmpI)
+	staticChunks(n, b.Workers, func(_, lo, hi int) {
+		for k := lo; k < hi; k++ {
+			i := b.order[k]
+			b.keys[k] = mortonKey(cell(s.PosX[i], minX), cell(s.PosY[i], minY), cell(s.PosZ[i], minZ))
+		}
+	})
+	radixSortParallel(b.keys, b.order, b.tmpK, b.tmpI, b.Workers, &b.hist)
 
 	b.sx, b.sy, b.sz, b.sm = resize(b.sx, n), resize(b.sy, n), resize(b.sz, n), resize(b.sm, n)
-	for k, i := range b.order {
-		b.sx[k], b.sy[k], b.sz[k], b.sm[k] = s.PosX[i], s.PosY[i], s.PosZ[i], s.Mass[i]
-	}
+	staticChunks(n, b.Workers, func(_, lo, hi int) {
+		for k := lo; k < hi; k++ {
+			i := b.order[k]
+			b.sx[k], b.sy[k], b.sz[k], b.sm[k] = s.PosX[i], s.PosY[i], s.PosZ[i], s.Mass[i]
+		}
+	})
 
 	half := side / 2
 	b.nodes = append(b.nodes, node{})
 	b.buildNode(0, 0, int32(n), 0, minX+half, minY+half, minZ+half, half, -1, theta)
+}
+
+// part is one chunk's result in collect.
+type part struct {
+	count                              int
+	minX, minY, minZ, maxX, maxY, maxZ float64
+}
+
+// collect fills b.order (alive stars in state order) and b.holes, and returns the stars'
+// bounding box. Counting and bounds run in parallel chunks; the order is assembled from per-chunk
+// offsets, so it stays in state order.
+func (b *Solver) collect(s *sim.State) (minX, minY, minZ, maxX, maxY, maxZ float64) {
+	n := s.Len()
+	b.holes = b.holes[:0]
+	for i := range n {
+		if s.Alive[i] && s.Kind[i] == sim.BlackHole {
+			b.holes = append(b.holes, int32(i))
+		}
+	}
+	parts := b.parts[:0]
+	for range max(1, b.workers()) {
+		parts = append(parts, part{})
+	}
+	isStar := func(i int) bool { return s.Alive[i] && s.Kind[i] == sim.Star }
+	workers := staticChunks(n, len(parts), func(w, lo, hi int) {
+		p := part{minX: math.Inf(1), minY: math.Inf(1), minZ: math.Inf(1), maxX: math.Inf(-1), maxY: math.Inf(-1), maxZ: math.Inf(-1)}
+		for i := lo; i < hi; i++ {
+			if !isStar(i) {
+				continue
+			}
+			p.count++
+			x, y, z := s.PosX[i], s.PosY[i], s.PosZ[i]
+			p.minX, p.maxX = math.Min(p.minX, x), math.Max(p.maxX, x)
+			p.minY, p.maxY = math.Min(p.minY, y), math.Max(p.maxY, y)
+			p.minZ, p.maxZ = math.Min(p.minZ, z), math.Max(p.maxZ, z)
+		}
+		parts[w] = p
+	})
+	parts = parts[:workers]
+	minX, minY, minZ = math.Inf(1), math.Inf(1), math.Inf(1)
+	maxX, maxY, maxZ = math.Inf(-1), math.Inf(-1), math.Inf(-1)
+	total := 0
+	offsets := b.offsets[:0]
+	for _, p := range parts {
+		offsets = append(offsets, total)
+		total += p.count
+		minX, maxX = math.Min(minX, p.minX), math.Max(maxX, p.maxX)
+		minY, maxY = math.Min(minY, p.minY), math.Max(maxY, p.maxY)
+		minZ, maxZ = math.Min(minZ, p.minZ), math.Max(maxZ, p.maxZ)
+	}
+	b.order = resize(b.order, total)
+	staticChunks(n, workers, func(w, lo, hi int) {
+		k := offsets[w]
+		for i := lo; i < hi; i++ {
+			if isStar(i) {
+				b.order[k] = int32(i)
+				k++
+			}
+		}
+	})
+	b.parts, b.offsets = parts, offsets
+	return
+}
+
+func (b *Solver) workers() int {
+	if b.Workers > 0 {
+		return b.Workers
+	}
+	return runtime.GOMAXPROCS(0)
 }
 
 // buildNode fills node ni for the sorted star range [lo, hi). The node is a cube with the given

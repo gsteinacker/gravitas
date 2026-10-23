@@ -25,21 +25,40 @@ func NewCamera() Camera {
 func (c *Camera) focal() float64 { return c.H / (2 * math.Tan(c.FOV/2)) }
 
 // Project maps a world position to screen coordinates. depth is the distance from the camera
-// along the view axis; ok is false for points behind the near plane.
+// along the view axis; ok is false for points behind the near plane. For many points use View.
 func (c *Camera) Project(x, y, z float64) (sx, sy, depth float64, ok bool) {
-	x, y, z = x-c.Target.X, y-c.Target.Y, z-c.Target.Z
-	sy1, cy1 := math.Sincos(c.Yaw)
-	sp, cp := math.Sincos(c.Pitch)
-	x1 := cy1*x - sy1*y
-	y1 := sy1*x + cy1*y
-	fwd := cp*y1 - sp*z // along the view direction
-	up := sp*y1 + cp*z
-	depth = c.Distance + fwd
+	v := c.View()
+	return v.Project(x, y, z)
+}
+
+// View is a camera with its trigonometry precomputed, for projecting many points per frame.
+type View struct {
+	tx, ty, tz              float64
+	sinYaw, cosYaw          float64
+	sinPitch, cosPitch      float64
+	distance, focal, cx, cy float64
+}
+
+func (c *Camera) View() View {
+	v := View{tx: c.Target.X, ty: c.Target.Y, tz: c.Target.Z, distance: c.Distance, focal: c.focal(), cx: c.W / 2, cy: c.H / 2}
+	v.sinYaw, v.cosYaw = math.Sincos(c.Yaw)
+	v.sinPitch, v.cosPitch = math.Sincos(c.Pitch)
+	return v
+}
+
+// Project is Camera.Project without the per-call trigonometry.
+func (v *View) Project(x, y, z float64) (sx, sy, depth float64, ok bool) {
+	x, y, z = x-v.tx, y-v.ty, z-v.tz
+	x1 := v.cosYaw*x - v.sinYaw*y
+	y1 := v.sinYaw*x + v.cosYaw*y
+	fwd := v.cosPitch*y1 - v.sinPitch*z // along the view direction
+	up := v.sinPitch*y1 + v.cosPitch*z
+	depth = v.distance + fwd
 	if depth < 0.05 {
 		return 0, 0, depth, false
 	}
-	f := c.focal() / depth
-	return c.W/2 + f*x1, c.H/2 - f*up, depth, true
+	f := v.focal / depth
+	return v.cx + f*x1, v.cy - f*up, depth, true
 }
 
 // Forward returns the unit view direction in world space.

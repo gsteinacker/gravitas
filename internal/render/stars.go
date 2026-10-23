@@ -88,7 +88,7 @@ func (sr *StarRenderer) DrawStars(dst *ebiten.Image, cam *Camera, sn *sim.Snapsh
 	camPos := cam.Position()
 	doppler = doppler && sn.C > 0
 
-	sr.verts, sr.bhs = sr.verts[:0], sr.bhs[:0]
+	sr.bhs = sr.bhs[:0]
 	focal := cam.focal()
 	for _, h := range sr.world {
 		sx, sy, depth, ok := cam.Project(h.x, h.y, h.z)
@@ -102,38 +102,48 @@ func (sr *StarRenderer) DrawStars(dst *ebiten.Image, cam *Camera, sn *sim.Snapsh
 		}
 		sr.bhs = append(sr.bhs, Hole{float32(sx), float32(sy), float32(math.Max(minHolePixels, r*focal/depth))})
 	}
-	for i := range n {
-		if sn.Kind[i] != sim.Star {
-			continue
-		}
-		x, y, z := float64(sn.X[i]), float64(sn.Y[i]), float64(sn.Z[i])
-		sx, sy, depth, ok := cam.Project(x, y, z)
-		if !ok {
-			continue
-		}
-		rel := float64(sn.Mass[i]) / meanMass
-		size := 0.05 * math.Cbrt(rel) * focal / depth
-		size = math.Max(3.5, math.Min(28, size))
-		if sx < -size || sy < -size || sx > cam.W+size || sy > cam.H+size {
-			continue
-		}
-		cr, cg, cb := starColor(rel)
-		alpha := float32(exposure * math.Min(1, 0.55+0.2*rel))
-		if doppler {
-			grav := 1.0
-			for _, h := range sr.world {
-				dx, dy, dz := x-h.x, y-h.y, z-h.z
-				grav *= gravShift(math.Sqrt(dx*dx+dy*dy+dz*dz), h.rs)
+	// Every body owns 4 vertex slots, so the quads can be built in parallel without coordination;
+	// holes and culled stars get an empty quad.
+	view := cam.View()
+	sr.verts = resizeVerts(sr.verts, 4*n)
+	sim.ParallelFor(n, 4096, 0, func(lo, hi int) {
+		for i := lo; i < hi; i++ {
+			q := sr.verts[4*i : 4*i+4 : 4*i+4]
+			if sn.Kind[i] != sim.Star {
+				clear(q)
+				continue
 			}
-			nx, ny, nz := camPos.X-x, camPos.Y-y, camPos.Z-z
-			l := math.Sqrt(nx*nx + ny*ny + nz*nz)
-			f := frequencyShift(float64(sn.VX[i]), float64(sn.VY[i]), float64(sn.VZ[i]), nx/l, ny/l, nz/l, sn.C, grav)
-			var beam float32
-			cr, cg, cb, beam = shiftColor(cr, cg, cb, f)
-			alpha = min(1, alpha*beam)
+			x, y, z := float64(sn.X[i]), float64(sn.Y[i]), float64(sn.Z[i])
+			sx, sy, depth, ok := view.Project(x, y, z)
+			if !ok {
+				clear(q)
+				continue
+			}
+			rel := float64(sn.Mass[i]) / meanMass
+			size := 0.05 * math.Cbrt(rel) * focal / depth
+			size = math.Max(3.5, math.Min(28, size))
+			if sx < -size || sy < -size || sx > cam.W+size || sy > cam.H+size {
+				clear(q)
+				continue
+			}
+			cr, cg, cb := starColor(rel)
+			alpha := float32(exposure * math.Min(1, 0.55+0.2*rel))
+			if doppler {
+				grav := 1.0
+				for _, h := range sr.world {
+					dx, dy, dz := x-h.x, y-h.y, z-h.z
+					grav *= gravShift(math.Sqrt(dx*dx+dy*dy+dz*dz), h.rs)
+				}
+				nx, ny, nz := camPos.X-x, camPos.Y-y, camPos.Z-z
+				l := math.Sqrt(nx*nx + ny*ny + nz*nz)
+				f := frequencyShift(float64(sn.VX[i]), float64(sn.VY[i]), float64(sn.VZ[i]), nx/l, ny/l, nz/l, sn.C, grav)
+				var beam float32
+				cr, cg, cb, beam = shiftColor(cr, cg, cb, f)
+				alpha = min(1, alpha*beam)
+			}
+			setQuad(q, float32(sx), float32(sy), float32(size/2), cr, cg, cb, alpha)
 		}
-		sr.appendQuad(float32(sx), float32(sy), float32(size/2), cr, cg, cb, alpha)
-	}
+	})
 	sr.flush(dst)
 }
 
@@ -153,14 +163,20 @@ func (sr *StarRenderer) DrawHoles(dst *ebiten.Image) {
 	}
 }
 
-func (sr *StarRenderer) appendQuad(x, y, h, r, g, b, a float32) {
+// setQuad writes a sprite quad centered at (x, y) with half size h into the 4 vertices of q.
+func setQuad(q []ebiten.Vertex, x, y, h, r, g, b, a float32) {
 	const s = spriteSize
-	sr.verts = append(sr.verts,
-		ebiten.Vertex{DstX: x - h, DstY: y - h, SrcX: 0, SrcY: 0, ColorR: r, ColorG: g, ColorB: b, ColorA: a},
-		ebiten.Vertex{DstX: x + h, DstY: y - h, SrcX: s, SrcY: 0, ColorR: r, ColorG: g, ColorB: b, ColorA: a},
-		ebiten.Vertex{DstX: x - h, DstY: y + h, SrcX: 0, SrcY: s, ColorR: r, ColorG: g, ColorB: b, ColorA: a},
-		ebiten.Vertex{DstX: x + h, DstY: y + h, SrcX: s, SrcY: s, ColorR: r, ColorG: g, ColorB: b, ColorA: a},
-	)
+	q[0] = ebiten.Vertex{DstX: x - h, DstY: y - h, SrcX: 0, SrcY: 0, ColorR: r, ColorG: g, ColorB: b, ColorA: a}
+	q[1] = ebiten.Vertex{DstX: x + h, DstY: y - h, SrcX: s, SrcY: 0, ColorR: r, ColorG: g, ColorB: b, ColorA: a}
+	q[2] = ebiten.Vertex{DstX: x - h, DstY: y + h, SrcX: 0, SrcY: s, ColorR: r, ColorG: g, ColorB: b, ColorA: a}
+	q[3] = ebiten.Vertex{DstX: x + h, DstY: y + h, SrcX: s, SrcY: s, ColorR: r, ColorG: g, ColorB: b, ColorA: a}
+}
+
+func resizeVerts(v []ebiten.Vertex, n int) []ebiten.Vertex {
+	if cap(v) < n {
+		return make([]ebiten.Vertex, n)
+	}
+	return v[:n]
 }
 
 // flush draws the collected quads in batches that respect ebiten.MaxVertexCount.

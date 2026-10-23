@@ -7,6 +7,7 @@ import (
 	"log"
 	"os"
 	"runtime/pprof"
+	"time"
 
 	"github.com/hajimehoshi/ebiten/v2"
 
@@ -21,6 +22,7 @@ import (
 func main() {
 	n := flag.Int("n", 50000, "number of stars")
 	solverName := flag.String("solver", "bh", "force solver: bh (Barnes-Hut) or direct")
+	useGPU := flag.Bool("gpu", true, "run the Barnes-Hut tree walk on the GPU if available (macOS/Metal)")
 	theta := flag.Float64("theta", bh.DefaultTheta, "Barnes-Hut opening angle (smaller = more accurate)")
 	preset := flag.Int("preset", 1, "start scene (1-based)")
 	shot := flag.String("shot", "", "save a screenshot to this PNG file after -shot-after seconds and quit")
@@ -48,7 +50,13 @@ func main() {
 	case *speedOfLight < 0:
 		params.C = 0
 	}
-	var solver sim.Solver = &bh.Solver{Theta: *theta}
+	if *useGPU {
+		if err := bh.GPUAvailable(); err != nil {
+			log.Printf("GPU tree walk unavailable, using the CPU: %v", err)
+			*useGPU = false
+		}
+	}
+	var solver sim.Solver = &bh.Solver{Theta: *theta, GPU: *useGPU}
 	switch *solverName {
 	case "bh":
 	case "direct":
@@ -73,7 +81,7 @@ func main() {
 		log.Fatal(err)
 	}
 	game.SetEffects(fx)
-	game.ShotPath, game.ShotAfter = *shot, int(*shotAfter*60)
+	game.ShotPath, game.ShotAfter = *shot, time.Duration(*shotAfter*float64(time.Second))
 	if err := ebiten.RunGame(game); err != nil {
 		pprof.StopCPUProfile()
 		log.Fatal(err)
