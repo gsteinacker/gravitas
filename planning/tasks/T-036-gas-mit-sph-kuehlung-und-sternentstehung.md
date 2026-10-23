@@ -1,11 +1,11 @@
 ---
 id: T-036
 title: Gas mit SPH, Kuehlung und Sternentstehung
-status: doing
+status: done
 milestone: M6
 priority: 1
 estimate: L
-depends: [T-035]
+depends: [T-034]
 ---
 
 ## Ziel

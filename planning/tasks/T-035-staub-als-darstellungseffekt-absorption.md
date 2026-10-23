@@ -5,7 +5,7 @@ status: todo
 milestone: M6
 priority: 1
 estimate: S
-depends: [T-034]
+depends: [T-036]
 ---
 
 ## Ziel
