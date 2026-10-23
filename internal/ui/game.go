@@ -49,6 +49,24 @@ func clusterStars(n int) int { return max(300, n/40) }
 // clusters, so they stay visibly compact.
 func clusterRadius(mass float64) float64 { return 0.2 * math.Cbrt(mass/0.5) }
 
+// cStep is the factor by which '<' and '>' change the speed of light; cMin/cMax bound it.
+const (
+	cStep = 1.25
+	cMin  = 1.0
+	cMax  = 1000.0
+)
+
+// scaleC changes the speed of light of the running simulation. Stored proper velocities (and
+// thus momenta) stay; coordinate velocities follow from the new c.
+func (g *Game) scaleC(f float64) {
+	g.runner.Do(func(m *sim.Simulation) {
+		if m.Params.C > 0 {
+			m.Params.C = math.Max(cMin, math.Min(cMax, m.Params.C*f))
+			m.Epoch++ // kinetic energy depends on c
+		}
+	})
+}
+
 // launchScale converts an Alt-drag distance in world units into a launch velocity.
 // Dragging across a typical galaxy radius (~2) gives roughly its orbital speed (~1).
 const launchScale = 0.5
@@ -89,6 +107,7 @@ type Game struct {
 	screenW, screenH   int
 	bodies, blackHoles int
 	simTime            float64
+	c                  float64
 }
 
 func NewGame(runner *sim.Runner, n, preset int) *Game {
@@ -159,6 +178,10 @@ func (g *Game) applyChar(r rune) {
 		g.tool = toolCluster
 	case '\t':
 		g.tool = (g.tool + 1) % 2
+	case '<':
+		g.scaleC(1 / cStep)
+	case '>':
+		g.scaleC(cStep)
 	case 'r', 'R':
 		g.LoadPreset(g.preset)
 	case 'h', 'H':
@@ -219,7 +242,7 @@ func (g *Game) place(x, y int, vel vec.Vec3) {
 	mass := g.bhMass
 	if g.tool == toolBlackHole {
 		g.runner.Do(func(m *sim.Simulation) {
-			m.AddBody(sim.Body{Pos: pos, Vel: vel, Mass: mass, Kind: sim.BlackHole})
+			m.AddBody(sim.Body{Pos: pos, Vel: sim.ProperVelocity(vel, m.Params.C), Mass: mass, Kind: sim.BlackHole})
 		})
 		return
 	}
@@ -230,7 +253,9 @@ func (g *Game) place(x, y int, vel vec.Vec3) {
 	scene.AddPlummer(c, n, mass, clusterRadius(mass), pos, vel, 1000+g.placements)
 	g.runner.Do(func(m *sim.Simulation) {
 		for i := range c.Len() {
-			m.AddBody(c.Body(i))
+			b := c.Body(i)
+			b.Vel = sim.ProperVelocity(b.Vel, m.Params.C)
+			m.AddBody(b)
 		}
 	})
 }
@@ -258,7 +283,7 @@ func (g *Game) Draw(screen *ebiten.Image) {
 	g.cam.W, g.cam.H = float64(g.screenW), float64(g.screenH)
 	g.runner.View(func(sn *sim.Snapshot) {
 		g.stars.Draw(screen, &g.cam, sn)
-		g.bodies, g.blackHoles, g.simTime = sn.Len(), 0, sn.Time
+		g.bodies, g.blackHoles, g.simTime, g.c = sn.Len(), 0, sn.Time, sn.C
 		for _, k := range sn.Kind {
 			if k == sim.BlackHole {
 				g.blackHoles++
@@ -301,10 +326,10 @@ func (g *Game) drawHUD(screen *ebiten.Image) {
 		state = "  [PAUSED]"
 	}
 	ebitenutil.DebugPrintAt(screen, fmt.Sprintf(
-		"%s%s\nbodies %d (black holes %d)   t = %.2f\nsteps/s %.0f (limit %s)   FPS %.0f\n%s\n\ntool: %s, mass %.2f   (b/k/tab, m/n)",
+		"%s%s\nbodies %d (black holes %d)   t = %.2f\nsteps/s %.0f (limit %s)   FPS %.0f\n%s\n%s\n\ntool: %s, mass %.2f   (b/k/tab, m/n)",
 		scene.Presets[g.preset].Name, state, g.bodies, g.blackHoles, g.simTime,
 		g.runner.StepsPerSecond(), speed, ebiten.ActualFPS(), driftText(g.runner.EnergyDrift()),
-		g.tool, g.bhMass), 10, 8)
+		lightText(g.c, g.bhMass), g.tool, g.bhMass), 10, 8)
 	if g.showHelp {
 		var b strings.Builder
 		for i, p := range scene.Presets {
@@ -312,10 +337,18 @@ func (g *Game) drawHUD(screen *ebiten.Image) {
 		}
 		b.WriteString("\nb k tab     tool: black hole / star cluster\nclick       place\nalt+drag    launch with velocity\nm n         mass +/-\n" +
 			"drag        rotate\nshift/right drag  pan\nwheel       zoom\n" +
-			"space       pause\n.           single step\n+ -         speed\nr           restart\nc           center view\n" +
+			"< >         speed of light\nspace       pause\n.           single step\n+ -         speed\nr           restart\nc           center view\n" +
 			"f           fullscreen\nh           hide HUD\n? F1        hide this help")
 		ebitenutil.DebugPrintAt(screen, b.String(), 10, g.screenH-16*strings.Count(b.String(), "\n")-28)
 	}
+}
+
+// lightText shows the speed of light and the horizon size of the next placed black hole.
+func lightText(c, mass float64) string {
+	if c <= 0 {
+		return "c = infinite (Newtonian)"
+	}
+	return fmt.Sprintf("c = %.1f  (< >)   r_s of mass %.2f = %.3f", c, mass, sim.SchwarzschildRadius(mass, c))
 }
 
 // driftText formats the energy drift; "~" marks a tree estimate, which is only good to ±30 %.

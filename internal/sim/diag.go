@@ -29,7 +29,7 @@ const (
 
 // TotalEnergy returns K + U for periodic diagnostics.
 func TotalEnergy(m *Simulation) (float64, EnergyQuality) {
-	k := KineticEnergy(m.State)
+	k := KineticEnergy(m.State, m.Params.C)
 	if m.State.Len() <= exactEnergyLimit {
 		return k + PotentialEnergyParallel(m.State, m.Params.Softening), EnergyExact
 	}
@@ -63,21 +63,20 @@ func PotentialEnergyParallel(s *State, softening float64) float64 {
 	return -sum
 }
 
-// KineticEnergy returns the total kinetic energy.
-func KineticEnergy(s *State) float64 {
+// KineticEnergy returns the total kinetic energy, relativistic for c > 0 (see kinetic).
+func KineticEnergy(s *State, c float64) float64 {
 	var k float64
 	for i := range s.Len() {
-		v2 := s.VelX[i]*s.VelX[i] + s.VelY[i]*s.VelY[i] + s.VelZ[i]*s.VelZ[i]
-		k += 0.5 * s.Mass[i] * v2
+		k += kinetic(s.Mass[i], s.VelX[i], s.VelY[i], s.VelZ[i], c)
 	}
 	return k
 }
 
-// Energy returns the kinetic and (softened) potential energy. The potential is O(N²).
+// Energy returns the Newtonian kinetic and (softened) potential energy. The potential is O(N²).
 func Energy(s *State, softening float64) (kinetic, potential float64) {
 	eps2 := softening * softening
 	n := s.Len()
-	kinetic = KineticEnergy(s)
+	kinetic = KineticEnergy(s, 0)
 	for i := range n {
 		for j := i + 1; j < n; j++ {
 			dx, dy, dz := s.PosX[j]-s.PosX[i], s.PosY[j]-s.PosY[i], s.PosZ[j]-s.PosZ[i]

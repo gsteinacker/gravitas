@@ -13,7 +13,9 @@ type Preset struct {
 	Build func(n int) (*sim.State, sim.Params)
 }
 
-var defaultParams = sim.Params{Dt: 0.004, Softening: 0.06}
+// defaultParams: c = 10 makes relativistic effects visible near the central black holes
+// (v ≈ 0.3–0.5c in the inner disk, r_s = 0.04 for M = 2) while the galaxy itself stays Newtonian.
+var defaultParams = sim.Params{Dt: 0.004, Softening: 0.06, C: 10}
 
 var Presets = []Preset{
 	{"Spiral galaxy", func(n int) (*sim.State, sim.Params) {

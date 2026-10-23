@@ -24,6 +24,7 @@ func main() {
 	preset := flag.Int("preset", 1, "start scene (1-based)")
 	shot := flag.String("shot", "", "save a screenshot to this PNG file after -shot-after seconds and quit")
 	shotAfter := flag.Float64("shot-after", 4, "seconds before the screenshot is taken")
+	speedOfLight := flag.Float64("c", 0, "speed of light (0 = scene default, -1 = Newtonian)")
 	cpuprofile := flag.String("cpuprofile", "", "write a CPU profile of the whole run to this file")
 	flag.Parse()
 	if *cpuprofile != "" {
@@ -39,6 +40,12 @@ func main() {
 	p := max(0, min(len(scene.Presets)-1, *preset-1))
 
 	s, params := scene.Presets[p].Build(*n)
+	switch {
+	case *speedOfLight > 0:
+		params.C = *speedOfLight
+	case *speedOfLight < 0:
+		params.C = 0
+	}
 	var solver sim.Solver = &bh.Solver{Theta: *theta}
 	switch *solverName {
 	case "bh":

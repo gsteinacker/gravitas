@@ -13,6 +13,9 @@ import (
 
 const spriteSize = 32
 
+// minHolePixels keeps tiny horizons visible on screen.
+const minHolePixels = 3
+
 // StarRenderer draws a snapshot as additive glowing sprites, batched into few draw calls.
 type StarRenderer struct {
 	sprite  *ebiten.Image
@@ -74,8 +77,13 @@ func (sr *StarRenderer) Draw(dst *ebiten.Image, cam *Camera, sn *sim.Snapshot) {
 			continue
 		}
 		if sn.Kind[i] == sim.BlackHole {
-			r := float32(math.Max(4, 0.06*math.Sqrt(float64(sn.Mass[i]))*focal/depth))
-			sr.bhs = append(sr.bhs, blackHole{float32(sx), float32(sy), r})
+			// With a finite c the black disk is the event horizon r_s; without, a symbolic size.
+			r := 0.06 * math.Sqrt(float64(sn.Mass[i]))
+			if sn.C > 0 {
+				r = sim.SchwarzschildRadius(float64(sn.Mass[i]), sn.C)
+			}
+			px := float32(math.Max(minHolePixels, r*focal/depth))
+			sr.bhs = append(sr.bhs, blackHole{float32(sx), float32(sy), px})
 			continue
 		}
 		rel := float64(sn.Mass[i]) / meanMass
@@ -91,8 +99,11 @@ func (sr *StarRenderer) Draw(dst *ebiten.Image, cam *Camera, sn *sim.Snapshot) {
 	sr.flush(dst)
 
 	for _, bh := range sr.bhs {
-		vector.FillCircle(dst, bh.x, bh.y, bh.r*2.2, color.RGBA{60, 25, 5, 0}, true)
-		vector.StrokeCircle(dst, bh.x, bh.y, bh.r*1.4, bh.r*0.5, color.RGBA{255, 150, 50, 200}, true)
+		// Additive glow out to the shadow edge (~2.6 r_s), the photon sphere at 1.5 r_s, and the
+		// horizon. The glow uses a premultiplied color with zero alpha, so it adds light.
+		ring := float32(math.Max(1.5, float64(bh.r)*0.25))
+		vector.FillCircle(dst, bh.x, bh.y, bh.r*2.6, color.RGBA{18, 7, 2, 0}, true)
+		vector.StrokeCircle(dst, bh.x, bh.y, bh.r*1.5, ring, color.RGBA{255, 150, 50, 220}, true)
 		vector.FillCircle(dst, bh.x, bh.y, bh.r, color.Black, true)
 	}
 }

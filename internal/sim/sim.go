@@ -1,10 +1,12 @@
 package sim
 
+import "math"
+
 // Params are the physical and numerical parameters of a run, in units with G = 1.
 type Params struct {
 	Dt        float64 // global time step
 	Softening float64 // Plummer softening length ε
-	C         float64 // speed of light; 0 disables relativistic effects
+	C         float64 // speed of light; 0 disables relativistic effects (see relativity.go)
 }
 
 // Solver computes gravitational accelerations.
@@ -23,8 +25,12 @@ type Simulation struct {
 	// Epoch changes whenever bodies are added or the state is replaced, i.e. whenever the total
 	// energy changes for reasons other than integration error.
 	Epoch int
+	// ExternalEnergy is the total energy change caused by accretion and mergers since Reset,
+	// computed exactly at each event. Integration error is E - E0 - ExternalEnergy.
+	ExternalEnergy float64
 
 	accValid bool
+	holes    []int // scratch buffer for accrete
 }
 
 func New(s *State, solver Solver, p Params) *Simulation {
@@ -33,7 +39,7 @@ func New(s *State, solver Solver, p Params) *Simulation {
 
 // Reset replaces the state and restarts the clock.
 func (m *Simulation) Reset(s *State, p Params) {
-	m.State, m.Params, m.Time, m.Steps, m.accValid = s, p, 0, 0, false
+	m.State, m.Params, m.Time, m.Steps, m.accValid, m.ExternalEnergy = s, p, 0, 0, false, 0
 	m.Epoch++
 }
 
@@ -52,13 +58,18 @@ func (m *Simulation) Step() {
 		m.accValid = true
 	}
 	kick(s, 0.5*dt)
-	drift(s, dt)
+	drift(s, dt, m.Params.C)
 	m.Solver.Accelerations(s, m.Params)
 	kick(s, 0.5*dt)
+	if m.Params.C > 0 {
+		m.accrete()
+	}
 	m.Time += dt
 	m.Steps++
 }
 
+// kick changes the velocities by h·a. With C > 0 the stored velocity is the proper velocity
+// u = γv, for which du/dt = a holds exactly (see relativity.go).
 func kick(s *State, h float64) {
 	n := s.Len()
 	vx, vy, vz := s.VelX[:n], s.VelY[:n], s.VelZ[:n]
@@ -70,13 +81,25 @@ func kick(s *State, h float64) {
 	}
 }
 
-func drift(s *State, dt float64) {
+// drift moves the bodies by dt·v. With c > 0 the coordinate velocity is v = u / √(1 + u²/c²).
+func drift(s *State, dt, c float64) {
 	n := s.Len()
 	px, py, pz := s.PosX[:n], s.PosY[:n], s.PosZ[:n]
 	vx, vy, vz := s.VelX[:n], s.VelY[:n], s.VelZ[:n]
+	if c <= 0 {
+		for i := range px {
+			px[i] += dt * vx[i]
+			py[i] += dt * vy[i]
+			pz[i] += dt * vz[i]
+		}
+		return
+	}
+	invC2 := 1 / (c * c)
 	for i := range px {
-		px[i] += dt * vx[i]
-		py[i] += dt * vy[i]
-		pz[i] += dt * vz[i]
+		ux, uy, uz := vx[i], vy[i], vz[i]
+		f := dt / math.Sqrt(1+(ux*ux+uy*uy+uz*uz)*invC2)
+		px[i] += f * ux
+		py[i] += f * uy
+		pz[i] += f * uz
 	}
 }

@@ -14,6 +14,7 @@ type Snapshot struct {
 	Kind           []Kind
 	Time           float64
 	Steps          int
+	C              float64 // speed of light of the run, 0 = Newtonian
 	StepsPerSecond float64
 }
 
@@ -30,7 +31,7 @@ func (sn *Snapshot) fill(m *Simulation) {
 		sn.Z = append(sn.Z, float32(s.PosZ[i]))
 		sn.Mass = append(sn.Mass, float32(s.Mass[i]))
 	}
-	sn.Time, sn.Steps = m.Time, m.Steps
+	sn.Time, sn.Steps, sn.C = m.Time, m.Steps, m.Params.C
 }
 
 // Runner steps a Simulation in its own goroutine, decoupled from rendering.
@@ -54,7 +55,7 @@ type Runner struct {
 
 	// Energy diagnostics, owned by the simulation goroutine.
 	epoch       int
-	e0          float64
+	e0, ext0    float64 // baseline energy and ExternalEnergy at that moment
 	lastMeasure time.Time
 }
 
@@ -150,8 +151,9 @@ func (r *Runner) measureEnergy() {
 	e, q := TotalEnergy(r.sim)
 	r.quality.Store(int32(q))
 	if r.sim.Epoch != r.epoch {
-		r.epoch, r.e0 = r.sim.Epoch, e
+		r.epoch, r.e0, r.ext0 = r.sim.Epoch, e, r.sim.ExternalEnergy
 	}
+	e -= r.sim.ExternalEnergy - r.ext0 // accretion changes E legitimately
 	if q == EnergyUnknown || r.e0 == 0 {
 		r.drift.Store(math.Float64bits(math.NaN()))
 		return

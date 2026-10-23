@@ -10,7 +10,8 @@ internal/vec/        Vec3, minimal, inline-freundlich
 internal/sim/        Zustand (Struct-of-Arrays), Integrator, Diagnose, Solver-Interface
 internal/sim/direct/ Referenzlöser O(N²) (Tests, kleine N)
 internal/sim/bh/     Barnes-Hut-Octree, parallel
-internal/relativity/ Eigengeschwindigkeit, Horizont, Paczyński-Wiita
+internal/sim/        … inkl. relativity.go (u = γv) und accrete.go (Horizont, Verschmelzung).
+                     Kein eigenes Paket: Drift und Kick sind Hot Loops und gehören zum Integrator.
 internal/scene/      Anfangsbedingungen: Plummer-Kugel, Scheibengalaxie, Kollision, Presets
 internal/render/     Kamera, Punkt-Batching, Shader (Kage)
 internal/ui/         Eingabe, Werkzeuge (BH platzieren, Zeit steuern), HUD

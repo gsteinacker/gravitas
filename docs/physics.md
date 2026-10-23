@@ -6,8 +6,9 @@ brauchen einen ADR.
 ## Einheiten
 
 Simulationseinheiten mit `G = 1`. Längen, Massen und Zeiten sind dimensionslos.
-- `c` (Lichtgeschwindigkeit) ist ein **einstellbarer Parameter** (Default so gewählt, dass relativistische
-  Effekte in der Nähe Schwarzer Löcher sichtbar werden, typischerweise `c ≈ 10–50 · v_typisch`).
+- `c` (Lichtgeschwindigkeit) ist ein **einstellbarer Parameter**. Default ist `c = 10`: Die innere Scheibe
+  läuft mit 0,3–0,5 c, r_s eines Lochs mit M = 2 ist 0,04, die Galaxie als Ganzes bleibt Newtonsch.
+  Im UI mit `<` `>`, beim Start mit `-c`. `c = 0` (`-c -1`) schaltet alle relativistischen Effekte ab.
   „Reduziertes c“ ist der zentrale Trick: echte Werte würden die Effekte unsichtbar machen.
 
 ## Gravitation (Newton, geglättet)
@@ -34,6 +35,21 @@ Simulationseinheiten mit `G = 1`. Längen, Massen und Zeiten sind dimensionslos.
 | Endliche Ausbreitung der Gravitation | Retardierte Position aus Ringpuffer, **nur für BH-Quellen** | mittel | M5 (Spike) |
 | Visuell: Doppler-/Rotverschiebung | Farbverschiebung nach radialer Geschwindigkeit zur Kamera und nach Potentialtiefe | nur Rendering | M4 |
 | Visuell: Gravitationslinse | Bildschirm-Shader, der den Hintergrund um BHs verzerrt | nur Rendering | M4 |
+
+## Umsetzung (M3)
+
+- **Gespeicherte Geschwindigkeit ist bei c > 0 die Eigengeschwindigkeit u = γv** (`sim/relativity.go`).
+  Kick: `u += a·dt`, Drift: `x += dt · u/γ`, γ = √(1 + u²/c²). Das ist ein symplektischer Leapfrog für
+  H = Σ m c² (γ − 1) + U. Kinetische Energie m u²/(γ + 1), Impuls m·u.
+- Anfangsbedingungen und UI liefern Newtonsche Geschwindigkeiten. Szenen übernehmen sie direkt als u
+  (bei v ≪ c gleichwertig), platzierte Objekte werden mit `ProperVelocity` umgerechnet (Kappung bei 0,99 c).
+- **Akkretion** nach jedem Schritt (`sim/accrete.go`): Sterne innerhalb r_s werden verschluckt, Löcher
+  verschmelzen, wenn sich ihre Horizonte berühren (d < r_s1 + r_s2). Erhalten bleiben Ruhemasse und Impuls,
+  der Ort ist der Schwerpunkt. Vereinfachung: Die kinetische Energie des Sterns wird nicht zu Masse.
+- **Energiebuchhaltung:** Jede Absorption ändert die Gesamtenergie legitim. Die Änderung wird exakt berechnet
+  (O(N): Paarterm plus verschobene Masse für alle anderen Körper) und in `Simulation.ExternalEnergy`
+  aufsummiert. Die Drift im HUD ist (E − E0 − ΔE_extern)/|E0|, also nur der Integrationsfehler.
+- Bei einem Wechsel von c beginnt die Drift-Messung neu, weil die kinetische Energie von c abhängt.
 
 ## Was wir bewusst ignorieren
 
