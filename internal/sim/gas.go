@@ -47,16 +47,30 @@ func (m *Simulation) updateGas(dt float64) {
 	if g.CoolTime > 0 {
 		decay = math.Exp(-dt / g.CoolTime)
 	}
+	if g.UIon > 0 {
+		every := g.IonEvery
+		if every <= 0 {
+			every = 4
+		}
+		if m.Steps%every == 0 {
+			m.ionize()
+		}
+	}
 	for i := range s.Len() {
 		if s.Kind[i] != Gas {
 			continue
 		}
 		u := math.Max(s.U[i]+dt*m.dudt[i], 1e-3*g.UFloor)
-		if g.CoolTime > 0 && u > g.UFloor {
-			u = g.UFloor + (u-g.UFloor)*decay
+		// Relax towards the equilibrium temperature: photoheated where ionized, cooled elsewhere.
+		target := g.UFloor
+		if g.UIon > 0 {
+			target = g.UFloor + s.Ion[i]*(g.UIon-g.UFloor)
+		}
+		if g.CoolTime > 0 && (u > target || g.UIon > 0) {
+			u = target + (u-target)*decay
 		}
 		s.U[i] = u
-		if g.SFDensity > 0 && s.Rho[i] > g.SFDensity && m.divv[i] < 0 && u < 3*g.UFloor {
+		if g.SFDensity > 0 && s.Rho[i] > g.SFDensity && m.divv[i] < 0 && u < 3*g.UFloor && s.Ion[i] < 0.5 {
 			tff := math.Sqrt(3 * math.Pi / (32 * s.Rho[i]))
 			if unitRandom(s.ID[i], uint64(m.Steps)) < 1-math.Exp(-eff*dt/tff) {
 				s.Kind[i], s.Born[i], s.U[i] = Star, m.Time, 0

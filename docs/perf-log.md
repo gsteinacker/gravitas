@@ -9,6 +9,21 @@ Maschine: M4 Pro, GOMAXPROCS=12, Go 1.27.x
 Fazit: …
 ```
 
+## 2026-10-24 · T-038 · SPH-Nachbarsuche (Pferdekopf, 60k Gas)
+
+Maschine: M4 Pro (8P+4E), GOMAXPROCS=12, Go 1.27.1
+
+```
+BenchmarkHorsehead-12 (eine Hydro-Auswertung)
+  vorher                                   151.9 ms/op
+  Morton-Bitgrenzen statt Anzahl-Teilung    69.1 ms/op
+  sortierte Kopien, Morton-Reihenfolge      53.9 ms/op
+  h-Iteration pro Teilchen (Toleranz 5 %)   39.5 ms/op
+```
+
+In der App: 4,5 → 15–18 Schritte/s. Fazit: Blätter waren 4× größer als h, weil Morton-Abschnitte nach
+Anzahl geteilt wurden; jetzt kompakte Oktree-Zellen. Rest: symmetrische Kraftsuche (~60 %).
+
 ## 2026-10-24 · T-034 · θ auf DM-dominierter Galaxie
 
 Szene „Spiral galaxy“ mit Hernquist-Halo, Kraftfehler der Sterne gegenüber direkter Summe (6000) und Zeit (150k, CPU):

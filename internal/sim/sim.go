@@ -1,6 +1,9 @@
 package sim
 
-import "math"
+import (
+	"math"
+	"slices"
+)
 
 // Params are the physical and numerical parameters of a run, in units with G = 1.
 type Params struct {
@@ -25,6 +28,10 @@ type GasParams struct {
 	SFDensity    float64 `json:"sfDensity,omitempty"`    // star formation threshold density (0: none)
 	SFEfficiency float64 `json:"sfEfficiency,omitempty"` // stars formed per free-fall time (0 means 0.02)
 	YoungAge     float64 `json:"youngAge,omitempty"`     // stars younger than this are drawn young (0 means 5)
+	UIon         float64 `json:"uIon,omitempty"`         // internal energy of photoionized gas (0: no ionization)
+	IonOpacity   float64 `json:"ionOpacity,omitempty"`   // optical depth per neutral column density (mass per area)
+	IonRecomb    float64 `json:"ionRecomb,omitempty"`    // optical depth per ∫ρ_ion² dl (recombinations in ionized gas)
+	IonEvery     int     `json:"ionEvery,omitempty"`     // recompute ionization every n steps (0 means 4)
 }
 
 // Hydro computes the hydrodynamic part of the gas model.
@@ -80,6 +87,7 @@ type Simulation struct {
 
 	histories  map[uint64]*holeHistory // past positions of black holes by ID (retarded.go)
 	dudt, divv []float64               // gas: du/dt and velocity divergence (gas.go)
+	ion        ionizer                 // photoionization grid (ionize.go)
 	holeHists  []*holeHistory          // histories of m.holes, bound once per step
 }
 
@@ -90,6 +98,7 @@ func New(s *State, solver Solver, p Params) *Simulation {
 // Reset replaces the state and restarts the clock.
 func (m *Simulation) Reset(s *State, p Params) {
 	m.State, m.Params, m.Time, m.Steps, m.accValid, m.ExternalEnergy = s, p, 0, 0, false, 0
+	m.StarsFormed = 0
 	m.Epoch++
 	m.histories = nil
 }
@@ -98,6 +107,38 @@ func (m *Simulation) Reset(s *State, p Params) {
 func (m *Simulation) Restore(s *State, p Params, time float64, steps int, external float64) {
 	m.Reset(s, p)
 	m.Time, m.Steps, m.ExternalEnergy = time, steps, external
+}
+
+// Forces is the result of the last slow force evaluation. Saving it lets a run continue exactly
+// without recomputing it, which matters for gas: the smoothing-length iteration is not idempotent.
+type Forces struct {
+	AccX, AccY, AccZ, Rho, DuDt, DivV []float64
+}
+
+// LastForces returns a copy of the last force evaluation, or nil if there is none.
+func (m *Simulation) LastForces() *Forces {
+	if !m.accValid {
+		return nil
+	}
+	s := m.State
+	return &Forces{
+		AccX: slices.Clone(s.AccX), AccY: slices.Clone(s.AccY), AccZ: slices.Clone(s.AccZ),
+		Rho: slices.Clone(s.Rho), DuDt: slices.Clone(m.dudt), DivV: slices.Clone(m.divv),
+	}
+}
+
+// RestoreForces installs a saved force evaluation for the current state (after Restore).
+func (m *Simulation) RestoreForces(f *Forces) {
+	s, n := m.State, m.State.Len()
+	if f == nil || len(f.AccX) != n || len(f.Rho) != n {
+		return
+	}
+	copy(s.AccX, f.AccX)
+	copy(s.AccY, f.AccY)
+	copy(s.AccZ, f.AccZ)
+	copy(s.Rho, f.Rho)
+	m.dudt, m.divv = slices.Clone(f.DuDt), slices.Clone(f.DivV)
+	m.accValid = true
 }
 
 // SetDarkMatterOff switches the gravity of dark matter off or on (see Params.DarkMatterOff).

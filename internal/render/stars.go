@@ -28,6 +28,9 @@ type StarRenderer struct {
 	world   []worldHole
 
 	exposure       float64 // current auto exposure, 0 before the first frame
+	emNorm         float64 // current emission normalization
+	emLight        [exposureGridW * exposureGridH]float32
+	emLightMu      sync.Mutex
 	dustNorm       float64 // current dust normalization, 0 before the first frame
 	dustVerts      []ebiten.Vertex
 	backVerts      []ebiten.Vertex
@@ -130,6 +133,7 @@ func (sr *StarRenderer) DrawStars(dst, back *ebiten.Image, cam *Camera, sn *sim.
 	}
 	sr.lightW, sr.lightH = cam.W/exposureGridW, cam.H/exposureGridH
 	clear(sr.light[:])
+	clear(sr.emLight[:])
 	camPos := cam.Position()
 	doppler = doppler && sn.C > 0
 
@@ -181,7 +185,14 @@ func (sr *StarRenderer) DrawStars(dst, back *ebiten.Image, cam *Camera, sn *sim.
 				continue
 			}
 			if sn.Kind[i] == sim.Gas && fx.Gas {
-				sr.darkQuad(q, &view, float64(sn.X[i]), float64(sn.Y[i]), float64(sn.Z[i]), focal, gasAlpha, gasColor, cam)
+				// False-colour gas map: neutral gas blue, partly ionized green, ionized red.
+				ion := sn.GasIon[i]
+				tint := [3]float32{0.25 + 0.75*ion, 0.45 + 0.5*(1-2*abs32(ion-0.5)), 1 - 0.8*ion}
+				sr.darkQuad(q, &view, float64(sn.X[i]), float64(sn.Y[i]), float64(sn.Z[i]), focal, gasAlpha, tint, cam)
+				continue
+			}
+			if sn.Kind[i] == sim.Gas && sn.GasIon[i] > minEmissionIon {
+				sr.emissionQuad(q, split, i, &view, sn, focal, cam)
 				continue
 			}
 			if sn.Kind[i] != sim.Star {
@@ -241,6 +252,7 @@ func (sr *StarRenderer) DrawStars(dst, back *ebiten.Image, cam *Camera, sn *sim.
 		sr.verts, sr.backVerts = sr.backVerts, sr.verts
 	}
 	sr.adaptExposure()
+	sr.adaptEmission()
 }
 
 // Auto exposure (T-033): additive stars saturate an 8-bit image, and saturated pixels hide the
@@ -296,6 +308,77 @@ func (sr *StarRenderer) DrawHoles(dst *ebiten.Image) {
 		vector.StrokeCircle(dst, bh.X, bh.Y, bh.R*1.5, ring, color.RGBA{255, 150, 50, 220}, true)
 		vector.FillCircle(dst, bh.X, bh.Y, bh.R, color.Black, true)
 	}
+}
+
+// Emission of photoionized gas (T-037): Hα, brightness ∝ x² · m · ρ for ionized fraction x
+// (recombinations ∝ n_e n_p) over the particle's footprint, normalized like the star exposure.
+// The normalization puts the median of the emitting area at emissionTarget, so that the extended
+// H II region is visible and dense ionization fronts are brighter by their emission measure;
+// per sprite the brightness saturates softly instead of clipping.
+const (
+	minEmissionIon     = 0.2
+	emissionTarget     = 0.25
+	emissionPercentile = 0.5
+)
+
+var emissionColor = [3]float32{1.0, 0.16, 0.22} // Hα 656 nm (with a little Hβ)
+
+func (sr *StarRenderer) emissionQuad(q []ebiten.Vertex, split bool, i int, view *View, sn *sim.Snapshot, focal float64, cam *Camera) {
+	sx, sy, depth, ok := view.Project(float64(sn.X[i]), float64(sn.Y[i]), float64(sn.Z[i]))
+	size := math.Max(3, math.Min(120, 3*float64(sn.GasH[i])*focal/depth))
+	if !ok || sx < -size || sy < -size || sx > cam.W+size || sy > cam.H+size {
+		clear(q)
+		return
+	}
+	ion := float64(sn.GasIon[i])
+	brightness := ion * ion * float64(sn.Mass[i]) * float64(sn.GasRho[i]) / (size * size) // n_e n_p ∝ (x ρ)²
+	if cx, cy := int(sx/sr.lightW), int(sy/sr.lightH); cx >= 0 && cy >= 0 && cx < exposureGridW && cy < exposureGridH {
+		sr.emLightMu.Lock()
+		sr.emLight[cy*exposureGridW+cx] += float32(brightness * spriteMean * size * size)
+		sr.emLightMu.Unlock()
+	}
+	norm := sr.emNorm
+	if norm == 0 {
+		norm = 1
+	}
+	if split && sr.behindDust(sx, sy, depth) {
+		clear(q)
+		q = sr.backVerts[4*i : 4*i+4 : 4*i+4]
+	}
+	setQuad(q, float32(sx), float32(sy), float32(size/2), emissionColor[0], emissionColor[1], emissionColor[2], float32(-math.Expm1(-norm*brightness)))
+}
+
+// adaptEmission adjusts the emission normalization (like adaptExposure).
+func (sr *StarRenderer) adaptEmission() {
+	lit := sr.sortBuf[:0]
+	area := float32(sr.lightW * sr.lightH)
+	for _, v := range sr.emLight {
+		if v > 0 {
+			lit = append(lit, v/area)
+		}
+	}
+	sr.sortBuf = lit
+	if len(lit) == 0 {
+		return
+	}
+	slices.Sort(lit)
+	p := float64(lit[int(emissionPercentile*float64(len(lit)-1))])
+	target := emissionTarget / p
+	if sr.emNorm == 0 {
+		sr.emNorm = target
+	} else {
+		sr.emNorm += exposureSmoothing * (target - sr.emNorm)
+	}
+	if math.Abs(target-sr.emNorm) > 0.03*sr.emNorm {
+		sr.adapting = true
+	}
+}
+
+func abs32(x float32) float32 {
+	if x < 0 {
+		return -x
+	}
+	return x
 }
 
 // Tints of visualized dark matter and gas, and of young stars.
@@ -404,7 +487,7 @@ func (sr *StarRenderer) DrawDust(dst *ebiten.Image, cam *Camera, sn *sim.Snapsho
 		if sx < -size || sy < -size || sx > cam.W+size || sy > cam.H+size {
 			continue
 		}
-		column := float64(sn.Mass[i]) / (size * size)
+		column := float64(sn.Mass[i]) * (1 - float64(sn.GasIon[i])) / (size * size) // dust survives in neutral gas
 		if cx, cy := int(sx/sr.depthW), int(sy/sr.depthH); cx >= 0 && cy >= 0 && cx < depthGridW && cy < depthGridH {
 			sr.dustMass[cy*depthGridW+cx] += float64(sn.Mass[i])
 			sr.dustDepth[cy*depthGridW+cx] += float64(sn.Mass[i]) * depth

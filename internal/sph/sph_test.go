@@ -57,7 +57,7 @@ func TestNeighborSearchMatchesBruteForce(t *testing.T) {
 	for _, i := range []int{0, 17, 999, 1500} {
 		for _, sym := range []bool{false, true} {
 			got := map[int32]bool{}
-			tr.each(s.PosX[i], s.PosY[i], s.PosZ[i], 2*s.H[i], sym, s.PosX, s.PosY, s.PosZ, s.H, nil, func(j int32, _ float64) { got[j] = true })
+			tr.each(s.PosX[i], s.PosY[i], s.PosZ[i], 2*s.H[i], sym, nil, func(j int32, _ float64) { got[j] = true })
 			for j := range s.Len() {
 				r := s.Body(i).Pos.Sub(s.Body(j).Pos).Len()
 				lim := 2 * s.H[i]

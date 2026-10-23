@@ -20,12 +20,13 @@ import (
 // units (G = 1) unless a field says otherwise.
 type Spec struct {
 	Name       string            `json:"name"`
-	Info       string            `json:"info,omitempty"`         // shown in the HUD, e.g. the physical units
-	Intro      map[string]string `json:"intro,omitempty"`        // introduction per audience: school, lay, physics
-	Topics     []string          `json:"topics,omitempty"`       // related topics of the learning mode (internal/learn)
-	YearsPer   float64           `json:"yearsPerUnit,omitempty"` // physical years per simulation time unit
-	KmPerS     float64           `json:"velocityUnit,omitempty"` // km/s per simulation velocity unit (gas temperatures)
-	GasFloorK  float64           `json:"gasFloorK,omitempty"`    // cooling floor temperature in K (sets params.gas.uFloor)
+	Info       string            `json:"info,omitempty"`            // shown in the HUD, e.g. the physical units
+	Intro      map[string]string `json:"intro,omitempty"`           // introduction per audience: school, lay, physics
+	Topics     []string          `json:"topics,omitempty"`          // related topics of the learning mode (internal/learn)
+	YearsPer   float64           `json:"yearsPerUnit,omitempty"`    // physical years per simulation time unit
+	KmPerS     float64           `json:"velocityUnit,omitempty"`    // km/s per simulation velocity unit (gas temperatures)
+	GasFloorK  float64           `json:"gasFloorK,omitempty"`       // cooling floor temperature in K (sets params.gas.uFloor)
+	IonK       float64           `json:"ionTemperatureK,omitempty"` // temperature of photoionized gas in K (sets params.gas.uIon)
 	Params     sim.Params        `json:"params"`
 	Camera     *CameraSpec       `json:"camera,omitempty"`
 	Effects    string            `json:"effects,omitempty"` // render effects to switch on, e.g. "glow,trails"
@@ -43,7 +44,7 @@ type CameraSpec struct {
 
 // Component is one part of a scene; Type selects which fields apply.
 type Component struct {
-	Type     string     `json:"type"` // galaxy | plummer | hole | orbits
+	Type     string     `json:"type"` // galaxy | plummer | hole | orbits | star | gasbox | gasclump
 	Name     string     `json:"name,omitempty"`
 	Note     string     `json:"note,omitempty"`   // free text: sources, assumptions
 	Weight   float64    `json:"weight,omitempty"` // share of the particle budget; the last weighted component gets the rest
@@ -74,6 +75,15 @@ type Component struct {
 
 	// plummer: star cluster
 	Scale float64 `json:"scale,omitempty"`
+
+	// star: a single star, a source of ionizing radiation if Luminosity > 0
+	Luminosity float64 `json:"luminosity,omitempty"`
+
+	// gasbox: uniform gas in a box of Size (full extents) around Position, with density
+	// fluctuations of relative amplitude Perturb; gasbox and gasclump use GasK and Turbulence (km/s).
+	Size       [3]float64 `json:"size,omitempty"`
+	Perturb    float64    `json:"perturb,omitempty"`
+	Turbulence float64    `json:"turbulence,omitempty"`
 
 	// orbits: Keplerian orbits around a central hole of Mass at Position
 	AScale     float64    `json:"aScale,omitempty"` // multiplies the semi-major axes (unit conversion)
@@ -110,7 +120,7 @@ func ParseSpec(data []byte) (*Spec, error) {
 	}
 	for i, c := range s.Components {
 		switch c.Type {
-		case "galaxy", "plummer", "hole", "orbits":
+		case "galaxy", "plummer", "hole", "orbits", "star", "gasbox", "gasclump":
 			if p := c.HaloProfile; p != "" && p != "plummer" && p != "hernquist" {
 				return nil, fmt.Errorf("scene %q: component %d: unknown halo profile %q", s.Name, i, p)
 			}
@@ -136,6 +146,9 @@ func (sp *Spec) Build(n int) (*sim.State, sim.Params) {
 	if sp.GasFloorK > 0 {
 		p.Gas.UFloor = sp.specificEnergy(sp.GasFloorK)
 	}
+	if sp.IonK > 0 {
+		p.Gas.UIon = sp.specificEnergy(sp.IonK)
+	}
 	counts := sp.counts(n)
 	s := sim.NewState(n + len(sp.Components))
 	for i, c := range sp.Components {
@@ -148,6 +161,10 @@ func (sp *Spec) Build(n int) (*sim.State, sim.Params) {
 			s.Add(sim.Body{Pos: v3(c.Position), Vel: v3(c.Velocity), Mass: c.Mass, Kind: sim.BlackHole})
 		case "orbits":
 			addOrbits(s, c, counts[i])
+		case "star":
+			s.Add(sim.Body{Pos: v3(c.Position), Vel: v3(c.Velocity), Mass: c.Mass, Lum: c.Luminosity})
+		case "gasbox", "gasclump":
+			addGasCloud(s, c, counts[i], sp.specificEnergy(c.GasK), c.Turbulence/math.Max(sp.KmPerS, 1e-30))
 		}
 	}
 	if sp.BulkRest {
@@ -221,6 +238,50 @@ func addGalaxy(s *sim.State, c Component, n int, p sim.Params, gasU float64) {
 			cut = 0.99
 		}
 		AddHalo(s, nDark, haloMass, c.HaloScale, v3(c.Position), v3(c.Velocity), c.Seed+1000, cut)
+	}
+}
+
+// addGasCloud adds a box (gasbox) or Plummer sphere (gasclump) of equal-mass gas particles.
+func addGasCloud(s *sim.State, c Component, n int, u, turbulence float64) {
+	if n <= 0 {
+		return
+	}
+	rng := rand.New(rand.NewPCG(c.Seed, 0x6a5))
+	center, vel := v3(c.Position), v3(c.Velocity)
+	// Density fluctuations: plane waves with wavelengths of 15–60 % of the box width, applied by
+	// rejection sampling.
+	type mode struct{ kx, ky, kz, phase float64 }
+	var modes []mode
+	if c.Perturb > 0 {
+		for range 8 {
+			k := 2 * math.Pi / ((0.15 + 0.45*rng.Float64()) * math.Max(c.Size[0], 1e-9))
+			d := randomDirection(rng)
+			modes = append(modes, mode{k * d.X, k * d.Y, k * d.Z, 2 * math.Pi * rng.Float64()})
+		}
+	}
+	density := func(p vec.Vec3) float64 {
+		f := 1.0
+		for _, md := range modes {
+			f += c.Perturb / float64(len(modes)) * 2 * math.Sin(md.kx*p.X+md.ky*p.Y+md.kz*p.Z+md.phase)
+		}
+		return math.Max(0, f)
+	}
+	maxDensity := 1 + 2*c.Perturb
+	for range n {
+		var p vec.Vec3
+		for {
+			if c.Type == "gasclump" {
+				r := c.Scale / math.Sqrt(math.Pow(rng.Float64()*0.99+1e-6, -2.0/3.0)-1)
+				p = randomDirection(rng).Scale(r)
+			} else {
+				p = vec.Vec3{X: (rng.Float64() - 0.5) * c.Size[0], Y: (rng.Float64() - 0.5) * c.Size[1], Z: (rng.Float64() - 0.5) * c.Size[2]}
+			}
+			if rng.Float64()*maxDensity < density(p) {
+				break
+			}
+		}
+		v := vec.Vec3{X: rng.NormFloat64(), Y: rng.NormFloat64(), Z: rng.NormFloat64()}.Scale(turbulence)
+		s.Add(sim.Body{Pos: p.Add(center), Vel: v.Add(vel), Mass: c.Mass / float64(n), Kind: sim.Gas, U: u})
 	}
 }
 

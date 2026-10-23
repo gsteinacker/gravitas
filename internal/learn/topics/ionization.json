@@ -1,0 +1,11 @@
+{
+  "id": "ionization",
+  "title": "Ionisation und leuchtende Nebel",
+  "keys": "o u",
+  "short": "Heißes Sternlicht reißt Elektronen vom Wasserstoff ab – das Gas leuchtet rot und verdampft.",
+  "levels": {
+    "school": "Sehr heiße Sterne strahlen so viel energiereiches Licht aus, dass es die Atome im Gas um sie herum regelrecht auseinanderreißt: Die Elektronen werden abgelöst. Wenn sie später wieder eingefangen werden, leuchtet das Gas – beim Wasserstoff in einem schönen Rot.\n\nDas aufgeheizte Gas dehnt sich aus und wird weggeblasen. Nur hinter dichten Gasklumpen ist es im Schatten geschützt. So entstehen Säulen und Figuren wie der Pferdekopf.",
+    "lay": "Ultraviolettes Licht heißer O- und B-Sterne ionisiert Wasserstoff. Das Gas heizt sich dabei auf etwa 10.000 Grad auf – tausendmal heißer als die kalte Wolke daneben. Dieser Druckunterschied treibt das ionisierte Gas als Strom von der Wolke weg (Photoverdampfung).\n\nDichte Klumpen schirmen das Licht ab; dahinter bleibt kaltes Gas erhalten. So formen sich Säulen wie die „Säulen der Schöpfung“ oder der Pferdekopf. Das rote Leuchten (H-alpha) entsteht, wenn Elektronen und Protonen wieder zu Wasserstoff zusammenfinden; seine Helligkeit wächst mit dem Quadrat der Dichte.",
+    "physics": "Schattenwurf auf einem 64³-Gitter: τ = κ_n ∫ρ_neutral dl + κ_r ∫ρ_ion² dl entlang des Strahls zur Quelle, ionisierter Anteil max exp(−τ). Der Rekombinationsterm (~ n²) begrenzt die Front wie eine Strömgren-Sphäre; ionisiertes Gas ist ansonsten transparent. Photoheizung: u relaxiert gegen u_floor + x (u_ion − u_floor), u_ion bei 10⁴ K; Sternentstehung nur in neutralem Gas.\n\nEmission: H-alpha ~ x · m · ρ pro Fußabdruck (Emissionsmaß ~ n²), hinter Staub abgeschwächt. Grenzen: keine explizite Photonenbilanz oder Rekombinationszeit, kein diffuses Feld, eine Frequenz, keine Verdünnung mit r², kein Strahlungsdruck, keine Magnetfelder."
+  }
+}

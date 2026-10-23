@@ -2,7 +2,9 @@ package sph
 
 import (
 	"math"
+	"math/bits"
 	"slices"
+	"sort"
 )
 
 // The neighbor search uses a bounding volume hierarchy over the gas bodies in Morton order: an
@@ -23,6 +25,8 @@ type tree struct {
 	order []int32 // gas body indices in Morton order
 	keys  []uint64
 	nodes []node
+	// Copies of position and smoothing length in Morton order, for cache-friendly leaf scans.
+	sx, sy, sz, sh []float64
 }
 
 func spread(v uint64) uint64 {
@@ -65,10 +69,15 @@ func (t *tree) build(gas []int32, x, y, z, h []float64) {
 		return a - b
 	})
 	sorted := make([]int32, len(gas))
+	keys := make([]uint64, len(gas))
 	for k, j := range idx {
-		sorted[k] = t.order[j]
+		sorted[k], keys[k] = t.order[j], t.keys[j]
 	}
-	t.order = sorted
+	t.order, t.keys = sorted, keys
+	t.sx, t.sy, t.sz, t.sh = resize(t.sx, len(gas)), resize(t.sy, len(gas)), resize(t.sz, len(gas)), resize(t.sh, len(gas))
+	for k, i := range t.order {
+		t.sx[k], t.sy[k], t.sz[k], t.sh[k] = x[i], y[i], z[i], h[i]
+	}
 	t.nodes = t.nodes[:0]
 	if len(gas) > 0 {
 		t.buildNode(0, int32(len(gas)), x, y, z, h)
@@ -82,12 +91,24 @@ func (t *tree) buildNode(lo, hi int32, x, y, z, h []float64) int32 {
 		t.refit(ni, x, y, z, h)
 		return ni
 	}
-	mid := (lo + hi) / 2
+	mid := t.split(lo, hi)
 	l := t.buildNode(lo, mid, x, y, z, h)
 	r := t.buildNode(mid, hi, x, y, z, h)
 	t.nodes[ni].left, t.nodes[ni].right = l, r
 	t.refit(ni, x, y, z, h)
 	return ni
+}
+
+// split returns where to divide the sorted range [lo, hi): at the highest Morton bit in which its
+// keys differ, so that children are compact octree cells rather than arbitrary curve segments.
+func (t *tree) split(lo, hi int32) int32 {
+	a, b := t.keys[lo], t.keys[hi-1]
+	if a == b {
+		return (lo + hi) / 2
+	}
+	bit := uint64(1) << (63 - bits.LeadingZeros64(a^b))
+	mid := lo + int32(sort.Search(int(hi-lo), func(k int) bool { return t.keys[lo+int32(k)]&bit != 0 }))
+	return mid
 }
 
 // refit recomputes the box and hmax of node ni from its bodies or children.
@@ -116,6 +137,9 @@ func (t *tree) refit(ni int32, x, y, z, h []float64) {
 // refitH updates hmax after the smoothing lengths changed (children are built after parents, so a
 // reverse sweep visits children first).
 func (t *tree) refitH(h []float64) {
+	for k, i := range t.order {
+		t.sh[k] = h[i]
+	}
 	for ni := len(t.nodes) - 1; ni >= 0; ni-- {
 		nd := &t.nodes[ni]
 		if nd.left < 0 {
@@ -131,7 +155,7 @@ func (t *tree) refitH(h []float64) {
 
 // each calls fn for every gas body j within radius of (px, py, pz). With symmetric set, the radius
 // grows to 2·hmax of the visited nodes, i.e. j is reported if r < 2·max(hi, hj) (hi = radius/2).
-func (t *tree) each(px, py, pz, radius float64, symmetric bool, x, y, z, h []float64, stack []int32, fn func(j int32, r2 float64)) []int32 {
+func (t *tree) each(px, py, pz, radius float64, symmetric bool, stack []int32, fn func(j int32, r2 float64)) []int32 {
 	if len(t.nodes) == 0 {
 		return stack
 	}
@@ -140,30 +164,55 @@ func (t *tree) each(px, py, pz, radius float64, symmetric bool, x, y, z, h []flo
 		nd := &t.nodes[stack[len(stack)-1]]
 		stack = stack[:len(stack)-1]
 		reach := radius
-		if symmetric {
-			reach = math.Max(reach, 2*nd.hmax)
+		if symmetric && 2*nd.hmax > reach {
+			reach = 2 * nd.hmax
 		}
-		dx := math.Max(0, math.Max(nd.minX-px, px-nd.maxX))
-		dy := math.Max(0, math.Max(nd.minY-py, py-nd.maxY))
-		dz := math.Max(0, math.Max(nd.minZ-pz, pz-nd.maxZ))
-		if dx*dx+dy*dy+dz*dz >= reach*reach {
+		if boxDist2(nd, px, py, pz) >= reach*reach {
 			continue
 		}
 		if nd.left >= 0 {
 			stack = append(stack, nd.left, nd.right)
 			continue
 		}
-		for _, j := range t.order[nd.lo:nd.hi] {
-			ex, ey, ez := x[j]-px, y[j]-py, z[j]-pz
+		for k := nd.lo; k < nd.hi; k++ {
+			ex, ey, ez := t.sx[k]-px, t.sy[k]-py, t.sz[k]-pz
 			r2 := ex*ex + ey*ey + ez*ez
 			lim := radius
-			if symmetric {
-				lim = math.Max(lim, 2*h[j])
+			if symmetric && 2*t.sh[k] > lim {
+				lim = 2 * t.sh[k]
 			}
 			if r2 < lim*lim {
-				fn(j, r2)
+				fn(t.order[k], r2)
 			}
 		}
 	}
 	return stack
+}
+
+// boxDist2 is the squared distance from (px, py, pz) to the box of nd (0 inside).
+func boxDist2(nd *node, px, py, pz float64) float64 {
+	var d2 float64
+	if d := nd.minX - px; d > 0 {
+		d2 += d * d
+	} else if d := px - nd.maxX; d > 0 {
+		d2 += d * d
+	}
+	if d := nd.minY - py; d > 0 {
+		d2 += d * d
+	} else if d := py - nd.maxY; d > 0 {
+		d2 += d * d
+	}
+	if d := nd.minZ - pz; d > 0 {
+		d2 += d * d
+	} else if d := pz - nd.maxZ; d > 0 {
+		d2 += d * d
+	}
+	return d2
+}
+
+func resize(s []float64, n int) []float64 {
+	if cap(s) < n {
+		return make([]float64, n)
+	}
+	return s[:n]
 }

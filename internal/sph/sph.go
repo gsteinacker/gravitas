@@ -9,15 +9,18 @@ import (
 
 // Solver implements sim.Hydro. All buffers are reused between calls.
 type Solver struct {
-	gas  []int32
-	tree tree
-	P, C []float64 // pressure and sound speed per body (gas only)
+	gas   []int32
+	tree  tree
+	P, C  []float64 // pressure and sound speed per body (gas only)
+	todo  []int32   // bodies whose smoothing length is still iterating
+	again []bool
 }
 
 const (
-	densityIterations = 3
-	betaFactor        = 2 // β = 2α (Monaghan)
-	hMinFactor        = 1e-3
+	maxDensityIterations = 6
+	hTolerance           = 0.05 // relative deviation of h from its target that ends the iteration
+	betaFactor           = 2    // β = 2α (Monaghan)
+	hMinFactor           = 1e-3
 )
 
 var stackPool = sync.Pool{New: func() any { s := make([]int32, 0, 64); return &s }}
@@ -54,25 +57,40 @@ func (sv *Solver) Forces(s *sim.State, p *sim.Params, dudt, divv []float64) {
 	sv.initH(s, ngb)
 	sv.tree.build(sv.gas, x, y, z, h)
 
-	// Density and smoothing length: h = ½ (3 N m / 4π ρ)^⅓ for N neighbors inside 2h.
-	for it := range densityIterations {
-		sim.ParallelFor(len(sv.gas), 256, 0, func(lo, hi int) {
+	// Density and smoothing length: h = ½ (3 N m / 4π ρ)^⅓ for N neighbors inside 2h. Each body
+	// iterates on its own until h is within hTolerance of that target (ρ_i depends only on h_i);
+	// since h carries over between steps, most bodies are done after the first pass.
+	sv.todo = append(sv.todo[:0], sv.tree.order...)
+	for it := 0; len(sv.todo) > 0; it++ {
+		last := it == maxDensityIterations-1
+		sv.again = resizeBool(sv.again, len(sv.todo))
+		sim.ParallelFor(len(sv.todo), 256, 0, func(lo, hi int) {
 			sp := stackPool.Get().(*[]int32)
-			for _, i := range sv.gas[lo:hi] {
+			for k, i := range sv.todo[lo:hi] {
 				hi := h[i]
 				var rho float64
-				*sp = sv.tree.each(x[i], y[i], z[i], 2*hi, false, x, y, z, h, *sp, func(j int32, r2 float64) {
+				*sp = sv.tree.each(x[i], y[i], z[i], 2*hi, false, *sp, func(j int32, r2 float64) {
 					rho += m[j] * W(math.Sqrt(r2), hi)
 				})
 				s.Rho[i] = rho
-				if it < densityIterations-1 {
-					target := 0.5 * math.Cbrt(3*ngb*m[i]/(4*math.Pi*rho))
+				target := 0.5 * math.Cbrt(3*ngb*m[i]/(4*math.Pi*rho))
+				redo := !last && math.Abs(target-hi) > hTolerance*hi
+				if redo {
 					h[i] = math.Max(0.5*hi, math.Min(2*hi, target)) // damped update
 				}
+				sv.again[lo+k] = redo
 			}
 			stackPool.Put(sp)
 		})
-		if it < densityIterations-1 {
+		j := 0
+		for k, i := range sv.todo {
+			if sv.again[k] {
+				sv.todo[j] = i
+				j++
+			}
+		}
+		sv.todo = sv.todo[:j]
+		if j > 0 {
 			sv.tree.refitH(h)
 		}
 	}
@@ -90,11 +108,11 @@ func (sv *Solver) Forces(s *sim.State, p *sim.Params, dudt, divv []float64) {
 	// Forces, energy equation and velocity divergence (symmetric variable-h formulation).
 	sim.ParallelFor(len(sv.gas), 256, 0, func(lo, hi int) {
 		sp := stackPool.Get().(*[]int32)
-		for _, i := range sv.gas[lo:hi] {
+		for _, i := range sv.tree.order[lo:hi] {
 			hi, rhoi, pi := h[i], s.Rho[i], P[i]
 			fi := pi / (rhoi * rhoi)
 			var ax, ay, az, du, dv float64
-			*sp = sv.tree.each(x[i], y[i], z[i], 2*hi, true, x, y, z, h, *sp, func(j int32, r2 float64) {
+			*sp = sv.tree.each(x[i], y[i], z[i], 2*hi, true, *sp, func(j int32, r2 float64) {
 				if j == i || r2 == 0 {
 					return
 				}
@@ -153,4 +171,11 @@ func (sv *Solver) initH(s *sim.State, ngb float64) {
 		}
 	}
 	_ = hMinFactor
+}
+
+func resizeBool(s []bool, n int) []bool {
+	if cap(s) < n {
+		return make([]bool, n)
+	}
+	return s[:n]
 }

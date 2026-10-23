@@ -15,8 +15,9 @@ import (
 	"galaxy/internal/vec"
 )
 
-// Format is the version of the file layout. Version 1 (no gas fields) is still readable.
-const Format = 2
+// Format is the version of the file layout. Versions 1 (no gas fields) and 2 (no radiation
+// fields) are still readable.
+const Format = 3
 
 // Extension of saved states.
 const Extension = ".galaxy"
@@ -36,13 +37,16 @@ type File struct {
 	Time     float64
 	Steps    int
 	External float64 // Simulation.ExternalEnergy
+	Formed   int     // Simulation.StarsFormed (since format 3)
 	Camera   Camera
 
 	PosX, PosY, PosZ []float64
 	VelX, VelY, VelZ []float64
 	Mass             []float64
 	Kind             []sim.Kind
-	U, Born          []float64 // since format 2: gas internal energy, birth time of stars from gas
+	U, Born          []float64   // since format 2: gas internal energy, birth time of stars from gas
+	Lum, Ion, H      []float64   // since format 3: ionizing luminosity, ionized fraction, smoothing length
+	Forces           *sim.Forces // since format 3: last force evaluation, for an exact continuation
 }
 
 // Capture copies the simulation. Call it on the simulation goroutine (sim.Runner.Do).
@@ -50,11 +54,13 @@ func Capture(m *sim.Simulation, sp *scene.Spec, cam Camera) *File {
 	s := m.State
 	return &File{
 		Format: Format, Saved: time.Now(), Scene: *sp, Params: m.Params,
-		Time: m.Time, Steps: m.Steps, External: m.ExternalEnergy, Camera: cam,
+		Time: m.Time, Steps: m.Steps, External: m.ExternalEnergy, Formed: m.StarsFormed, Camera: cam,
 		PosX: slices.Clone(s.PosX), PosY: slices.Clone(s.PosY), PosZ: slices.Clone(s.PosZ),
 		VelX: slices.Clone(s.VelX), VelY: slices.Clone(s.VelY), VelZ: slices.Clone(s.VelZ),
 		Mass: slices.Clone(s.Mass), Kind: slices.Clone(s.Kind),
 		U: slices.Clone(s.U), Born: slices.Clone(s.Born),
+		Lum: slices.Clone(s.Lum), Ion: slices.Clone(s.Ion), H: slices.Clone(s.H),
+		Forces: m.LastForces(),
 	}
 }
 
@@ -70,9 +76,15 @@ func (f *File) State() *sim.State {
 		if i < len(f.U) {
 			b.U = f.U[i]
 		}
+		if i < len(f.Lum) {
+			b.Lum = f.Lum[i]
+		}
 		s.Add(b)
 		if i < len(f.Born) {
 			s.Born[i] = f.Born[i]
+		}
+		if i < len(f.Ion) {
+			s.Ion[i], s.H[i] = f.Ion[i], f.H[i]
 		}
 	}
 	return s
@@ -81,6 +93,8 @@ func (f *File) State() *sim.State {
 // Restore puts the saved state into m.
 func (f *File) Restore(m *sim.Simulation) {
 	m.Restore(f.State(), f.Params, f.Time, f.Steps, f.External)
+	m.RestoreForces(f.Forces)
+	m.StarsFormed = f.Formed
 }
 
 // Write stores f at path atomically (temporary file, then rename).
@@ -123,8 +137,8 @@ func Read(path string) (*File, error) {
 	if err := gob.NewDecoder(zr).Decode(&f); err != nil {
 		return nil, fmt.Errorf("%s: %w", path, err)
 	}
-	if f.Format != Format && f.Format != 1 {
-		return nil, fmt.Errorf("%s: format %d, want 1 or %d", path, f.Format, Format)
+	if f.Format < 1 || f.Format > Format {
+		return nil, fmt.Errorf("%s: format %d, want 1 to %d", path, f.Format, Format)
 	}
 	if n := len(f.Mass); len(f.PosX) != n || len(f.VelZ) != n || len(f.Kind) != n {
 		return nil, fmt.Errorf("%s: inconsistent body arrays", path)

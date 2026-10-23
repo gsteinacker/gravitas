@@ -1,0 +1,159 @@
+{
+  "name": "Horsehead Nebula",
+  "intro": {
+    "school": "Der Pferdekopfnebel ist eine riesige Wolke aus kaltem Gas und Staub im Sternbild Orion. Ein heller, heißer Stern (Sigma Orionis) bestrahlt sie von oben: Seine Strahlung bringt das Gas zum roten Leuchten und bläst es weg. Nur hinter dichten Klumpen bleibt es im Schatten erhalten – so entsteht die Form des Pferdekopfs.",
+    "lay": "Barnard 33 ist eine dichte Staubsäule am Rand der Molekülwolke L1630, etwa 1375 Lichtjahre entfernt. Das UV-Licht von Sigma Orionis ionisiert das Gas an der Wolkenoberfläche; es leuchtet im roten Licht des Wasserstoffs (IC 434) und verdampft. Dichte Klumpen werfen Schatten, hinter denen das kalte Gas überlebt. Probier o (Gaskarte) und u (Staub).",
+    "physics": "Photoverdampfung einer Molekülwolkenkante: SPH-Gas (~1000 cm⁻³, Turbulenz 0,8 km/s, Dichteschwankungen; effektive Temperatur 100 K statt der kinetischen 20 K als Ersatz für die nicht simulierte magnetische und turbulente Stütze), ionisierende Quelle mit Schattenwurf (τ = κ_n ∫ρ_n dl + κ_r ∫ρ_i² dl auf 64³-Gitter), Photoheizung auf 10⁴ K. Die Kopf-Form ist als dichter Klumpen vorgegeben und wird durch die Verdampfung geformt; Strahlungsdruck, Magnetfelder und genaue Geometrie fehlen. 1 LE = 1 pc, 100 Sonnenmassen, 1 ZE = 1,49 Myr."
+  },
+  "topics": [
+    "ionization",
+    "dust",
+    "gas",
+    "cooling",
+    "star-formation"
+  ],
+  "info": "Barnard 33 / IC 434: photoevaporating cloud edge lit by sigma Orionis; 1 unit = 1 pc, 100 Msun; head shape seeded, then sculpted",
+  "yearsPerUnit": 1490000.0,
+  "params": {
+    "dt": 0.0005,
+    "softening": 0.02,
+    "c": 457000,
+    "gas": {
+      "coolTime": 0.01,
+      "sfDensity": 50,
+      "sfEfficiency": 0.02,
+      "youngAge": 0.2,
+      "ionOpacity": 60,
+      "ionRecomb": 2000,
+      "ionEvery": 4
+    }
+  },
+  "velocityUnit": 0.656,
+  "gasFloorK": 100,
+  "ionTemperatureK": 10000,
+  "camera": {
+    "target": [
+      0.3,
+      0,
+      0.3
+    ],
+    "distance": 6,
+    "pitch": 0,
+    "yaw": 0
+  },
+  "effects": "glow,dust",
+  "components": [
+    {
+      "type": "star",
+      "name": "sigma Orionis",
+      "mass": 0.4,
+      "luminosity": 1,
+      "position": [
+        -1.0,
+        0.5,
+        3.8
+      ],
+      "velocity": [
+        0,
+        0,
+        0
+      ],
+      "note": "O9.5V multiple system, ~3.5 pc from the cloud edge; in the image above the head. Only its radiation matters here; mass reduced to keep its gravity negligible."
+    },
+    {
+      "type": "gasbox",
+      "name": "L1630 cloud",
+      "weight": 0.55,
+      "mass": 12,
+      "size": [
+        6,
+        2,
+        3
+      ],
+      "position": [
+        0,
+        0.3,
+        -1.5
+      ],
+      "velocity": [
+        0,
+        0,
+        0
+      ],
+      "gasTemperature": 100,
+      "turbulence": 0.8,
+      "perturb": 0.5,
+      "seed": 51,
+      "note": "Molecular cloud edge: 1200 Msun in 36 pc³ (~1000 cm⁻³), turbulence 0.8 km/s, density fluctuations seed further pillars. 100 K is an effective temperature: the gas is ~20 K, but magnetic fields and small-scale turbulence (not simulated) add support, c_eff ≈ 0.8 km/s; without it the cloud collapses as a whole within 1 Myr."
+    },
+    {
+      "type": "gasclump",
+      "name": "Horse head",
+      "weight": 0.12,
+      "mass": 0.4,
+      "scale": 0.2,
+      "position": [
+        0.6,
+        0.0,
+        0.7
+      ],
+      "velocity": [
+        0,
+        0,
+        0
+      ],
+      "gasTemperature": 100,
+      "turbulence": 0.3,
+      "seed": 52,
+      "note": "Dense clump (~40 Msun) seeded where the head is; observed mass of the head ~30 Msun."
+    },
+    {
+      "type": "gasbox",
+      "name": "Neck",
+      "weight": 0.05,
+      "mass": 0.15,
+      "size": [
+        0.35,
+        0.35,
+        0.7
+      ],
+      "position": [
+        0.5,
+        0.0,
+        0.3
+      ],
+      "velocity": [
+        0,
+        0,
+        0
+      ],
+      "gasTemperature": 100,
+      "turbulence": 0.3,
+      "seed": 53
+    },
+    {
+      "type": "gasbox",
+      "name": "IC 434 (ionized medium)",
+      "weight": 0.28,
+      "mass": 4.3,
+      "size": [
+        16,
+        4,
+        10
+      ],
+      "position": [
+        0,
+        2.5,
+        5
+      ],
+      "velocity": [
+        0,
+        0,
+        0
+      ],
+      "gasTemperature": 8000,
+      "seed": 54,
+      "note": "Ionized gas of the sigma Ori H II region behind the head (~20 cm⁻³, 8000 K), large enough that its free edge does not reach the head for ~0.5 Myr. It glows in H-alpha and is the background against which the head is seen in silhouette."
+    }
+  ]
+}
