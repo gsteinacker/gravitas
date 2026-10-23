@@ -38,7 +38,7 @@ Simulationseinheiten mit `G = 1`. Längen, Massen und Zeiten sind dimensionslos.
 | Geschwindigkeitslimit | Integration der **Eigengeschwindigkeit** `u = γv`: `du/dt = a`, `v = u / √(1 + u²/c²)`. Garantiert `|v| < c` | ~0 | M3 |
 | Ereignishorizont | Schwarzschild-Radius `r_s = 2GM/c²`. Was hineinfällt, wird absorbiert (Masse und Impuls bleiben erhalten) | ~0 | M3 |
 | Innerste stabile Bahn (ISCO) | **Paczyński-Wiita-Potential** `Φ = −GM/(r − r_s)` für Quellen, die Schwarze Löcher sind. Liefert ISCO bei `3 r_s` und „Plunge“-Verhalten | gering (nur BH-Quellen) | M3 |
-| Endliche Ausbreitung der Gravitation | Retardierte Position aus Ringpuffer, **nur für BH-Quellen** | mittel | M5 (Spike) |
+| Endliche Ausbreitung der Gravitation | Optional (`p`, `-gravity`): retardierte Position aus Ringpuffer, ohne oder mit v·Δt-Extrapolation, **nur für BH-Quellen**. Siehe ADR-0005 | −23 % bei 100k | M5 ✓ |
 | Visuell: Doppler-/Rotverschiebung | Farbverschiebung nach radialer Geschwindigkeit zur Kamera und nach Potentialtiefe | nur Rendering | M4 |
 | Visuell: Gravitationslinse | Bildschirm-Shader, der den Hintergrund um BHs verzerrt | nur Rendering | M4 |
 

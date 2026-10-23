@@ -21,6 +21,7 @@ make check                     # fmt, vet, tests, Backlog-Validierung
 | Ziehen / Shift-Ziehen / Rad | Rotieren / Verschieben / Zoom |
 | `<` `>` | Lichtgeschwindigkeit verringern / erhöhen (kleines c → große Horizonte) |
 | `Leertaste` `.` `+` `-` `r` | Pause, Einzelschritt, Tempo, Neustart |
+| `p` | Gravitation der Löcher: instantan / retardiert / retardiert + v (Ausbreitung mit c) |
 | `g` `t` `l` `d` | Effekte: Glow, Spuren, Gravitationslinse, Doppler-Farben |
 | `h` `?`/`F1` `f` `c` | HUD, Hilfe, Vollbild, Ansicht zentrieren |
 

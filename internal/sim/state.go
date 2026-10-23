@@ -26,6 +26,9 @@ type State struct {
 	Mass             []float64
 	Kind             []Kind
 	Alive            []bool
+	ID               []uint64 // stable identity across Compact; assigned by Add
+
+	nextID uint64
 }
 
 // NewState returns an empty state with room for n bodies.
@@ -35,7 +38,7 @@ func NewState(n int) *State {
 		PosX: f(), PosY: f(), PosZ: f(),
 		VelX: f(), VelY: f(), VelZ: f(),
 		AccX: f(), AccY: f(), AccZ: f(),
-		Mass: f(), Kind: make([]Kind, 0, n), Alive: make([]bool, 0, n),
+		Mass: f(), Kind: make([]Kind, 0, n), Alive: make([]bool, 0, n), ID: make([]uint64, 0, n),
 	}
 }
 
@@ -49,6 +52,8 @@ func (s *State) Add(b Body) int {
 	s.Mass = append(s.Mass, b.Mass)
 	s.Kind = append(s.Kind, b.Kind)
 	s.Alive = append(s.Alive, true)
+	s.nextID++
+	s.ID = append(s.ID, s.nextID)
 	return s.Len() - 1
 }
 
@@ -72,11 +77,11 @@ func (s *State) Compact() {
 		s.PosX[j], s.PosY[j], s.PosZ[j] = s.PosX[i], s.PosY[i], s.PosZ[i]
 		s.VelX[j], s.VelY[j], s.VelZ[j] = s.VelX[i], s.VelY[i], s.VelZ[i]
 		s.AccX[j], s.AccY[j], s.AccZ[j] = s.AccX[i], s.AccY[i], s.AccZ[i]
-		s.Mass[j], s.Kind[j], s.Alive[j] = s.Mass[i], s.Kind[i], true
+		s.Mass[j], s.Kind[j], s.Alive[j], s.ID[j] = s.Mass[i], s.Kind[i], true, s.ID[i]
 		j++
 	}
 	s.PosX, s.PosY, s.PosZ = s.PosX[:j], s.PosY[:j], s.PosZ[:j]
 	s.VelX, s.VelY, s.VelZ = s.VelX[:j], s.VelY[:j], s.VelZ[:j]
 	s.AccX, s.AccY, s.AccZ = s.AccX[:j], s.AccY[:j], s.AccZ[:j]
-	s.Mass, s.Kind, s.Alive = s.Mass[:j], s.Kind[:j], s.Alive[:j]
+	s.Mass, s.Kind, s.Alive, s.ID = s.Mass[:j], s.Kind[:j], s.Alive[:j], s.ID[:j]
 }

@@ -4,9 +4,10 @@ import "math"
 
 // Params are the physical and numerical parameters of a run, in units with G = 1.
 type Params struct {
-	Dt        float64 // global time step
-	Softening float64 // Plummer softening length ε
-	C         float64 // speed of light; 0 disables relativistic effects (see relativity.go)
+	Dt        float64     // global time step
+	Softening float64     // Plummer softening length ε
+	C         float64     // speed of light; 0 disables relativistic effects (see relativity.go)
+	Gravity   GravityMode // propagation of the gravity of black holes (retarded.go)
 }
 
 // Solver computes star–star gravitational accelerations. Pairs involving a black hole are
@@ -41,6 +42,9 @@ type Simulation struct {
 	near                []int
 	farX, farY, farZ    []float64
 	fastX, fastY, fastZ []float64
+
+	histories map[uint64]*holeHistory // past positions of black holes by ID (retarded.go)
+	holeHists []*holeHistory          // histories of m.holes, bound once per step
 }
 
 func New(s *State, solver Solver, p Params) *Simulation {
@@ -51,13 +55,18 @@ func New(s *State, solver Solver, p Params) *Simulation {
 func (m *Simulation) Reset(s *State, p Params) {
 	m.State, m.Params, m.Time, m.Steps, m.accValid, m.ExternalEnergy = s, p, 0, 0, false, 0
 	m.Epoch++
+	m.histories = nil
 }
 
 // AddBody adds a body during a run. Accelerations are recomputed before the next kick.
 func (m *Simulation) AddBody(b Body) int {
 	m.accValid = false
 	m.Epoch++
-	return m.State.Add(b)
+	i := m.State.Add(b)
+	if b.Kind == BlackHole {
+		m.holeAppeared(i)
+	}
+	return i
 }
 
 // Step advances the simulation by one time step.
@@ -82,6 +91,7 @@ func (m *Simulation) Step() {
 	}
 	m.Time += dt
 	m.Steps++
+	m.recordHoles()
 }
 
 // kick changes the velocities by h·a. With C > 0 the stored velocity is the proper velocity

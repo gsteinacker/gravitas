@@ -113,6 +113,7 @@ type Game struct {
 	simTime            float64
 	c                  float64
 	substeps           int
+	gravity            sim.GravityMode
 }
 
 // SetEffects replaces the active render effects.
@@ -135,7 +136,10 @@ func NewGame(runner *sim.Runner, n, preset int) (*Game, error) {
 func (g *Game) LoadPreset(i int) {
 	g.preset = i
 	s, p := scene.Presets[i].Build(g.n)
-	g.runner.Do(func(m *sim.Simulation) { m.Reset(s, p) })
+	g.runner.Do(func(m *sim.Simulation) {
+		p.Gravity = m.Params.Gravity // the propagation mode is a user choice, not part of the scene
+		m.Reset(s, p)
+	})
 }
 
 func (g *Game) Update() error {
@@ -206,6 +210,11 @@ func (g *Game) applyChar(r rune) {
 		g.fx.Lensing = !g.fx.Lensing
 	case 'd', 'D':
 		g.fx.Doppler = !g.fx.Doppler
+	case 'p', 'P':
+		g.runner.Do(func(m *sim.Simulation) {
+			m.Params.Gravity = (m.Params.Gravity + 1) % 3
+			m.Epoch++ // energy is not conserved in retarded modes; restart the drift measurement
+		})
 	case 'r', 'R':
 		g.LoadPreset(g.preset)
 	case 'h', 'H':
@@ -307,7 +316,7 @@ func (g *Game) Draw(screen *ebiten.Image) {
 	g.cam.W, g.cam.H = float64(g.screenW), float64(g.screenH)
 	g.runner.View(func(sn *sim.Snapshot) {
 		g.pipeline.Draw(screen, &g.cam, sn, g.fx)
-		g.bodies, g.blackHoles, g.simTime, g.c, g.substeps = sn.Len(), 0, sn.Time, sn.C, sn.Substeps
+		g.bodies, g.blackHoles, g.simTime, g.c, g.substeps, g.gravity = sn.Len(), 0, sn.Time, sn.C, sn.Substeps, sn.Gravity
 		for _, k := range sn.Kind {
 			if k == sim.BlackHole {
 				g.blackHoles++
@@ -359,7 +368,7 @@ func (g *Game) drawHUD(screen *ebiten.Image) {
 		"%s%s\nbodies %d (black holes %d)   t = %.2f\nsteps/s %.0f (limit %s)   substeps near holes %d   FPS %.0f\n%s\n%s\n%s\n\ntool: %s, mass %.2f   (b/k/tab, m/n)",
 		scene.Presets[g.preset].Name, state, g.bodies, g.blackHoles, g.simTime,
 		g.runner.StepsPerSecond(), speed, g.substeps, ebiten.ActualFPS(), driftText(g.runner.EnergyDrift()),
-		lightText(g.c, g.bhMass), effectsText(g.fx), g.tool, g.bhMass), 10, 8)
+		lightText(g.c, g.bhMass, g.gravity), effectsText(g.fx), g.tool, g.bhMass), 10, 8)
 	if g.showHelp {
 		var b strings.Builder
 		for i, p := range scene.Presets {
@@ -367,7 +376,7 @@ func (g *Game) drawHUD(screen *ebiten.Image) {
 		}
 		b.WriteString("\nb k tab     tool: black hole / star cluster\nclick       place\nalt+drag    launch with velocity\nm n         mass +/-\n" +
 			"drag        rotate\nshift/right drag  pan\nwheel       zoom\n" +
-			"< >         speed of light\ng t l d     glow, trails, lens, doppler\nspace       pause\n.           single step\n+ -         speed\nr           restart\nc           center view\n" +
+			"< >         speed of light\np           hole gravity: instant / retarded / retarded+v\ng t l d     glow, trails, lens, doppler\nspace       pause\n.           single step\n+ -         speed\nr           restart\nc           center view\n" +
 			"f           fullscreen\nh           hide HUD\n? F1        hide this help")
 		ebitenutil.DebugPrintAt(screen, b.String(), 10, g.screenH-16*strings.Count(b.String(), "\n")-28)
 	}
@@ -385,12 +394,18 @@ func effectsText(fx render.Effects) string {
 		mark(fx.Lensing, "lens(l)") + mark(fx.Doppler, "doppler(d)")
 }
 
-// lightText shows the speed of light and the horizon size of the next placed black hole.
-func lightText(c, mass float64) string {
+// lightText shows the speed of light, the horizon size of the next placed black hole and how the
+// gravity of holes propagates.
+func lightText(c, mass float64, gravity sim.GravityMode) string {
 	if c <= 0 {
 		return "c = infinite (Newtonian)"
 	}
-	return fmt.Sprintf("c = %.1f  (< >)   r_s of mass %.2f = %.3f", c, mass, sim.SchwarzschildRadius(mass, c))
+	note := ""
+	if gravity != sim.GravityInstant {
+		note = ", energy not conserved"
+	}
+	return fmt.Sprintf("c = %.1f  (< >)   r_s of mass %.2f = %.3f   hole gravity: %s (p)%s",
+		c, mass, sim.SchwarzschildRadius(mass, c), gravity, note)
 }
 
 // driftText formats the energy drift; "~" marks a tree estimate (error ~1e-6 since T-028).

@@ -18,6 +18,7 @@ type Snapshot struct {
 	C              float64 // speed of light of the run, 0 = Newtonian
 	Substeps       int     // inner substeps near black holes in the last step
 	Version        uint64  // increases with every publish, so consumers can skip unchanged data
+	Gravity        GravityMode
 	StepsPerSecond float64
 }
 
@@ -38,7 +39,7 @@ func (sn *Snapshot) fill(m *Simulation) {
 			sn.VX[i], sn.VY[i], sn.VZ[i] = float32(s.VelX[i]/g), float32(s.VelY[i]/g), float32(s.VelZ[i]/g)
 		}
 	})
-	sn.Time, sn.Steps, sn.C, sn.Substeps = m.Time, m.Steps, m.Params.C, m.Substeps
+	sn.Time, sn.Steps, sn.C, sn.Substeps, sn.Gravity = m.Time, m.Steps, m.Params.C, m.Substeps, m.Params.Gravity
 }
 
 // Runner steps a Simulation in its own goroutine, decoupled from rendering.

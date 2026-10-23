@@ -119,11 +119,16 @@ func (m *Simulation) outerHoleForces(eps2 float64) {
 // holePull returns the acceleration of body i from all holes except itself.
 func (m *Simulation) holePull(i int, eps2 float64) (ax, ay, az float64) {
 	s := m.State
-	for _, h := range m.holes {
+	for k, h := range m.holes {
 		if h == i {
 			continue
 		}
-		dx, dy, dz := s.PosX[h]-s.PosX[i], s.PosY[h]-s.PosY[i], s.PosZ[h]-s.PosZ[i]
+		x, y, z := s.PosX[i], s.PosY[i], s.PosZ[i]
+		hx, hy, hz, visible := m.sourcePos(k, x, y, z)
+		if !visible {
+			continue // the hole's gravity has not reached this body yet
+		}
+		dx, dy, dz := hx-x, hy-y, hz-z
 		rs := PairRS(s.Kind[i], s.Mass[i], BlackHole, s.Mass[h], m.Params.C)
 		f := PairForce(s.Mass[h], dx*dx+dy*dy+dz*dz, eps2, rs)
 		ax, ay, az = ax+f*dx, ay+f*dy, az+f*dz
@@ -163,6 +168,7 @@ func (m *Simulation) stepSplit() {
 		m.Solver.Accelerations(s, m.Params)
 		m.accValid = true
 	}
+	m.bindHistories()
 	n := m.classify(eps2)
 	m.Substeps = n
 	m.outerHoleForces(eps2)
