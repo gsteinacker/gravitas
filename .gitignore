@@ -1,0 +1,6 @@
+/bin/
+*.test
+*.prof
+*.out
+/.idea/
+.claude/settings.local.json

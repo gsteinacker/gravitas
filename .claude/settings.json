@@ -1,0 +1,27 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(go build:*)",
+      "Bash(go test:*)",
+      "Bash(go vet:*)",
+      "Bash(go run ./tools/plan:*)",
+      "Bash(go run ./cmd/galaxy:*)",
+      "Bash(go mod tidy)",
+      "Bash(go doc:*)",
+      "Bash(go tool pprof:*)",
+      "Bash(gofmt:*)",
+      "Bash(make:*)",
+      "Bash(git status:*)",
+      "Bash(git diff:*)",
+      "Bash(git log:*)"
+    ]
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [{ "type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/gofmt.sh" }]
+      }
+    ]
+  }
+}
