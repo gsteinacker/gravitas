@@ -28,3 +28,12 @@ func TestPairPotentialLimits(t *testing.T) {
 		t.Error("PairRS must apply only to star–hole pairs, with the hole's radius")
 	}
 }
+
+func TestDarkMatterPairsAreNewtonianExceptWithHoles(t *testing.T) {
+	if PairRS(DarkMatter, 1, Star, 1, 10) != 0 || PairRS(Star, 1, DarkMatter, 1, 10) != 0 || PairRS(DarkMatter, 1, DarkMatter, 1, 10) != 0 {
+		t.Error("star–dark matter and dark matter pairs must be Newtonian")
+	}
+	if PairRS(DarkMatter, 1, BlackHole, 5, 10) != 0.1 {
+		t.Error("dark matter must feel the hole's Paczyński-Wiita potential")
+	}
+}

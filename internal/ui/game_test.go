@@ -3,10 +3,13 @@ package ui
 import (
 	"context"
 	"math"
+	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
 	"galaxy/internal/render"
+	"galaxy/internal/scene"
 	"galaxy/internal/sim"
 	"galaxy/internal/sim/direct"
 	"galaxy/internal/vec"
@@ -97,7 +100,7 @@ func TestPlaceClusterAddsBoundGroupAtCursor(t *testing.T) {
 	defer cancel()
 	go r.Run(ctx)
 
-	g, err := NewGame(r, 1000, 0)
+	g, err := NewGame(r, 1000, scene.Presets[0].Spec)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -128,4 +131,59 @@ func TestPlaceClusterAddsBoundGroupAtCursor(t *testing.T) {
 		}
 		time.Sleep(5 * time.Millisecond)
 	}
+}
+
+func TestFormatYears(t *testing.T) {
+	for y, want := range map[float64]string{2.5: "2.5 yr", 47200: "47.2 kyr", 13.2e6: "13.2 Myr", 1.09e9: "1.09 Gyr"} {
+		if got := formatYears(y); got != want {
+			t.Errorf("formatYears(%v) = %q, want %q", y, got, want)
+		}
+	}
+}
+
+func TestSaveAndLoadThroughTheGame(t *testing.T) {
+	sp := scene.Presets[2].Spec
+	s, p := sp.Build(500)
+	r := sim.NewRunner(sim.New(s, &direct.Solver{}, p))
+	r.SetPaused(true)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	go r.Run(ctx)
+	g, err := NewGame(r, 500, sp)
+	if err != nil {
+		t.Fatal(err)
+	}
+	g.cam.Yaw = 1.25
+	path := filepath.Join(t.TempDir(), "s.galaxy")
+	g.Save(path)
+	deadline := time.Now().Add(5 * time.Second)
+	for {
+		if _, err := os.Stat(path); err == nil {
+			break
+		}
+		if time.Now().After(deadline) {
+			t.Fatal("save file was not written")
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	g.cam.Yaw = 0
+	g.LoadPreset(0) // something else in between
+	if err := g.Load(path); err != nil {
+		t.Fatal(err)
+	}
+	if g.cam.Yaw != 1.25 || g.scene.Name != sp.Name {
+		t.Errorf("camera %v / scene %q not restored", g.cam.Yaw, g.scene.Name)
+	}
+	waitLen := func(want int) {
+		for time.Now().Before(deadline) {
+			n := 0
+			r.View(func(sn *sim.Snapshot) { n = sn.Len() })
+			if n == want {
+				return
+			}
+			time.Sleep(10 * time.Millisecond)
+		}
+		t.Fatalf("simulation has not been restored to %d bodies", want)
+	}
+	waitLen(500)
 }

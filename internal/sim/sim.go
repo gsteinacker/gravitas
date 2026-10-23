@@ -4,10 +4,21 @@ import "math"
 
 // Params are the physical and numerical parameters of a run, in units with G = 1.
 type Params struct {
-	Dt        float64     // global time step
-	Softening float64     // Plummer softening length ε
-	C         float64     // speed of light; 0 disables relativistic effects (see relativity.go)
-	Gravity   GravityMode // propagation of the gravity of black holes (retarded.go)
+	Dt        float64     `json:"dt"`                // global time step
+	Softening float64     `json:"softening"`         // Plummer softening length ε
+	C         float64     `json:"c"`                 // speed of light; 0 disables relativistic effects (see relativity.go)
+	Gravity   GravityMode `json:"gravity,omitempty"` // propagation of the gravity of black holes (retarded.go)
+	// DarkMatterOff switches off the gravity of dark matter: it still moves as test particles, so
+	// switching it back on finds the halos (roughly) where they were.
+	DarkMatterOff bool `json:"darkMatterOff,omitempty"`
+}
+
+// SourceMass is the gravitating mass of a body of kind k and mass m under p.
+func (p *Params) SourceMass(k Kind, m float64) float64 {
+	if k == DarkMatter && p.DarkMatterOff {
+		return 0
+	}
+	return m
 }
 
 // Solver computes star–star gravitational accelerations. Pairs involving a black hole are
@@ -56,6 +67,19 @@ func (m *Simulation) Reset(s *State, p Params) {
 	m.State, m.Params, m.Time, m.Steps, m.accValid, m.ExternalEnergy = s, p, 0, 0, false, 0
 	m.Epoch++
 	m.histories = nil
+}
+
+// Restore resets the simulation to a saved state, including its clock and energy bookkeeping.
+func (m *Simulation) Restore(s *State, p Params, time float64, steps int, external float64) {
+	m.Reset(s, p)
+	m.Time, m.Steps, m.ExternalEnergy = time, steps, external
+}
+
+// SetDarkMatterOff switches the gravity of dark matter off or on (see Params.DarkMatterOff).
+func (m *Simulation) SetDarkMatterOff(off bool) {
+	m.Params.DarkMatterOff = off
+	m.accValid = false
+	m.Epoch++ // the conserved energy changes its meaning
 }
 
 // AddBody adds a body during a run. Accelerations are recomputed before the next kick.

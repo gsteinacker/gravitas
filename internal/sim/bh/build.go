@@ -8,7 +8,7 @@ import (
 )
 
 // build sorts the stars by Morton key and rebuilds the tree, reusing all buffers.
-func (b *Solver) build(s *sim.State, theta float64) {
+func (b *Solver) build(s *sim.State, p *sim.Params, theta float64) {
 	minX, minY, minZ, maxX, maxY, maxZ := b.collect(s)
 	b.nodes = b.nodes[:0]
 	n := len(b.order)
@@ -35,7 +35,8 @@ func (b *Solver) build(s *sim.State, theta float64) {
 	staticChunks(n, b.Workers, func(_, lo, hi int) {
 		for k := lo; k < hi; k++ {
 			i := b.order[k]
-			b.sx[k], b.sy[k], b.sz[k], b.sm[k] = s.PosX[i], s.PosY[i], s.PosZ[i], s.Mass[i]
+			// Source masses: switched-off dark matter is in the tree as a target but pulls nothing.
+			b.sx[k], b.sy[k], b.sz[k], b.sm[k] = s.PosX[i], s.PosY[i], s.PosZ[i], p.SourceMass(s.Kind[i], s.Mass[i])
 		}
 	})
 
@@ -70,7 +71,7 @@ func (b *Solver) collect(s *sim.State) (minX, minY, minZ, maxX, maxY, maxZ float
 	for range max(1, b.workers()) {
 		parts = append(parts, part{})
 	}
-	isStar := func(i int) bool { return s.Alive[i] && s.Kind[i] == sim.Star }
+	isStar := func(i int) bool { return s.Alive[i] && s.Kind[i] != sim.BlackHole } // stars and dark matter
 	workers := staticChunks(n, len(parts), func(w, lo, hi int) {
 		p := part{minX: math.Inf(1), minY: math.Inf(1), minZ: math.Inf(1), maxX: math.Inf(-1), maxY: math.Inf(-1), maxZ: math.Inf(-1)}
 		for i := lo; i < hi; i++ {

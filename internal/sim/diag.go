@@ -29,7 +29,7 @@ const (
 
 // TotalEnergy returns K + U for periodic diagnostics.
 func TotalEnergy(m *Simulation) (float64, EnergyQuality) {
-	k := KineticEnergy(m.State, m.Params.C)
+	k := sourceKinetic(m.State, &m.Params)
 	if m.State.Len() <= exactEnergyLimit {
 		return k + PotentialEnergyParallel(m.State, m.Params), EnergyExact
 	}
@@ -53,7 +53,7 @@ func PotentialEnergyParallel(s *State, p Params) float64 {
 			for j := i + 1; j < n; j++ {
 				dx, dy, dz := s.PosX[j]-xi, s.PosY[j]-yi, s.PosZ[j]-zi
 				rs := PairRS(s.Kind[i], s.Mass[i], s.Kind[j], s.Mass[j], p.C)
-				part += PairPotential(s.Mass[i], s.Mass[j], dx*dx+dy*dy+dz*dz, eps2, rs)
+				part += PairPotential(p.SourceMass(s.Kind[i], s.Mass[i]), p.SourceMass(s.Kind[j], s.Mass[j]), dx*dx+dy*dy+dz*dz, eps2, rs)
 			}
 		}
 		mu.Lock()
@@ -61,6 +61,18 @@ func PotentialEnergyParallel(s *State, p Params) float64 {
 		mu.Unlock()
 	})
 	return sum
+}
+
+// sourceKinetic is the kinetic energy of the gravitating bodies; switched-off dark matter moves as
+// test particles and is not part of the conserved energy.
+func sourceKinetic(s *State, p *Params) float64 {
+	var k float64
+	for i := range s.Len() {
+		if p.SourceMass(s.Kind[i], 1) > 0 {
+			k += kinetic(s.Mass[i], s.VelX[i], s.VelY[i], s.VelZ[i], p.C)
+		}
+	}
+	return k
 }
 
 // KineticEnergy returns the total kinetic energy, relativistic for c > 0 (see kinetic).

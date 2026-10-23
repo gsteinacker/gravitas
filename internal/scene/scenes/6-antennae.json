@@ -1,0 +1,79 @@
+{
+  "name": "Antennae galaxies",
+  "info": "Toomre & Toomre (1972): two equal disks, parabolic prograde encounter, tidal tails; read as 1 unit = 2.5 kpc, 2e10 Msun, c reduced to 10",
+  "yearsPerUnit": 13200000.0,
+  "params": {
+    "dt": 0.004,
+    "softening": 0.04,
+    "c": 10
+  },
+  "removeBulkMotion": true,
+  "camera": {
+    "target": [
+      0,
+      0,
+      0
+    ],
+    "distance": 16,
+    "pitch": 60,
+    "yaw": 0
+  },
+  "components": [
+    {
+      "type": "galaxy",
+      "name": "NGC 4038",
+      "weight": 0.5,
+      "mass": 1,
+      "diskFraction": 0.25,
+      "diskScale": 0.5,
+      "diskMin": 0.05,
+      "diskMax": 2.5,
+      "thickness": 0.03,
+      "dispersion": 0.1,
+      "haloScale": 1.5,
+      "darkFraction": 0.4,
+      "holeMass": 0.01,
+      "inclination": 60,
+      "position": [
+        -5,
+        0,
+        0
+      ],
+      "velocity": [
+        0.2915,
+        -0.1225,
+        0
+      ],
+      "seed": 21,
+      "note": "Parabolic orbit of two unit masses (point-mass approximation) from separation 10 to pericenter 1.5: v_rel = (-0.583, 0.245, 0). Both disks spin with the orbit (prograde), tilted 60 deg."
+    },
+    {
+      "type": "galaxy",
+      "name": "NGC 4039",
+      "weight": 0.5,
+      "mass": 1,
+      "diskFraction": 0.25,
+      "diskScale": 0.5,
+      "diskMin": 0.05,
+      "diskMax": 2.5,
+      "thickness": 0.03,
+      "dispersion": 0.1,
+      "haloScale": 1.5,
+      "darkFraction": 0.4,
+      "holeMass": 0.01,
+      "inclination": -60,
+      "orientation": 30,
+      "position": [
+        5,
+        0,
+        0
+      ],
+      "velocity": [
+        -0.2915,
+        0.1225,
+        0
+      ],
+      "seed": 22
+    }
+  ]
+}

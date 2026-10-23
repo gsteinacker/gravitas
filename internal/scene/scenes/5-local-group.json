@@ -1,0 +1,151 @@
+{
+  "name": "Local Group",
+  "info": "real distances and velocities, 1 unit = 100 kpc, real c, dark matter halos (invisible)",
+  "yearsPerUnit": 470000000.0,
+  "params": {
+    "dt": 0.002,
+    "softening": 0.003,
+    "c": 1449
+  },
+  "removeBulkMotion": true,
+  "camera": {
+    "target": [
+      -1.9,
+      3.1,
+      -1.4
+    ],
+    "distance": 16,
+    "pitch": 35,
+    "yaw": 0
+  },
+  "components": [
+    {
+      "type": "galaxy",
+      "name": "Milky Way",
+      "weight": 0.33,
+      "mass": 1.0,
+      "diskFraction": 0.06,
+      "diskScale": 0.03,
+      "diskMin": 0.004,
+      "diskMax": 0.15,
+      "thickness": 0.003,
+      "dispersion": 0.1,
+      "haloScale": 0.2,
+      "darkFraction": 0.5,
+      "holeMass": 4.3e-06,
+      "seed": 11,
+      "note": "Units: length 100 kpc, mass 1e12 Msun, so velocity 207 km/s and time 0.47 Gyr; c = 3e5/207. Galactic coordinates, disk in the xy plane. Sgr A* 4.3e6 Msun."
+    },
+    {
+      "type": "galaxy",
+      "name": "Andromeda (M31)",
+      "weight": 0.42,
+      "mass": 1.5,
+      "diskFraction": 0.07,
+      "diskScale": 0.055,
+      "diskMin": 0.005,
+      "diskMax": 0.25,
+      "thickness": 0.004,
+      "dispersion": 0.1,
+      "haloScale": 0.25,
+      "darkFraction": 0.5,
+      "holeMass": 0.00014,
+      "inclination": 77,
+      "orientation": 38,
+      "position": [
+        -3.754,
+        6.207,
+        -2.867
+      ],
+      "velocity": [
+        0.203,
+        -0.335,
+        0.451
+      ],
+      "seed": 12,
+      "note": "l = 121.2, b = -21.6 deg, 780 kpc. Approaching at 110 km/s plus ~57 km/s tangential (van der Marel et al. 2019; direction of the tangential part assumed). Disk orientation approximate."
+    },
+    {
+      "type": "galaxy",
+      "name": "Triangulum (M33)",
+      "weight": 0.09,
+      "mass": 0.05,
+      "diskFraction": 0.1,
+      "diskScale": 0.015,
+      "diskMin": 0.002,
+      "diskMax": 0.08,
+      "thickness": 0.002,
+      "dispersion": 0.1,
+      "haloScale": 0.06,
+      "darkFraction": 0.5,
+      "inclination": 54,
+      "orientation": 23,
+      "position": [
+        -4.95,
+        5.198,
+        -4.364
+      ],
+      "velocity": [
+        -0.237,
+        0.185,
+        0.451
+      ],
+      "seed": 13,
+      "note": "l = 133.6, b = -31.3 deg, 840 kpc, ~216 kpc from M31, assumed on a bound, somewhat sub-circular orbit around M31. No central black hole detected."
+    },
+    {
+      "type": "galaxy",
+      "name": "Large Magellanic Cloud",
+      "weight": 0.11,
+      "mass": 0.1,
+      "diskFraction": 0.03,
+      "diskScale": 0.015,
+      "diskMin": 0.002,
+      "diskMax": 0.06,
+      "thickness": 0.002,
+      "dispersion": 0.15,
+      "haloScale": 0.05,
+      "darkFraction": 0.5,
+      "inclination": 35,
+      "position": [
+        -0.01,
+        -0.41,
+        -0.28
+      ],
+      "velocity": [
+        -0.28,
+        -1.09,
+        1.07
+      ],
+      "seed": 14,
+      "note": "Galactocentric position (-1, -41, -28) kpc and velocity (-57, -226, 221) km/s (Kallivayalil et al. 2013); mass ~1e11 Msun."
+    },
+    {
+      "type": "galaxy",
+      "name": "Small Magellanic Cloud",
+      "weight": 0.05,
+      "mass": 0.01,
+      "diskFraction": 0.05,
+      "diskScale": 0.008,
+      "diskMin": 0.001,
+      "diskMax": 0.03,
+      "thickness": 0.003,
+      "dispersion": 0.2,
+      "haloScale": 0.02,
+      "darkFraction": 0.5,
+      "inclination": 64,
+      "position": [
+        0.15,
+        -0.38,
+        -0.44
+      ],
+      "velocity": [
+        0.09,
+        -0.74,
+        0.74
+      ],
+      "seed": 15,
+      "note": "Galactocentric position (15, -38, -44) kpc and velocity (19, -153, 153) km/s; mass ~1e10 Msun."
+    }
+  ]
+}

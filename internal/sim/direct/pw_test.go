@@ -97,3 +97,27 @@ func TestStarHoleForcesConserveMomentum(t *testing.T) {
 		t.Errorf("momentum changed by %.3g", d)
 	}
 }
+
+func TestSwitchedOffDarkMatterIsATestParticle(t *testing.T) {
+	with := randomState(400, 3)
+	without := sim.NewState(200)
+	for i := range with.Len() {
+		if i%2 == 1 {
+			with.Kind[i] = sim.DarkMatter
+		} else {
+			without.Add(with.Body(i))
+		}
+	}
+	p := sim.Params{Softening: 0.05, DarkMatterOff: true}
+	(&Solver{}).Accelerations(with, p)
+	(&Solver{}).Accelerations(without, p)
+	for i := 0; i < with.Len(); i += 2 {
+		j := i / 2
+		if with.AccX[i] != without.AccX[j] || with.AccY[i] != without.AccY[j] || with.AccZ[i] != without.AccZ[j] {
+			t.Fatalf("star %d feels switched-off dark matter", i)
+		}
+	}
+	if with.AccX[1] == 0 && with.AccY[1] == 0 {
+		t.Error("switched-off dark matter must still feel the stars")
+	}
+}

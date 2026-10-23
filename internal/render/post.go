@@ -18,6 +18,7 @@ type Effects struct {
 	Doppler bool // relativistic color shift (T-017)
 	Lensing bool // gravitational lens around black holes (T-018)
 	Trails  bool // fading star trails (T-019)
+	Dark    bool // draw dark matter as a faint violet haze
 }
 
 // ParseEffects reads a comma-separated list such as "glow,lens,doppler,trails".
@@ -34,8 +35,10 @@ func ParseEffects(list string) (Effects, error) {
 			fx.Lensing = true
 		case "trails":
 			fx.Trails = true
+		case "dark":
+			fx.Dark = true
 		default:
-			return fx, fmt.Errorf("unknown effect %q (want glow, doppler, lens, trails)", name)
+			return fx, fmt.Errorf("unknown effect %q (want glow, doppler, lens, trails, dark)", name)
 		}
 	}
 	return fx, nil
@@ -112,7 +115,7 @@ type Pipeline struct {
 	// the simulation publishes far fewer snapshots than the display shows frames (T-030).
 	drawnVersion uint64
 	drawnView    View
-	drawnDoppler bool
+	drawnFx      Effects
 	drawnValid   bool
 }
 
@@ -192,10 +195,11 @@ func (p *Pipeline) Draw(screen *ebiten.Image, cam *Camera, sn *sim.Snapshot, fx 
 	w, h := screen.Bounds().Dx(), screen.Bounds().Dy()
 	p.resize(w, h)
 
-	if view := cam.View(); !p.drawnValid || sn.Version != p.drawnVersion || view != p.drawnView || fx.Doppler != p.drawnDoppler {
+	starFx := Effects{Doppler: fx.Doppler, Dark: fx.Dark} // the options that change the star image
+	if view := cam.View(); !p.drawnValid || sn.Version != p.drawnVersion || view != p.drawnView || starFx != p.drawnFx {
 		p.stars.Clear()
-		p.Stars.DrawStars(p.stars, cam, sn, fx.Doppler)
-		p.drawnValid, p.drawnVersion, p.drawnView, p.drawnDoppler = true, sn.Version, view, fx.Doppler
+		p.Stars.DrawStars(p.stars, cam, sn, starFx)
+		p.drawnValid, p.drawnVersion, p.drawnView, p.drawnFx = true, sn.Version, view, starFx
 	}
 	stars := p.stars
 	if fx.Trails {
@@ -223,7 +227,9 @@ func (p *Pipeline) Draw(screen *ebiten.Image, cam *Camera, sn *sim.Snapshot, fx 
 	if holes := p.Stars.Holes(); fx.Lensing && len(holes) > 0 {
 		count := min(len(holes), maxLensHoles)
 		for i := range count {
-			e := lensFactor * holes[i].R
+			// The physical radius: the drawn one is clamped to stay visible, which would make tiny
+			// holes (e.g. at the real c of the Local Group) lens like huge ones.
+			e := lensFactor * holes[i].PhysR
 			p.uniform[4*i], p.uniform[4*i+1], p.uniform[4*i+2] = holes[i].X, holes[i].Y, e*e
 		}
 		p.lensed.DrawRectShader(w, h, p.lens, &ebiten.DrawRectShaderOptions{

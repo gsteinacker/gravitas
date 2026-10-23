@@ -74,7 +74,7 @@ func (b *Solver) theta() float64 {
 }
 
 func (b *Solver) Accelerations(s *sim.State, p sim.Params) {
-	b.build(s, b.theta())
+	b.build(s, &p, b.theta())
 	eps2 := p.Softening * p.Softening
 	if b.GPU && len(b.nodes) > 0 && GPUAvailable() == nil {
 		b.walkGPU(eps2)

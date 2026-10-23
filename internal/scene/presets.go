@@ -1,63 +1,30 @@
 package scene
 
-import (
-	"math"
+import "galaxy/internal/sim"
 
-	"galaxy/internal/sim"
-	"galaxy/internal/vec"
-)
-
-// Preset is a named starting scene for roughly n stars.
+// Preset is a named starting scene for roughly n bodies, built from a Spec.
 type Preset struct {
 	Name  string
+	Spec  *Spec
 	Build func(n int) (*sim.State, sim.Params)
 }
 
-// defaultParams: c = 10 makes relativistic effects visible near the central black holes
-// (v ≈ 0.3–0.5c in the inner disk, r_s = 0.04 for M = 2) while the galaxy itself stays Newtonian.
-var defaultParams = sim.Params{Dt: 0.004, Softening: 0.06, C: 10}
+// FromSpec wraps a scene recipe as a preset.
+func FromSpec(sp *Spec) Preset {
+	return Preset{Name: sp.Name, Spec: sp, Build: sp.Build}
+}
 
-var Presets = []Preset{
-	{"Spiral galaxy", func(n int) (*sim.State, sim.Params) {
-		s := sim.NewState(n + 1)
-		AddDisk(s, DiskConfig{
-			N: n, StarMass: 1, BHMass: 2, ScaleRadius: 0.8, MinRadius: 0.15, MaxRadius: 4,
-			Thickness: 0.03, Softening: defaultParams.Softening, Dispersion: 0.12, Inclination: 0, Seed: 1,
-		})
-		return s, defaultParams
-	}},
-	{"Galaxy collision", func(n int) (*sim.State, sim.Params) {
-		s := sim.NewState(n + 2)
-		AddDisk(s, DiskConfig{
-			N: n * 3 / 5, StarMass: 0.6, BHMass: 1.2, ScaleRadius: 0.7, MinRadius: 0.15, MaxRadius: 3,
-			Thickness: 0.03, Softening: defaultParams.Softening, Dispersion: 0.12,
-			Center: vec.Vec3{X: -4, Y: -1.2}, Velocity: vec.Vec3{X: 0.32},
-			Inclination: 0.3, Seed: 2,
-		})
-		AddDisk(s, DiskConfig{
-			N: n - n*3/5, StarMass: 0.4, BHMass: 0.8, ScaleRadius: 0.6, MinRadius: 0.15, MaxRadius: 2.5,
-			Thickness: 0.03, Softening: defaultParams.Softening, Dispersion: 0.12,
-			Center: vec.Vec3{X: 4, Y: 1.2}, Velocity: vec.Vec3{X: -0.32},
-			Inclination: -1.1, Orientation: 0.8, Seed: 3,
-		})
-		RemoveBulkMotion(s)
-		return s, defaultParams
-	}},
-	{"Star cluster", func(n int) (*sim.State, sim.Params) {
-		s := sim.NewState(n)
-		AddPlummer(s, n, 1, 1, vec.Vec3{}, vec.Vec3{}, 4)
-		RemoveBulkMotion(s)
-		return s, defaultParams
-	}},
-	{"Black hole binary in a cluster", func(n int) (*sim.State, sim.Params) {
-		s := sim.NewState(n + 2)
-		AddPlummer(s, n, 1, 1.2, vec.Vec3{}, vec.Vec3{}, 5)
-		// Two equal black holes on a circular orbit of separation d.
-		const m, d = 0.5, 0.8
-		v := math.Sqrt(m / (2 * d))
-		s.Add(sim.Body{Pos: vec.Vec3{X: -d / 2}, Vel: vec.Vec3{Y: -v}, Mass: m, Kind: sim.BlackHole})
-		s.Add(sim.Body{Pos: vec.Vec3{X: d / 2}, Vel: vec.Vec3{Y: v}, Mass: m, Kind: sim.BlackHole})
-		RemoveBulkMotion(s)
-		return s, defaultParams
-	}},
+// Presets are the built-in scenes (scenes/*.json), selectable with the number keys.
+var Presets = mustBuiltin()
+
+func mustBuiltin() []Preset {
+	specs, err := Builtin()
+	if err != nil {
+		panic("built-in scenes: " + err.Error()) // embedded files, covered by tests
+	}
+	presets := make([]Preset, len(specs))
+	for i, sp := range specs {
+		presets[i] = FromSpec(sp)
+	}
+	return presets
 }

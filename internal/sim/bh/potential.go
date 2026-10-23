@@ -14,7 +14,7 @@ func (b *Solver) PotentialEnergy(s *sim.State, p sim.Params) float64 {
 }
 
 func (b *Solver) potentialWith(s *sim.State, p sim.Params, theta float64) float64 {
-	b.build(s, theta)
+	b.build(s, &p, theta)
 	eps2 := p.Softening * p.Softening
 	var mu sync.Mutex
 	var sum float64 // −Σ_i Σ_j U_ij over ordered pairs, so U = −sum / 2
@@ -22,7 +22,7 @@ func (b *Solver) potentialWith(s *sim.State, p sim.Params, theta float64) float6
 		var part float64
 		for k := lo; k < hi; k++ {
 			i := b.order[k]
-			part += b.sm[k]*b.walkPotential(b.sx[k], b.sy[k], b.sz[k], int32(k), eps2) - b.holePotential(s, i, p.C, eps2)
+			part += b.sm[k]*b.walkPotential(b.sx[k], b.sy[k], b.sz[k], int32(k), eps2) - b.holePotential(s, &p, i, p.C, eps2)
 		}
 		mu.Lock()
 		sum += part
@@ -36,7 +36,7 @@ func (b *Solver) potentialWith(s *sim.State, p sim.Params, theta float64) float6
 			dx, dy, dz := b.sx[k]-x, b.sy[k]-y, b.sz[k]-z
 			sum -= sim.PairPotential(s.Mass[i], b.sm[k], dx*dx+dy*dy+dz*dz, eps2, rs)
 		}
-		sum -= b.holePotential(s, i, p.C, eps2)
+		sum -= b.holePotential(s, &p, i, p.C, eps2)
 	}
 	return -sum / 2
 }
@@ -81,7 +81,7 @@ func (b *Solver) walkPotential(x, y, z float64, self int32, eps2 float64) float6
 }
 
 // holePotential returns Σ_h U(i, h) over all black holes h ≠ i, using the pair model.
-func (b *Solver) holePotential(s *sim.State, i int32, c, eps2 float64) float64 {
+func (b *Solver) holePotential(s *sim.State, p *sim.Params, i int32, c, eps2 float64) float64 {
 	x, y, z := s.PosX[i], s.PosY[i], s.PosZ[i]
 	var u float64
 	for _, h := range b.holes {
@@ -90,7 +90,7 @@ func (b *Solver) holePotential(s *sim.State, i int32, c, eps2 float64) float64 {
 		}
 		dx, dy, dz := s.PosX[h]-x, s.PosY[h]-y, s.PosZ[h]-z
 		rs := sim.PairRS(s.Kind[i], s.Mass[i], sim.BlackHole, s.Mass[h], c)
-		u += sim.PairPotential(s.Mass[i], s.Mass[h], dx*dx+dy*dy+dz*dz, eps2, rs)
+		u += sim.PairPotential(p.SourceMass(s.Kind[i], s.Mass[i]), s.Mass[h], dx*dx+dy*dy+dz*dz, eps2, rs)
 	}
 	return u
 }

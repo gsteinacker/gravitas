@@ -66,6 +66,12 @@ Simulationseinheiten mit `G = 1`. Längen, Massen und Zeiten sind dimensionslos.
 - Gemessen: Kreisbahn bei 6 r_s und 0,34 c ist stabil, gestört bei 2 r_s stürzt sie hinein (die Newtonsche
   Kontrolle bleibt gebunden). Mehraufwand ~2,5 % bei 100k.
 
+## Dunkle Materie (ADR-0006)
+
+Halos aus unsichtbaren Teilchen (`DarkMatter`), gravitativ wie Sterne. Mit `x` lässt sich ihre Gravitation
+abschalten (sie fliegen dann als Testteilchen weiter), mit `v` werden sie sichtbar. Galaxien in den Szenen
+5–7 haben Halos mit ~85–95 % der Masse.
+
 ## Was wir bewusst ignorieren
 
 - Allgemeine Relativität jenseits der obigen Näherungen (keine Metrik, kein Frame-Dragging).

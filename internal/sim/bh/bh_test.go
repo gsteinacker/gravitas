@@ -259,10 +259,10 @@ func BenchmarkBuild(b *testing.B) {
 			b.Run(fmt.Sprintf("N=%d/workers=%d", n, workers), func(b *testing.B) {
 				s, _ := galaxy(n)
 				solver := &Solver{Workers: workers}
-				solver.build(s, DefaultTheta)
+				solver.build(s, &sim.Params{}, DefaultTheta)
 				b.ReportAllocs()
 				for b.Loop() {
-					solver.build(s, DefaultTheta)
+					solver.build(s, &sim.Params{}, DefaultTheta)
 				}
 			})
 		}
@@ -326,7 +326,7 @@ func TestQuadrupoleForceIsGradientOfPotential(t *testing.T) {
 	s := farCluster()
 	p := sim.Params{Softening: 1e-3}
 	b := &Solver{Theta: 0.95}
-	b.build(s, 0.95)
+	b.build(s, &p, 0.95)
 	eps2 := p.Softening * p.Softening
 	const h = 1e-6
 	x, y, z := 0.0, 0.5, 0.2

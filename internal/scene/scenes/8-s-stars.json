@@ -1,0 +1,158 @@
+{
+  "name": "S-stars around Sgr A*",
+  "info": "orbits of the S-stars, 1 unit = 1000 AU, real c; press < to shrink c and watch the orbits precess",
+  "yearsPerUnit": 2.43,
+  "params": {
+    "dt": 0.002,
+    "softening": 0.001,
+    "c": 153.5
+  },
+  "camera": {
+    "target": [
+      0,
+      0,
+      0
+    ],
+    "distance": 22,
+    "pitch": 60,
+    "yaw": 0
+  },
+  "effects": "glow,doppler,trails",
+  "components": [
+    {
+      "type": "orbits",
+      "name": "Sgr A*",
+      "weight": 1,
+      "mass": 1,
+      "aScale": 8.28,
+      "starMass": 3e-06,
+      "background": 1500,
+      "backgroundA": [
+        0.3,
+        25
+      ],
+      "seed": 41,
+      "note": "Units: length 1000 AU, mass 4.3e6 Msun (Sgr A*), so velocity 1954 km/s and time 2.43 yr; c = 3e5/1954. Elements rounded after Gillessen et al. 2017 (a in arcsec, 1 arcsec = 8280 AU at 8.28 kpc); mean anomalies are illustrative, not the observed epochs.",
+      "orbits": [
+        {
+          "name": "S2",
+          "a": 0.1255,
+          "e": 0.8839,
+          "i": 134.18,
+          "node": 226.94,
+          "peri": 65.51,
+          "anomaly": -20
+        },
+        {
+          "name": "S1",
+          "a": 0.595,
+          "e": 0.556,
+          "i": 119.14,
+          "node": 342.04,
+          "peri": 122.3,
+          "anomaly": 40
+        },
+        {
+          "name": "S4",
+          "a": 0.357,
+          "e": 0.3905,
+          "i": 80.33,
+          "node": 258.84,
+          "peri": 290.8,
+          "anomaly": 100
+        },
+        {
+          "name": "S8",
+          "a": 0.4047,
+          "e": 0.8031,
+          "i": 74.37,
+          "node": 315.43,
+          "peri": 346.7,
+          "anomaly": 160
+        },
+        {
+          "name": "S9",
+          "a": 0.2724,
+          "e": 0.644,
+          "i": 82.41,
+          "node": 156.6,
+          "peri": 150.6,
+          "anomaly": 220
+        },
+        {
+          "name": "S12",
+          "a": 0.2987,
+          "e": 0.8883,
+          "i": 33.56,
+          "node": 230.1,
+          "peri": 317.9,
+          "anomaly": 280
+        },
+        {
+          "name": "S13",
+          "a": 0.2641,
+          "e": 0.425,
+          "i": 24.7,
+          "node": 74.5,
+          "peri": 245.2,
+          "anomaly": 330
+        },
+        {
+          "name": "S14",
+          "a": 0.2863,
+          "e": 0.9761,
+          "i": 100.59,
+          "node": 226.38,
+          "peri": 334.59,
+          "anomaly": 190
+        },
+        {
+          "name": "S17",
+          "a": 0.3559,
+          "e": 0.397,
+          "i": 96.83,
+          "node": 191.62,
+          "peri": 326.0,
+          "anomaly": 60
+        },
+        {
+          "name": "S18",
+          "a": 0.2379,
+          "e": 0.471,
+          "i": 110.67,
+          "node": 49.11,
+          "peri": 349.46,
+          "anomaly": 130
+        },
+        {
+          "name": "S29",
+          "a": 0.428,
+          "e": 0.728,
+          "i": 105.8,
+          "node": 161.96,
+          "peri": 346.1,
+          "anomaly": 250
+        },
+        {
+          "name": "S38",
+          "a": 0.1416,
+          "e": 0.8201,
+          "i": 171.1,
+          "node": 101.06,
+          "peri": 17.99,
+          "anomaly": 300
+        },
+        {
+          "name": "S55",
+          "a": 0.1078,
+          "e": 0.7209,
+          "i": 150.1,
+          "node": 325.5,
+          "peri": 331.5,
+          "anomaly": 10
+        }
+      ],
+      "backgroundMass": 1e-07
+    }
+  ]
+}

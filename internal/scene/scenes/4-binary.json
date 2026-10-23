@@ -1,0 +1,49 @@
+{
+  "name": "Black hole binary in a cluster",
+  "info": "1 unit = 1 pc, 1e5 Msun: two 5e4 Msun holes in a cluster; c reduced to 10 (real ~14500)",
+  "yearsPerUnit": 47200.0,
+  "params": {
+    "dt": 0.004,
+    "softening": 0.06,
+    "c": 10
+  },
+  "removeBulkMotion": true,
+  "components": [
+    {
+      "type": "plummer",
+      "weight": 1,
+      "mass": 1,
+      "scale": 1.2,
+      "seed": 5
+    },
+    {
+      "type": "hole",
+      "mass": 0.5,
+      "position": [
+        -0.4,
+        0,
+        0
+      ],
+      "velocity": [
+        0,
+        -0.5590169943749475,
+        0
+      ],
+      "note": "Circular orbit at separation 0.8: v = sqrt(m / (2 d))."
+    },
+    {
+      "type": "hole",
+      "mass": 0.5,
+      "position": [
+        0.4,
+        0,
+        0
+      ],
+      "velocity": [
+        0,
+        0.5590169943749475,
+        0
+      ]
+    }
+  ]
+}

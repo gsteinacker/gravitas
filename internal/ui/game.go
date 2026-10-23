@@ -9,6 +9,7 @@ import (
 	"math"
 	"os"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/hajimehoshi/ebiten/v2"
@@ -17,6 +18,7 @@ import (
 	"github.com/hajimehoshi/ebiten/v2/vector"
 
 	"galaxy/internal/render"
+	"galaxy/internal/save"
 	"galaxy/internal/scene"
 	"galaxy/internal/sim"
 	"galaxy/internal/vec"
@@ -93,7 +95,6 @@ type Game struct {
 	pipeline *render.Pipeline
 	fx       render.Effects
 	n        int
-	preset   int
 	speed    int
 	bhMass   float64 // mass of the next placed object
 	showHUD  bool
@@ -112,6 +113,10 @@ type Game struct {
 	bodies, blackHoles int
 	simTime            float64
 	c                  float64
+	dark               int
+	darkOff            bool
+	scene              *scene.Spec
+	message            atomic.Pointer[note]
 	substeps           int
 	gravity            sim.GravityMode
 }
@@ -119,25 +124,102 @@ type Game struct {
 // SetEffects replaces the active render effects.
 func (g *Game) SetEffects(fx render.Effects) { g.fx = fx }
 
-func NewGame(runner *sim.Runner, n, preset int) (*Game, error) {
+// SaveDir is where F5 stores and F9 looks for saved states.
+const SaveDir = "saves"
+
+// Save captures the running simulation on its goroutine and writes it in the background.
+func (g *Game) Save(path string) {
+	sp, cam := g.scene, g.saveCamera()
+	g.runner.Do(func(m *sim.Simulation) {
+		f := save.Capture(m, sp, cam)
+		go func() {
+			if err := save.Write(path, f); err != nil {
+				g.notify("save failed: " + err.Error())
+				return
+			}
+			g.notify("saved " + path)
+		}()
+	})
+}
+
+// Load replaces the running simulation by a saved state, including camera and scene texts.
+func (g *Game) Load(path string) error {
+	f, err := save.Read(path)
+	if err != nil {
+		return err
+	}
+	g.restore(f)
+	g.notify("loaded " + path)
+	return nil
+}
+
+func (g *Game) restore(f *save.File) {
+	sp := f.Scene
+	g.applyScene(&sp)
+	g.cam.Target = vec.Vec3{X: f.Camera.Target[0], Y: f.Camera.Target[1], Z: f.Camera.Target[2]}
+	g.cam.Yaw, g.cam.Pitch, g.cam.Distance = f.Camera.Yaw, f.Camera.Pitch, f.Camera.Distance
+	g.runner.Do(f.Restore)
+}
+
+func (g *Game) saveCamera() save.Camera {
+	c := g.cam
+	return save.Camera{Target: [3]float64{c.Target.X, c.Target.Y, c.Target.Z}, Yaw: c.Yaw, Pitch: c.Pitch, Distance: c.Distance}
+}
+
+// notify shows a short message in the HUD; safe to call from any goroutine.
+func (g *Game) notify(msg string) {
+	g.message.Store(&note{text: msg, until: time.Now().Add(4 * time.Second)})
+}
+
+type note struct {
+	text  string
+	until time.Time
+}
+
+// defaultEffects are used for scenes that do not name their own.
+var defaultEffects = render.Effects{Glow: true, Doppler: true, Lensing: true}
+
+// NewGame creates the game for a runner that already simulates sp (built for n bodies).
+func NewGame(runner *sim.Runner, n int, sp *scene.Spec) (*Game, error) {
 	pipeline, err := render.NewPipeline()
 	if err != nil {
 		return nil, err
 	}
-	return &Game{
-		runner: runner, cam: render.NewCamera(), pipeline: pipeline,
-		fx: render.Effects{Glow: true, Doppler: true, Lensing: true},
-		n:  n, preset: preset, speed: len(speedLevels) - 1, bhMass: 0.5,
+	g := &Game{
+		runner: runner, pipeline: pipeline,
+		n: n, speed: len(speedLevels) - 1, bhMass: 0.5,
 		showHUD: true, showHelp: true,
-	}, nil
+	}
+	g.applyScene(sp)
+	return g, nil
 }
 
-// LoadPreset replaces the running scene.
-func (g *Game) LoadPreset(i int) {
-	g.preset = i
-	s, p := scene.Presets[i].Build(g.n)
+// applyScene takes over the camera, effects and HUD texts of a scene.
+func (g *Game) applyScene(sp *scene.Spec) {
+	g.scene = sp
+	g.cam = render.NewCamera()
+	if c := sp.Camera; c != nil {
+		g.cam.Target = vec.Vec3{X: c.Target[0], Y: c.Target[1], Z: c.Target[2]}
+		g.cam.Distance, g.cam.Pitch, g.cam.Yaw = c.Distance, c.Pitch*math.Pi/180, c.Yaw*math.Pi/180
+	}
+	g.fx = defaultEffects
+	if sp.Effects != "" {
+		if fx, err := render.ParseEffects(sp.Effects); err == nil {
+			g.fx = fx
+		}
+	}
+}
+
+// LoadPreset replaces the running scene by built-in scene i.
+func (g *Game) LoadPreset(i int) { g.LoadScene(scene.Presets[i].Spec) }
+
+// LoadScene replaces the running scene.
+func (g *Game) LoadScene(sp *scene.Spec) {
+	g.applyScene(sp)
+	s, p := sp.Build(g.n)
 	g.runner.Do(func(m *sim.Simulation) {
-		p.Gravity = m.Params.Gravity // the propagation mode is a user choice, not part of the scene
+		// Propagation mode and dark matter switch are user choices, not part of the scene.
+		p.Gravity, p.DarkMatterOff = m.Params.Gravity, m.Params.DarkMatterOff
 		m.Reset(s, p)
 	})
 }
@@ -170,6 +252,14 @@ func (g *Game) handleKeys() {
 		g.runner.SetPaused(!g.runner.Paused())
 	case inpututil.IsKeyJustPressed(ebiten.KeyF1):
 		g.showHelp = !g.showHelp
+	case inpututil.IsKeyJustPressed(ebiten.KeyF5):
+		g.Save(save.NewPath(SaveDir))
+	case inpututil.IsKeyJustPressed(ebiten.KeyF9):
+		if path, err := save.Latest(SaveDir); err != nil {
+			g.notify(err.Error())
+		} else if err := g.Load(path); err != nil {
+			g.notify(err.Error())
+		}
 	}
 	g.runner.SetTargetSPS(speedLevels[g.speed])
 }
@@ -215,8 +305,12 @@ func (g *Game) applyChar(r rune) {
 			m.Params.Gravity = (m.Params.Gravity + 1) % 3
 			m.Epoch++ // energy is not conserved in retarded modes; restart the drift measurement
 		})
+	case 'x', 'X':
+		g.runner.Do(func(m *sim.Simulation) { m.SetDarkMatterOff(!m.Params.DarkMatterOff) })
+	case 'v', 'V':
+		g.fx.Dark = !g.fx.Dark
 	case 'r', 'R':
-		g.LoadPreset(g.preset)
+		g.LoadScene(g.scene)
 	case 'h', 'H':
 		g.showHUD = !g.showHUD
 	case '?':
@@ -317,9 +411,13 @@ func (g *Game) Draw(screen *ebiten.Image) {
 	g.runner.View(func(sn *sim.Snapshot) {
 		g.pipeline.Draw(screen, &g.cam, sn, g.fx)
 		g.bodies, g.blackHoles, g.simTime, g.c, g.substeps, g.gravity = sn.Len(), 0, sn.Time, sn.C, sn.Substeps, sn.Gravity
+		g.dark, g.darkOff = 0, sn.DarkMatterOff
 		for _, k := range sn.Kind {
-			if k == sim.BlackHole {
+			switch k {
+			case sim.BlackHole:
 				g.blackHoles++
+			case sim.DarkMatter:
+				g.dark++
 			}
 		}
 	})
@@ -364,11 +462,18 @@ func (g *Game) drawHUD(screen *ebiten.Image) {
 	if g.runner.Paused() {
 		state = "  [PAUSED]"
 	}
+	title := g.scene.Name + state
+	if g.scene.Info != "" {
+		title += "\n" + g.scene.Info
+	}
 	ebitenutil.DebugPrintAt(screen, fmt.Sprintf(
-		"%s%s\nbodies %d (black holes %d)   t = %.2f\nsteps/s %.0f (limit %s)   substeps near holes %d   FPS %.0f\n%s\n%s\n%s\n\ntool: %s, mass %.2f   (b/k/tab, m/n)",
-		scene.Presets[g.preset].Name, state, g.bodies, g.blackHoles, g.simTime,
+		"%s\nbodies %d (black holes %d)   %s\n%s\nsteps/s %.0f (limit %s)   substeps near holes %d   FPS %.0f\n%s\n%s\n%s\n\ntool: %s, mass %.2f   (b/k/tab, m/n)",
+		title, g.bodies, g.blackHoles, timeText(g.simTime, g.scene), darkText(g.dark, g.darkOff, g.fx.Dark),
 		g.runner.StepsPerSecond(), speed, g.substeps, ebiten.ActualFPS(), driftText(g.runner.EnergyDrift()),
 		lightText(g.c, g.bhMass, g.gravity), effectsText(g.fx), g.tool, g.bhMass), 10, 8)
+	if n := g.message.Load(); n != nil && time.Now().Before(n.until) {
+		ebitenutil.DebugPrintAt(screen, n.text, 10, g.screenH/2)
+	}
 	if g.showHelp {
 		var b strings.Builder
 		for i, p := range scene.Presets {
@@ -376,8 +481,8 @@ func (g *Game) drawHUD(screen *ebiten.Image) {
 		}
 		b.WriteString("\nb k tab     tool: black hole / star cluster\nclick       place\nalt+drag    launch with velocity\nm n         mass +/-\n" +
 			"drag        rotate\nshift/right drag  pan\nwheel       zoom\n" +
-			"< >         speed of light\np           hole gravity: instant / retarded / retarded+v\ng t l d     glow, trails, lens, doppler\nspace       pause\n.           single step\n+ -         speed\nr           restart\nc           center view\n" +
-			"f           fullscreen\nh           hide HUD\n? F1        hide this help")
+			"x v         dark matter: gravity on/off, show\n< >         speed of light\np           hole gravity: instant / retarded / retarded+v\ng t l d     glow, trails, lens, doppler\nspace       pause\n.           single step\n+ -         speed\nr           restart\nc           center view\n" +
+			"F5 F9       save / load latest (saves/)\nf           fullscreen\nh           hide HUD\n? F1        hide this help")
 		ebitenutil.DebugPrintAt(screen, b.String(), 10, g.screenH-16*strings.Count(b.String(), "\n")-28)
 	}
 }
@@ -406,6 +511,43 @@ func lightText(c, mass float64, gravity sim.GravityMode) string {
 	}
 	return fmt.Sprintf("c = %.1f  (< >)   r_s of mass %.2f = %.3f   hole gravity: %s (p)%s",
 		c, mass, sim.SchwarzschildRadius(mass, c), gravity, note)
+}
+
+// timeText shows the simulation time, in physical units if the scene defines them.
+func timeText(t float64, sp *scene.Spec) string {
+	if sp.YearsPer <= 0 {
+		return fmt.Sprintf("t = %.2f (no physical units)", t)
+	}
+	return fmt.Sprintf("t = %.2f (%s)", t, formatYears(t*sp.YearsPer))
+}
+
+// formatYears picks a readable unit: yr, kyr, Myr or Gyr.
+func formatYears(y float64) string {
+	switch a := math.Abs(y); {
+	case a >= 1e9:
+		return fmt.Sprintf("%.3g Gyr", y/1e9)
+	case a >= 1e6:
+		return fmt.Sprintf("%.3g Myr", y/1e6)
+	case a >= 1e3:
+		return fmt.Sprintf("%.3g kyr", y/1e3)
+	default:
+		return fmt.Sprintf("%.3g yr", y)
+	}
+}
+
+// darkText describes the dark matter of the scene, if any.
+func darkText(n int, off, shown bool) string {
+	if n == 0 {
+		return "no dark matter"
+	}
+	state, vis := "on", "hidden"
+	if off {
+		state = "OFF (test particles)"
+	}
+	if shown {
+		vis = "shown"
+	}
+	return fmt.Sprintf("dark matter %d bodies, gravity %s (x), %s (v)", n, state, vis)
 }
 
 // driftText formats the energy drift; "~" marks a tree estimate (error ~1e-6 since T-028).

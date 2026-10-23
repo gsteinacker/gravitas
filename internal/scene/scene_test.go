@@ -27,7 +27,7 @@ func TestPresetsBuildAndStayBound(t *testing.T) {
 				t.Fatalf("only %d bodies", s.Len())
 			}
 			c, m := sim.CenterOfMass(s)
-			if c.Len() > 1e-9*m && p.Name != "Spiral galaxy" {
+			if c.Len() > 1e-9*m && p.Spec.BulkRest {
 				t.Errorf("center of mass not at origin: %v", c)
 			}
 			k, u := sim.Energy(s, params.Softening)

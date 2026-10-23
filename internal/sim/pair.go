@@ -8,11 +8,11 @@ import "math"
 // conserved. Inside 1.5 r_s (photon sphere) the force is capped at its value there to avoid the
 // singularity at r_s; the ISCO at 3 r_s is unaffected. With rs = 0 everything is Newtonian.
 
-// PairRS returns the Schwarzschild radius governing the pair (i, j): that of the hole in a
-// star–hole pair, 0 otherwise.
+// PairRS returns the Schwarzschild radius governing the pair (i, j): that of the hole if exactly
+// one of them is a hole, 0 otherwise (dark matter counts like a star).
 func PairRS(ki Kind, mi float64, kj Kind, mj, c float64) float64 {
 	switch {
-	case c <= 0 || ki == kj:
+	case c <= 0 || (ki == BlackHole) == (kj == BlackHole):
 		return 0
 	case ki == BlackHole:
 		return SchwarzschildRadius(mi, c)

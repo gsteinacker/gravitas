@@ -58,8 +58,9 @@ func starColor(rel float64) (r, g, b float32) {
 
 // Hole is a black hole as projected on screen.
 type Hole struct {
-	X, Y float32 // screen position
-	R    float32 // horizon radius in pixels (at least minHolePixels)
+	X, Y  float32 // screen position
+	R     float32 // drawn horizon radius in pixels (at least minHolePixels)
+	PhysR float32 // actual horizon radius in pixels (for lensing; may be far below a pixel)
 }
 
 // Holes returns the black holes collected by the last DrawStars call.
@@ -67,16 +68,20 @@ func (sr *StarRenderer) Holes() []Hole { return sr.bhs }
 
 // DrawStars renders all stars of sn as seen by cam into dst and collects the black holes.
 // With doppler set, star colors and brightness follow the relativistic frequency shift.
-func (sr *StarRenderer) DrawStars(dst *ebiten.Image, cam *Camera, sn *sim.Snapshot, doppler bool) {
+func (sr *StarRenderer) DrawStars(dst *ebiten.Image, cam *Camera, sn *sim.Snapshot, fx Effects) {
+	doppler := fx.Doppler
 	n := sn.Len()
 	var starMass float64
-	stars := 0
+	stars, dark := 0, 0
 	sr.world = sr.world[:0]
 	for i := range n {
-		if sn.Kind[i] == sim.Star {
+		switch sn.Kind[i] {
+		case sim.Star:
 			starMass += float64(sn.Mass[i])
 			stars++
-		} else {
+		case sim.DarkMatter:
+			dark++
+		case sim.BlackHole:
 			sr.world = append(sr.world, worldHole{
 				x: float64(sn.X[i]), y: float64(sn.Y[i]), z: float64(sn.Z[i]),
 				rs: sim.SchwarzschildRadius(float64(sn.Mass[i]), sn.C), m: float64(sn.Mass[i]),
@@ -101,8 +106,12 @@ func (sr *StarRenderer) DrawStars(dst *ebiten.Image, cam *Camera, sn *sim.Snapsh
 		if r == 0 {
 			r = 0.06 * math.Sqrt(h.m)
 		}
-		sr.bhs = append(sr.bhs, Hole{float32(sx), float32(sy), float32(math.Max(minHolePixels, r*focal/depth))})
+		px := r * focal / depth
+		sr.bhs = append(sr.bhs, Hole{X: float32(sx), Y: float32(sy), R: float32(math.Max(minHolePixels, px)), PhysR: float32(px)})
 	}
+	// Dark matter is drawn much fainter than stars, scaled so that the total haze stays similar
+	// for any particle count.
+	darkAlpha := float32(math.Max(0.02, math.Min(0.25, 0.25*math.Sqrt(5000/math.Max(1, float64(dark))))))
 	// Every body owns 4 vertex slots, so the quads can be built in parallel without coordination;
 	// holes and culled stars get an empty quad.
 	view := cam.View()
@@ -110,6 +119,10 @@ func (sr *StarRenderer) DrawStars(dst *ebiten.Image, cam *Camera, sn *sim.Snapsh
 	sim.ParallelFor(n, 4096, 0, func(lo, hi int) {
 		for i := lo; i < hi; i++ {
 			q := sr.verts[4*i : 4*i+4 : 4*i+4]
+			if sn.Kind[i] == sim.DarkMatter && fx.Dark {
+				sr.darkQuad(q, &view, float64(sn.X[i]), float64(sn.Y[i]), float64(sn.Z[i]), focal, darkAlpha, cam)
+				continue
+			}
 			if sn.Kind[i] != sim.Star {
 				clear(q)
 				continue
@@ -162,6 +175,20 @@ func (sr *StarRenderer) DrawHoles(dst *ebiten.Image) {
 		vector.StrokeCircle(dst, bh.X, bh.Y, bh.R*1.5, ring, color.RGBA{255, 150, 50, 220}, true)
 		vector.FillCircle(dst, bh.X, bh.Y, bh.R, color.Black, true)
 	}
+}
+
+// darkColor is the tint of visualized dark matter.
+var darkColor = [3]float32{0.55, 0.35, 1.0}
+
+// darkQuad writes the quad of one dark matter particle, or an empty quad if it is off screen.
+func (sr *StarRenderer) darkQuad(q []ebiten.Vertex, view *View, x, y, z, focal float64, alpha float32, cam *Camera) {
+	sx, sy, depth, ok := view.Project(x, y, z)
+	size := math.Max(3, math.Min(16, 0.04*focal/depth))
+	if !ok || sx < -size || sy < -size || sx > cam.W+size || sy > cam.H+size {
+		clear(q)
+		return
+	}
+	setQuad(q, float32(sx), float32(sy), float32(size/2), darkColor[0], darkColor[1], darkColor[2], alpha)
 }
 
 // setQuad writes a sprite quad centered at (x, y) with half size h into the 4 vertices of q.

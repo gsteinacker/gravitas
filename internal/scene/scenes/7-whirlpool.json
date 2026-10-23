@@ -1,0 +1,67 @@
+{
+  "name": "Whirlpool galaxy (M51)",
+  "info": "spiral with a companion passing below its disk, after models of the M51 / NGC 5195 encounter; read as 1 unit = 2.5 kpc, 2e10 Msun, c reduced to 10",
+  "yearsPerUnit": 13200000.0,
+  "params": {
+    "dt": 0.004,
+    "softening": 0.04,
+    "c": 10
+  },
+  "removeBulkMotion": true,
+  "camera": {
+    "target": [
+      0,
+      0,
+      0
+    ],
+    "distance": 11,
+    "pitch": 55,
+    "yaw": 0
+  },
+  "components": [
+    {
+      "type": "galaxy",
+      "name": "M51",
+      "weight": 0.75,
+      "mass": 1,
+      "diskFraction": 0.3,
+      "diskScale": 0.5,
+      "diskMin": 0.05,
+      "diskMax": 3,
+      "thickness": 0.03,
+      "dispersion": 0.08,
+      "haloScale": 1.2,
+      "darkFraction": 0.4,
+      "holeMass": 0.01,
+      "seed": 31
+    },
+    {
+      "type": "galaxy",
+      "name": "NGC 5195",
+      "weight": 0.25,
+      "mass": 0.3,
+      "diskFraction": 0.4,
+      "diskScale": 0.2,
+      "diskMin": 0.02,
+      "diskMax": 0.8,
+      "thickness": 0.05,
+      "dispersion": 0.2,
+      "haloScale": 0.5,
+      "darkFraction": 0.4,
+      "holeMass": 0.003,
+      "inclination": 60,
+      "position": [
+        3.5,
+        -3.5,
+        2.0
+      ],
+      "velocity": [
+        -0.35,
+        0.39,
+        -0.2
+      ],
+      "seed": 32,
+      "note": "Bound orbit (0.8 of escape speed) aimed below the main disk; geometry inspired by, not fitted to, published M51 models."
+    }
+  ]
+}

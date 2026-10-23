@@ -9,6 +9,8 @@ type Kind uint8
 const (
 	Star Kind = iota
 	BlackHole
+	// DarkMatter behaves like a star in every respect (gravity, accretion) but is not drawn.
+	DarkMatter
 )
 
 // Body is a convenience view of a single body, used for setup and tests.

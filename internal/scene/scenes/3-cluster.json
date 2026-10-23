@@ -1,0 +1,20 @@
+{
+  "name": "Star cluster",
+  "info": "Plummer cluster read as 1 unit = 1 pc, 1e5 Msun (20.7 km/s); c reduced to 10 (real ~14500)",
+  "yearsPerUnit": 47200.0,
+  "params": {
+    "dt": 0.004,
+    "softening": 0.06,
+    "c": 10
+  },
+  "removeBulkMotion": true,
+  "components": [
+    {
+      "type": "plummer",
+      "weight": 1,
+      "mass": 1,
+      "scale": 1,
+      "seed": 4
+    }
+  ]
+}

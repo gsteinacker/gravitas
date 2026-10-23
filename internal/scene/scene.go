@@ -21,6 +21,8 @@ type DiskConfig struct {
 	Thickness   float64 // vertical scale height
 	Softening   float64 // used for circular velocities
 	Dispersion  float64 // random velocity as a fraction of the circular velocity
+	HaloMass    float64 // mass of a Plummer dark matter halo around the disk (added separately)
+	HaloScale   float64 // its Plummer radius
 	Center      vec.Vec3
 	Velocity    vec.Vec3
 	Inclination float64 // rotation around x, radians
@@ -63,7 +65,13 @@ func AddDisk(s *sim.State, c DiskConfig) {
 		phi := rng.Float64() * 2 * math.Pi
 		z := rng.NormFloat64() * c.Thickness
 		r2 := r*r + z*z + eps2
-		vc := math.Sqrt(enclosed * r * r / (r2 * math.Sqrt(r2)))
+		m := enclosed
+		if c.HaloMass > 0 {
+			// Halo mass inside the star's (spherical) radius, analytic for a Plummer sphere.
+			rr := r*r + z*z
+			m += c.HaloMass * rr * math.Sqrt(rr) / math.Pow(rr+c.HaloScale*c.HaloScale, 1.5)
+		}
+		vc := math.Sqrt(m * r * r / (r2 * math.Sqrt(r2)))
 		sinp, cosp := math.Sincos(phi)
 		pos := vec.Vec3{X: r * cosp, Y: r * sinp, Z: z}
 		disp := c.Dispersion * vc
@@ -77,12 +85,30 @@ func AddDisk(s *sim.State, c DiskConfig) {
 	}
 }
 
-// AddPlummer adds a Plummer sphere in virial equilibrium (Aarseth, Hénon & Wielen 1974).
+// AddPlummer adds a Plummer sphere of stars in virial equilibrium (Aarseth, Hénon & Wielen 1974).
 func AddPlummer(s *sim.State, n int, totalMass, a float64, center, velocity vec.Vec3, seed uint64) {
+	addPlummer(s, n, totalMass, a, center, velocity, seed, sim.Star, 0.999)
+}
+
+// AddHalo adds an invisible dark matter halo as a Plummer sphere of equal-mass particles, cut off
+// at the mass fraction maxFrac (so halos do not reach absurd radii).
+func AddHalo(s *sim.State, n int, totalMass, a float64, center, velocity vec.Vec3, seed uint64, maxFrac float64) {
+	addPlummer(s, n, totalMass, a, center, velocity, seed, sim.DarkMatter, maxFrac)
+}
+
+func addPlummer(s *sim.State, n int, totalMass, a float64, center, velocity vec.Vec3, seed uint64, kind sim.Kind, maxFrac float64) {
 	rng := rand.New(rand.NewPCG(seed, 0x91))
-	masses := stellarMasses(rng, n, totalMass)
+	var masses []float64
+	if kind == sim.Star {
+		masses = stellarMasses(rng, n, totalMass)
+	} else {
+		masses = make([]float64, n)
+		for i := range masses {
+			masses[i] = totalMass / float64(n)
+		}
+	}
 	for i := range n {
-		r := a / math.Sqrt(math.Pow(rng.Float64()*0.999+1e-6, -2.0/3.0)-1)
+		r := a / math.Sqrt(math.Pow(rng.Float64()*maxFrac+1e-6, -2.0/3.0)-1)
 		var q float64
 		for {
 			q = rng.Float64()
@@ -95,6 +121,7 @@ func AddPlummer(s *sim.State, n int, totalMass, a float64, center, velocity vec.
 			Pos:  randomDirection(rng).Scale(r).Add(center),
 			Vel:  randomDirection(rng).Scale(q * ve).Add(velocity),
 			Mass: masses[i],
+			Kind: kind,
 		})
 	}
 }

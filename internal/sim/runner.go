@@ -19,6 +19,7 @@ type Snapshot struct {
 	Substeps       int     // inner substeps near black holes in the last step
 	Version        uint64  // increases with every publish, so consumers can skip unchanged data
 	Gravity        GravityMode
+	DarkMatterOff  bool
 	StepsPerSecond float64
 }
 
@@ -40,6 +41,7 @@ func (sn *Snapshot) fill(m *Simulation) {
 		}
 	})
 	sn.Time, sn.Steps, sn.C, sn.Substeps, sn.Gravity = m.Time, m.Steps, m.Params.C, m.Substeps, m.Params.Gravity
+	sn.DarkMatterOff = m.Params.DarkMatterOff
 }
 
 // Runner steps a Simulation in its own goroutine, decoupled from rendering.

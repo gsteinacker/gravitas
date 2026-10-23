@@ -1,0 +1,25 @@
+{
+  "name": "Spiral galaxy",
+  "info": "scale-free model read as 1 unit = 2.5 kpc, 2e10 Msun (185 km/s); c reduced to 10 (real ~1600)",
+  "yearsPerUnit": 13200000.0,
+  "params": {
+    "dt": 0.004,
+    "softening": 0.06,
+    "c": 10
+  },
+  "components": [
+    {
+      "type": "galaxy",
+      "weight": 1,
+      "mass": 1,
+      "holeMass": 2,
+      "diskScale": 0.8,
+      "diskMin": 0.15,
+      "diskMax": 4,
+      "thickness": 0.03,
+      "dispersion": 0.12,
+      "seed": 1,
+      "note": "No halo: the oversized central hole stabilizes the disk."
+    }
+  ]
+}

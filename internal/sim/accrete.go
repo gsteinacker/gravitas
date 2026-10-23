@@ -38,7 +38,7 @@ func (m *Simulation) accrete() {
 			continue
 		}
 		for i := range s.Len() {
-			if s.Kind[i] != Star || !s.Alive[i] {
+			if s.Kind[i] == BlackHole || !s.Alive[i] {
 				continue
 			}
 			rs := SchwarzschildRadius(s.Mass[h], c) // grows with every absorbed star

@@ -46,7 +46,7 @@ func (m *Simulation) classify(eps2 float64) int {
 		local := math.Inf(1)
 		for i := lo; i < hi; i++ {
 			near := false
-			if s.Kind[i] == Star {
+			if s.Kind[i] != BlackHole {
 				for _, h := range m.holes {
 					if tau := m.holeTimescale(i, h, eps2); tau < limit {
 						near, local = true, math.Min(local, tau)
@@ -89,7 +89,7 @@ func (m *Simulation) outerHoleForces(eps2 float64) {
 	m.farX, m.farY, m.farZ = zeroed(m.farX, n), zeroed(m.farY, n), zeroed(m.farZ, n)
 	ParallelFor(n, 2048, 0, func(lo, hi int) {
 		for i := lo; i < hi; i++ {
-			if s.Kind[i] != Star || m.isNear[i] {
+			if s.Kind[i] == BlackHole || m.isNear[i] {
 				continue
 			}
 			m.farX[i], m.farY[i], m.farZ[i] = m.holePull(i, eps2)
@@ -102,11 +102,11 @@ func (m *Simulation) outerHoleForces(eps2 float64) {
 		ParallelFor(n, 2048, 0, func(lo, hi int) {
 			var ax, ay, az float64
 			for i := lo; i < hi; i++ {
-				if s.Kind[i] != Star || m.isNear[i] {
+				if s.Kind[i] == BlackHole || m.isNear[i] {
 					continue
 				}
 				dx, dy, dz := s.PosX[i]-x, s.PosY[i]-y, s.PosZ[i]-z
-				f := PairForce(s.Mass[i], dx*dx+dy*dy+dz*dz, eps2, rs)
+				f := PairForce(m.Params.SourceMass(s.Kind[i], s.Mass[i]), dx*dx+dy*dy+dz*dz, eps2, rs)
 				ax, ay, az = ax+f*dx, ay+f*dy, az+f*dz
 			}
 			mu.Lock()
@@ -152,7 +152,7 @@ func (m *Simulation) fastForces(eps2 float64) {
 		ax, ay, az := m.holePull(h, eps2)
 		for _, i := range m.near {
 			dx, dy, dz := s.PosX[i]-x, s.PosY[i]-y, s.PosZ[i]-z
-			f := PairForce(s.Mass[i], dx*dx+dy*dy+dz*dz, eps2, rs)
+			f := PairForce(m.Params.SourceMass(s.Kind[i], s.Mass[i]), dx*dx+dy*dy+dz*dz, eps2, rs)
 			ax, ay, az = ax+f*dx, ay+f*dy, az+f*dz
 		}
 		m.fastX[h], m.fastY[h], m.fastZ[h] = ax, ay, az
@@ -224,7 +224,7 @@ func (m *Simulation) driftFar(dt, c float64) {
 	s := m.State
 	ParallelFor(s.Len(), 4096, 0, func(lo, hi int) {
 		for i := lo; i < hi; i++ {
-			if s.Kind[i] != Star || m.isNear[i] {
+			if s.Kind[i] == BlackHole || m.isNear[i] {
 				continue
 			}
 			f := dt / gamma(s.VelX[i], s.VelY[i], s.VelZ[i], c)

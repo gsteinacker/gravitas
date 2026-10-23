@@ -17,12 +17,12 @@ type Solver struct {
 
 func (d *Solver) Accelerations(s *sim.State, p sim.Params) {
 	eps2 := p.Softening * p.Softening
-	sim.ParallelFor(s.Len(), grain, d.Workers, func(lo, hi int) { accRange(s, eps2, lo, hi) })
+	sim.ParallelFor(s.Len(), grain, d.Workers, func(lo, hi int) { accRange(s, &p, eps2, lo, hi) })
 }
 
 // accRange sums all star–star forces on bodies [lo, hi). Pairs with a hole are left to the
 // integrator (sim.Solver), so holes get zero.
-func accRange(s *sim.State, eps2 float64, lo, hi int) {
+func accRange(s *sim.State, p *sim.Params, eps2 float64, lo, hi int) {
 	n := s.Len()
 	px, py, pz, m, kind := s.PosX[:n], s.PosY[:n], s.PosZ[:n], s.Mass[:n], s.Kind[:n]
 	for i := lo; i < hi; i++ {
@@ -33,7 +33,7 @@ func accRange(s *sim.State, eps2 float64, lo, hi int) {
 			continue
 		}
 		for j := range px {
-			if j == i || kind[j] == sim.BlackHole {
+			if j == i || kind[j] == sim.BlackHole || (p.DarkMatterOff && kind[j] == sim.DarkMatter) {
 				continue
 			}
 			dx, dy, dz := px[j]-xi, py[j]-yi, pz[j]-zi
