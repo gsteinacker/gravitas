@@ -73,7 +73,7 @@ func TestEffectToggles(t *testing.T) {
 	if !g.fx.Glow || !g.fx.Trails || !g.fx.Lensing || !g.fx.Doppler {
 		t.Errorf("all effects should be on after g t l d: %+v", g.fx)
 	}
-	if got := effectsText(g.fx); got != "effects:*glow(g)*trails(t)*lens(l)*doppler(d)" {
+	if got := effectsText(g.fx); got != "effects:*glow(g)*trails(t)*lens(l)*doppler(d) dust(u) gas map(o)" {
 		t.Errorf("effectsText = %q", got)
 	}
 }

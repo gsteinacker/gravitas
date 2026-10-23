@@ -20,6 +20,7 @@ type Effects struct {
 	Trails  bool // fading star trails (T-019)
 	Dark    bool // draw dark matter as a faint violet haze
 	Gas     bool // draw gas as a faint glow
+	Dust    bool // dust in the gas absorbs and reddens the light behind it
 }
 
 // ParseEffects reads a comma-separated list such as "glow,lens,doppler,trails".
@@ -40,8 +41,10 @@ func ParseEffects(list string) (Effects, error) {
 			fx.Dark = true
 		case "gas":
 			fx.Gas = true
+		case "dust":
+			fx.Dust = true
 		default:
-			return fx, fmt.Errorf("unknown effect %q (want glow, doppler, lens, trails, dark, gas)", name)
+			return fx, fmt.Errorf("unknown effect %q (want glow, doppler, lens, trails, dark, gas, dust)", name)
 		}
 	}
 	return fx, nil
@@ -84,6 +87,23 @@ func Fragment(dstPos vec4, srcPos vec2, color vec4) vec4 {
 }
 `
 
+// dustShader attenuates the frame by exp(−τ k) per color channel, τ from the dust image: blue is
+// absorbed more strongly than red (interstellar reddening, k ∝ roughly 1/λ).
+const dustShader = `//kage:unit pixels
+package main
+
+var Strength float
+
+func Fragment(dstPos vec4, srcPos vec2, color vec4) vec4 {
+	c := imageSrc0At(srcPos)
+	tau := imageSrc1At(srcPos).a * Strength
+	return vec4(c.rgb*exp(-tau*vec3(0.55, 0.75, 1.0)), c.a)
+}
+`
+
+// dustStrength is the blue optical depth of a fully dense dust pixel.
+const dustStrength = 2.5
+
 // blurShader is one direction of a separable 9-tap Gaussian blur.
 const blurShader = `//kage:unit pixels
 package main
@@ -106,10 +126,11 @@ func Fragment(dstPos vec4, srcPos vec2, color vec4) vec4 {
 type Pipeline struct {
 	Stars *StarRenderer
 
-	lens, blur *ebiten.Shader
-	w, h       int
+	lens, blur, dust *ebiten.Shader
+	w, h             int
 
 	stars, trailA, trailB, frame, lensed *ebiten.Image
+	dustImg, dusted, starsBack           *ebiten.Image
 	small, blurA, blurB, background      *ebiten.Image
 	fadeFloor                            *ebiten.Image
 	uniform                              []float32
@@ -131,10 +152,14 @@ func NewPipeline() (*Pipeline, error) {
 	if err != nil {
 		return nil, err
 	}
+	dust, err := ebiten.NewShader([]byte(dustShader))
+	if err != nil {
+		return nil, err
+	}
 	floor := ebiten.NewImage(1, 1)
 	floor.Fill(color.RGBA{trailFloor, trailFloor, trailFloor, trailFloor})
 	return &Pipeline{
-		Stars: NewStarRenderer(), lens: lens, blur: blur, fadeFloor: floor,
+		Stars: NewStarRenderer(), lens: lens, blur: blur, dust: dust, fadeFloor: floor,
 		uniform: make([]float32, 4*maxLensHoles),
 	}, nil
 }
@@ -144,7 +169,7 @@ func (p *Pipeline) resize(w, h int) {
 		return
 	}
 	p.drawnValid = false
-	for _, img := range []*ebiten.Image{p.stars, p.trailA, p.trailB, p.frame, p.lensed, p.small, p.blurA, p.blurB, p.background} {
+	for _, img := range []*ebiten.Image{p.stars, p.trailA, p.trailB, p.frame, p.lensed, p.small, p.blurA, p.blurB, p.background, p.dustImg, p.dusted, p.starsBack} {
 		if img != nil {
 			img.Deallocate()
 		}
@@ -152,6 +177,7 @@ func (p *Pipeline) resize(w, h int) {
 	p.w, p.h = w, h
 	p.stars, p.trailA, p.trailB = ebiten.NewImage(w, h), ebiten.NewImage(w, h), ebiten.NewImage(w, h)
 	p.frame, p.lensed = ebiten.NewImage(w, h), ebiten.NewImage(w, h)
+	p.dustImg, p.dusted, p.starsBack = ebiten.NewImage(w, h), ebiten.NewImage(w, h), ebiten.NewImage(w, h)
 	sw, sh := max(1, w/bloomScale), max(1, h/bloomScale)
 	p.small, p.blurA, p.blurB = ebiten.NewImage(sw, sh), ebiten.NewImage(sw, sh), ebiten.NewImage(sw, sh)
 	p.background = starfield(w, h)
@@ -198,10 +224,19 @@ func (p *Pipeline) Draw(screen *ebiten.Image, cam *Camera, sn *sim.Snapshot, fx 
 	w, h := screen.Bounds().Dx(), screen.Bounds().Dy()
 	p.resize(w, h)
 
-	starFx := Effects{Doppler: fx.Doppler, Dark: fx.Dark, Gas: fx.Gas} // the options that change the star image
+	starFx := Effects{Doppler: fx.Doppler, Dark: fx.Dark, Gas: fx.Gas, Dust: fx.Dust} // the options that change the star image
 	if view := cam.View(); !p.drawnValid || sn.Version != p.drawnVersion || view != p.drawnView || starFx != p.drawnFx || p.Stars.Adapting() {
 		p.stars.Clear()
-		p.Stars.DrawStars(p.stars, cam, sn, starFx)
+		p.starsBack.Clear()
+		p.dustImg.Clear()
+		var back *ebiten.Image
+		if fx.Dust {
+			p.Stars.DrawDust(p.dustImg, cam, sn) // first: stars are sorted by the dust depth map
+			if !fx.Trails {
+				back = p.starsBack
+			}
+		}
+		p.Stars.DrawStars(p.stars, back, cam, sn, starFx)
 		p.drawnValid, p.drawnVersion, p.drawnView, p.drawnFx = true, sn.Version, view, starFx
 	}
 	stars := p.stars
@@ -223,10 +258,28 @@ func (p *Pipeline) Draw(screen *ebiten.Image, cam *Camera, sn *sim.Snapshot, fx 
 		p.trailA.Clear()
 	}
 
+	// Behind the dust: background and (with dust and no trails) the stars sorted behind it; these
+	// are attenuated. The stars in front are added afterwards.
+	split := fx.Dust && !fx.Trails
 	p.frame.DrawImage(p.background, &ebiten.DrawImageOptions{Blend: ebiten.BlendCopy})
-	p.frame.DrawImage(stars, &ebiten.DrawImageOptions{Blend: ebiten.BlendLighter})
+	if split {
+		p.frame.DrawImage(p.starsBack, &ebiten.DrawImageOptions{Blend: ebiten.BlendLighter})
+	} else {
+		p.frame.DrawImage(stars, &ebiten.DrawImageOptions{Blend: ebiten.BlendLighter})
+	}
 
 	out := p.frame
+	if fx.Dust {
+		p.dusted.DrawRectShader(w, h, p.dust, &ebiten.DrawRectShaderOptions{
+			Blend:    ebiten.BlendCopy,
+			Images:   [4]*ebiten.Image{p.frame, p.dustImg},
+			Uniforms: map[string]any{"Strength": float32(dustStrength)},
+		})
+		if split {
+			p.dusted.DrawImage(stars, &ebiten.DrawImageOptions{Blend: ebiten.BlendLighter})
+		}
+		out = p.dusted
+	}
 	if holes := p.Stars.Holes(); fx.Lensing && len(holes) > 0 {
 		count := min(len(holes), maxLensHoles)
 		for i := range count {
@@ -237,7 +290,7 @@ func (p *Pipeline) Draw(screen *ebiten.Image, cam *Camera, sn *sim.Snapshot, fx 
 		}
 		p.lensed.DrawRectShader(w, h, p.lens, &ebiten.DrawRectShaderOptions{
 			Blend:    ebiten.BlendCopy,
-			Images:   [4]*ebiten.Image{p.frame},
+			Images:   [4]*ebiten.Image{out},
 			Uniforms: map[string]any{"Holes": p.uniform, "Count": float32(count)},
 		})
 		out = p.lensed

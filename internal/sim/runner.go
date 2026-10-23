@@ -14,6 +14,7 @@ type Snapshot struct {
 	VX, VY, VZ     []float32 // coordinate velocities v = u/γ
 	Age            []float32 // stars born from gas: time since birth; -1 for initial stars
 	GasU, GasRho   []float32 // gas: specific internal energy and density (0 otherwise)
+	GasH           []float32 // gas: smoothing length
 	YoungAge       float64   // stars younger than this are drawn young
 	StarsFormed    int
 	Kind           []Kind
@@ -35,6 +36,7 @@ func (sn *Snapshot) fill(m *Simulation) {
 	sn.X, sn.Y, sn.Z, sn.Mass = resize(sn.X, n), resize(sn.Y, n), resize(sn.Z, n), resize(sn.Mass, n)
 	sn.VX, sn.VY, sn.VZ = resize(sn.VX, n), resize(sn.VY, n), resize(sn.VZ, n)
 	sn.Age, sn.GasU, sn.GasRho = resize(sn.Age, n), resize(sn.GasU, n), resize(sn.GasRho, n)
+	sn.GasH = resize(sn.GasH, n)
 	sn.YoungAge, sn.StarsFormed = m.Params.Gas.YoungAge, m.StarsFormed
 	if sn.YoungAge == 0 {
 		sn.YoungAge = defaultYoungAge
@@ -52,7 +54,7 @@ func (sn *Snapshot) fill(m *Simulation) {
 			if !math.IsInf(s.Born[i], -1) {
 				sn.Age[i] = float32(now - s.Born[i])
 			}
-			sn.GasU[i], sn.GasRho[i] = float32(s.U[i]), float32(s.Rho[i])
+			sn.GasU[i], sn.GasRho[i], sn.GasH[i] = float32(s.U[i]), float32(s.Rho[i]), float32(s.H[i])
 		}
 	})
 	sn.Time, sn.Steps, sn.C, sn.Substeps, sn.Gravity = m.Time, m.Steps, m.Params.C, m.Substeps, m.Params.Gravity

@@ -178,7 +178,7 @@ type note struct {
 }
 
 // defaultEffects are used for scenes that do not name their own.
-var defaultEffects = render.Effects{Glow: true, Doppler: true, Lensing: true}
+var defaultEffects = render.Effects{Glow: true, Doppler: true, Lensing: true, Dust: true}
 
 // NewGame creates the game for a runner that already simulates sp (built for n bodies).
 func NewGame(runner *sim.Runner, n int, sp *scene.Spec) (*Game, error) {
@@ -312,6 +312,8 @@ func (g *Game) applyChar(r rune) {
 		g.fx.Dark = !g.fx.Dark
 	case 'o', 'O':
 		g.fx.Gas = !g.fx.Gas
+	case 'u', 'U':
+		g.fx.Dust = !g.fx.Dust
 	case 'r', 'R':
 		g.LoadScene(g.scene)
 	case 'h', 'H':
@@ -486,7 +488,7 @@ func (g *Game) drawHUD(screen *ebiten.Image) {
 		}
 		b.WriteString("\nb k tab     tool: black hole / star cluster\nclick       place\nalt+drag    launch with velocity\nm n         mass +/-\n" +
 			"drag        rotate\nshift/right drag  pan\nwheel       zoom\n" +
-			"x v         dark matter: gravity on/off, show\no           show gas (young stars from gas are blue)\n< >         speed of light\np           hole gravity: instant / retarded / retarded+v\ng t l d     glow, trails, lens, doppler\nspace       pause\n.           single step\n+ -         speed\nr           restart\nc           center view\n" +
+			"x v         dark matter: gravity on/off, show\no u         gas map, dust absorption\n< >         speed of light\np           hole gravity: instant / retarded / retarded+v\ng t l d     glow, trails, lens, doppler\nspace       pause\n.           single step\n+ -         speed\nr           restart\nc           center view\n" +
 			"F5 F9       save / load latest (saves/)\nf           fullscreen\nh           hide HUD\n? F1        hide this help")
 		ebitenutil.DebugPrintAt(screen, b.String(), 10, g.screenH-16*strings.Count(b.String(), "\n")-28)
 	}
@@ -501,7 +503,7 @@ func effectsText(fx render.Effects) string {
 		return " " + name
 	}
 	return "effects:" + mark(fx.Glow, "glow(g)") + mark(fx.Trails, "trails(t)") +
-		mark(fx.Lensing, "lens(l)") + mark(fx.Doppler, "doppler(d)")
+		mark(fx.Lensing, "lens(l)") + mark(fx.Doppler, "doppler(d)") + mark(fx.Dust, "dust(u)") + mark(fx.Gas, "gas map(o)")
 }
 
 // lightText shows the speed of light, the horizon size of the next placed black hole and how the
