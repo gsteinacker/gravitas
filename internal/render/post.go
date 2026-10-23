@@ -107,6 +107,13 @@ type Pipeline struct {
 	small, blurA, blurB, background      *ebiten.Image
 	fadeFloor                            *ebiten.Image
 	uniform                              []float32
+
+	// Cache key of the star image: redrawing 1M stars is the most expensive part of a frame, and
+	// the simulation publishes far fewer snapshots than the display shows frames (T-030).
+	drawnVersion uint64
+	drawnView    View
+	drawnDoppler bool
+	drawnValid   bool
 }
 
 func NewPipeline() (*Pipeline, error) {
@@ -130,6 +137,7 @@ func (p *Pipeline) resize(w, h int) {
 	if w == p.w && h == p.h {
 		return
 	}
+	p.drawnValid = false
 	for _, img := range []*ebiten.Image{p.stars, p.trailA, p.trailB, p.frame, p.lensed, p.small, p.blurA, p.blurB, p.background} {
 		if img != nil {
 			img.Deallocate()
@@ -184,8 +192,11 @@ func (p *Pipeline) Draw(screen *ebiten.Image, cam *Camera, sn *sim.Snapshot, fx 
 	w, h := screen.Bounds().Dx(), screen.Bounds().Dy()
 	p.resize(w, h)
 
-	p.stars.Clear()
-	p.Stars.DrawStars(p.stars, cam, sn, fx.Doppler)
+	if view := cam.View(); !p.drawnValid || sn.Version != p.drawnVersion || view != p.drawnView || fx.Doppler != p.drawnDoppler {
+		p.stars.Clear()
+		p.Stars.DrawStars(p.stars, cam, sn, fx.Doppler)
+		p.drawnValid, p.drawnVersion, p.drawnView, p.drawnDoppler = true, sn.Version, view, fx.Doppler
+	}
 	stars := p.stars
 	if fx.Trails {
 		// trailB = max(fade · trailA, stars), then swap: the trail keeps a decaying history but is

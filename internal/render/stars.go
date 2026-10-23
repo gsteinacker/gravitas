@@ -11,7 +11,8 @@ import (
 	"galaxy/internal/sim"
 )
 
-const spriteSize = 32
+// spriteSize is small on purpose: stars are drawn at 3.5–28 px without mipmaps.
+const spriteSize = 16
 
 // minHolePixels keeps tiny horizons visible on screen.
 const minHolePixels = 3
@@ -189,7 +190,10 @@ func (sr *StarRenderer) flush(dst *ebiten.Image) {
 			sr.indices = append(sr.indices, b, b+1, b+2, b+1, b+3, b+2)
 		}
 	}
-	op := &ebiten.DrawTrianglesOptions{Blend: ebiten.BlendLighter, Filter: ebiten.FilterLinear}
+	// No mipmaps: Ebitengine would compute a mipmap level per triangle on the render thread,
+	// which was half of the frame time at 1M stars (T-030). The small, smooth sprite keeps
+	// downscaled sampling free of aliasing.
+	op := &ebiten.DrawTrianglesOptions{Blend: ebiten.BlendLighter, Filter: ebiten.FilterLinear, DisableMipmaps: true}
 	for start := 0; start < len(sr.verts); start += 4 * quadsPerBatch {
 		end := min(len(sr.verts), start+4*quadsPerBatch)
 		dst.DrawTriangles32(sr.verts[start:end], sr.indices[:6*(end-start)/4], sr.sprite, op)

@@ -9,6 +9,14 @@ Maschine: M4 Pro, GOMAXPROCS=12, Go 1.27.x
 Fazit: …
 ```
 
+## 2026-10-23 · T-030 · Rendering bei 1M
+
+```
+1M, alle Effekte, ruhende Kamera:   12–18 FPS → 28 FPS (DisableMipmaps, 16-px-Sprite) → 61 FPS (Sternbild-Cache)
+1M Schritte/s: 12–13 → 15        100k: 60 FPS, ~100 → 113 Schritte/s
+Gegentests (vor dem Cache): ohne Post-Effekte 28 FPS, mit CPU-Simulation 12 FPS
+```
+
 ## 2026-10-23 · T-029 · Paralleler Baumaufbau (Teilbäume)
 
 ```

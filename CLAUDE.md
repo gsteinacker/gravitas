@@ -14,6 +14,8 @@ Stack: **Go 1.27 + Ebitengine v2**, Physik auf der CPU (siehe `docs/adr/0001-go-
 - `make check`: gofmt-Prüfung, vet, Tests, Backlog-Validierung. **Vor jedem Commit grün.**
 - `make test` / `make race` / `make bench`
 - `make run`: startet die App
+- Der Screenshot-Modus gibt eine Zeile `shot …: bodies= fps= steps_per_s= substeps= t=` aus. Damit lassen sich
+  Messungen ohne Bildauswertung machen. Vorher prüfen, dass keine andere App läuft (`pgrep -fl bin/galaxy`).
 - Effekte für Screenshots über `-fx glow,lens,doppler,trails` wählen (Tasten gehen im Screenshot-Modus nicht).
 - `make shot`: startet die App, speichert nach einigen Sekunden `bin/shot.png` und beendet sich.
   Direkt: `./bin/galaxy -preset 2 -n 8000 -shot <png> -shot-after 10`. **Visuelle Änderungen immer per

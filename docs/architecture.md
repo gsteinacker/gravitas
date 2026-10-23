@@ -30,7 +30,8 @@ Aufbau.
 
 ## Rendering (M4)
 
-`render.Pipeline` pro Frame: Sterne additiv in ein Offscreen-Bild (Farbe nach Masse, optional Doppler-Verschiebung)
+`render.Pipeline` pro Frame (das Sternbild wird nur bei neuer Snapshot-Version, Kamera- oder Doppler-Änderung
+neu gezeichnet): Sterne additiv in ein Offscreen-Bild (Farbe nach Masse, optional Doppler-Verschiebung)
 → optional Spuren (max-Blending mit verblassendem Vorbild) → über opaken Sternhimmel → optional
 Gravitationslinse (Kage-Shader, Punktlinse) → Bildschirm → optional Bloom (Downsample, 2× Gauß, additiv)
 → Löcher, Ringe, HUD. Effekte per Taste (`g t l d`) oder `-fx`. Shader-Ausgaben verwenden `BlendCopy`,

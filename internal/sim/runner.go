@@ -17,6 +17,7 @@ type Snapshot struct {
 	Steps          int
 	C              float64 // speed of light of the run, 0 = Newtonian
 	Substeps       int     // inner substeps near black holes in the last step
+	Version        uint64  // increases with every publish, so consumers can skip unchanged data
 	StepsPerSecond float64
 }
 
@@ -63,6 +64,7 @@ type Runner struct {
 	epoch       int
 	e0, ext0    float64 // baseline energy and ExternalEnergy at that moment
 	lastMeasure time.Time
+	version     uint64
 	measureCost time.Duration // duration of the last energy measurement
 }
 
@@ -188,7 +190,9 @@ func (r *Runner) drain() bool {
 }
 
 func (r *Runner) publish() {
+	r.version++
 	r.writing.fill(r.sim)
+	r.writing.Version = r.version
 	r.mu.Lock()
 	r.latest, r.writing, r.fresh = r.writing, r.latest, true
 	r.mu.Unlock()

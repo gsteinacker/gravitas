@@ -326,6 +326,9 @@ func (g *Game) Draw(screen *ebiten.Image) {
 	}
 	if g.ShotPath != "" && !g.shotDone && time.Since(g.started) >= g.ShotAfter {
 		g.shotErr, g.shotDone = saveScreenshot(screen, g.ShotPath), true
+		// Machine-readable summary for the harness (the HUD text is only in the image).
+		fmt.Printf("shot %s: bodies=%d fps=%.1f steps_per_s=%.1f substeps=%d t=%.2f\n",
+			g.ShotPath, g.bodies, ebiten.ActualFPS(), g.runner.StepsPerSecond(), g.substeps, g.simTime)
 	}
 }
 
