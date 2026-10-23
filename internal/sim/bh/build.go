@@ -57,7 +57,7 @@ func (b *Solver) build(s *sim.State, theta float64) {
 // center and half side length at the given tree level.
 func (b *Solver) buildNode(ni, lo, hi int32, level int, cx, cy, cz, half float64, next int32, theta float64) {
 	var x, y, z, m float64
-	first := int32(-1)
+	first, children := int32(-1), int32(0)
 	if hi-lo <= leafSize || level >= mortonBits {
 		for j := lo; j < hi; j++ {
 			mj := b.sm[j]
@@ -70,7 +70,6 @@ func (b *Solver) buildNode(ni, lo, hi int32, level int, cx, cy, cz, half float64
 		for oct := uint64(1); oct < 8; oct++ {
 			bounds[oct] = b.lowerBound(bounds[oct-1], hi, shift, oct)
 		}
-		children := int32(0)
 		for oct := range 8 {
 			if bounds[oct+1] > bounds[oct] {
 				children++
@@ -102,11 +101,43 @@ func (b *Solver) buildNode(ni, lo, hi int32, level int, cx, cy, cz, half float64
 	} else {
 		x, y, z = cx, cy, cz
 	}
+	var q quadrupole
+	if first < 0 {
+		for j := lo; j < hi; j++ {
+			q.add(b.sm[j], b.sx[j]-x, b.sy[j]-y, b.sz[j]-z)
+		}
+	} else {
+		// Parallel axis theorem: shift each child's tensor to this node's center of mass.
+		for c := first; c < first+children; c++ {
+			ch := &b.nodes[c]
+			q.qxx, q.qyy, q.qzz = q.qxx+ch.qxx, q.qyy+ch.qyy, q.qzz+ch.qzz
+			q.qxy, q.qxz, q.qyz = q.qxy+ch.qxy, q.qxz+ch.qxz, q.qyz+ch.qyz
+			q.add(ch.m, ch.x-x, ch.y-y, ch.z-z)
+		}
+	}
 	// Opening criterion with Barnes' (1994) offset correction: a node whose center of mass
 	// lies off-center must be opened earlier. For θ ≤ 1 a node containing the target is always opened.
 	delta := math.Sqrt((x-cx)*(x-cx) + (y-cy)*(y-cy) + (z-cz)*(z-cz))
 	crit := 2*half/theta + delta
-	b.nodes[ni] = node{x: x, y: y, z: z, m: m, crit2: crit * crit, first: first, next: next, lo: lo, hi: hi}
+	b.nodes[ni] = node{
+		x: x, y: y, z: z, m: m,
+		qxx: q.qxx, qyy: q.qyy, qzz: q.qzz, qxy: q.qxy, qxz: q.qxz, qyz: q.qyz,
+		crit2: crit * crit, first: first, next: next, lo: lo, hi: hi,
+	}
+}
+
+// quadrupole accumulates a traceless quadrupole tensor.
+type quadrupole struct{ qxx, qyy, qzz, qxy, qxz, qyz float64 }
+
+// add adds point mass m at offset (dx, dy, dz) from the center of mass.
+func (q *quadrupole) add(m, dx, dy, dz float64) {
+	r2 := dx*dx + dy*dy + dz*dz
+	q.qxx += m * (3*dx*dx - r2)
+	q.qyy += m * (3*dy*dy - r2)
+	q.qzz += m * (3*dz*dz - r2)
+	q.qxy += m * 3 * dx * dy
+	q.qxz += m * 3 * dx * dz
+	q.qyz += m * 3 * dy * dz
 }
 
 // lowerBound returns the first index in [lo, hi) whose octant digit at shift is >= oct.

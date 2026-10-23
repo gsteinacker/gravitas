@@ -14,8 +14,8 @@ type PotentialSolver interface {
 }
 
 // exactEnergyLimit is the body count up to which the running app measures the potential exactly
-// (parallel O(N²), ~70 ms at the limit). Tree estimates are biased by ~10⁻⁴…10⁻³ and only track
-// the drift to within about ±30 % (measured, see T-007), so exact is preferred where affordable.
+// (parallel O(N²), ~70 ms at the limit). Above it the tree estimate is used; with quadrupole
+// moments its error is ~10⁻⁶ (T-028), far below typical drifts.
 const exactEnergyLimit = 30000
 
 // EnergyQuality says how a total energy was obtained.

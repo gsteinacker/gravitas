@@ -9,6 +9,21 @@ Maschine: M4 Pro, GOMAXPROCS=12, Go 1.27.x
 Fazit: …
 ```
 
+## 2026-10-23 · T-028 · Quadrupol-Momente, θ 0,6 → 0,9
+
+Ohne Last, 100k. θ-Scan am entwickelten Zustand (Median / Max des relativen Kraftfehlers, ms pro Kraftberechnung):
+
+```
+θ=0.60 Monopol    2.3e-3 / 3.5e-2   35.3 ms
+θ=0.60 Quadrupol  1.3e-4 / 1.3e-3   40.0 ms
+θ=0.75 Quadrupol  2.5e-4 / 2.9e-3   26.7 ms
+θ=0.90 Quadrupol  4.6e-4 / 5.7e-3   20.7 ms   ← neuer Default
+θ=1.00 Quadrupol  6.3e-4 / 2.3e-2   18.0 ms
+```
+
+Benchmarks danach: Accelerations t=0 17.3 → 13.4 ms, Evolved 29.0 → 20.7 ms (−29 %),
+PotentialEnergy (Diagnose θ 0.3 → 0.6) 50 → 20 ms bei einem Fehler von 4e-4 → 1.5e-6, Step 28 ms.
+
 ## 2026-10-23 · T-027 · Gruppen-Walk – verworfen
 
 Ohne Last, 100k (alter Walk gegen Gruppen-Walk mit Blättern als Gruppen):

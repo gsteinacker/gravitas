@@ -16,7 +16,8 @@ Simulationseinheiten mit `G = 1`. Längen, Massen und Zeiten sind dimensionslos.
     a_i = Σ_j  G m_j (r_j − r_i) / (|r_j − r_i|² + ε²)^(3/2)
 
 - **Softening ε** verhindert Singularitäten bei engen Begegnungen.
-- **Barnes-Hut** (Octree, Öffnungswinkel θ) für N ≫ 10³. Die direkte Summe bleibt als Referenzlöser für Tests.
+- **Barnes-Hut** (Octree, Öffnungswinkel θ = 0,9, **Quadrupol-Momente**) für N ≫ 10³. Median-Kraftfehler
+  0,05 % (der Monopol bei θ = 0,6 hatte 0,23 %). Die direkte Summe bleibt als Referenzlöser für Tests.
 - Schwarze Löcher (wenige, schwere Körper) werden **immer direkt** summiert und nicht über den Baum genähert.
 
 ## Integration

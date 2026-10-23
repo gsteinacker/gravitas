@@ -43,13 +43,20 @@ func (b *Solver) walkPotential(x, y, z float64, self int32, eps2 float64) float6
 		return 0
 	}
 	nodes, sx, sy, sz, sm := b.nodes, b.sx, b.sy, b.sz, b.sm
+	quad := !b.MonopoleOnly
 	var psi float64
 	for i := int32(0); i >= 0; {
 		nd := &nodes[i]
 		dx, dy, dz := nd.x-x, nd.y-y, nd.z-z
 		d2 := dx*dx + dy*dy + dz*dz
 		if d2 >= nd.crit2 {
-			psi += nd.m / math.Sqrt(d2+eps2)
+			inv := 1 / (d2 + eps2)
+			psi += nd.m * math.Sqrt(inv)
+			if quad {
+				// Φ = −M/r − (d·Q·d) / (2 r⁵); psi collects −Φ.
+				dqd := nd.qxx*dx*dx + nd.qyy*dy*dy + nd.qzz*dz*dz + 2*(nd.qxy*dx*dy+nd.qxz*dx*dz+nd.qyz*dy*dz)
+				psi += 0.5 * dqd * inv * inv * math.Sqrt(inv)
+			}
 			i = nd.next
 			continue
 		}

@@ -276,3 +276,62 @@ func TestPotentialEnergyMatchesExact(t *testing.T) {
 		t.Errorf("default θ: U = %v, want %v (rel. error %.3g)", got, want, rel)
 	}
 }
+
+// farCluster: a clumpy cluster of radius ~1 around (10, 3, -2) and a probe star at the origin.
+func farCluster() *sim.State {
+	rng := rand.New(rand.NewPCG(5, 6))
+	s := sim.NewState(401)
+	s.Add(sim.Body{Mass: 1e-9})
+	for i := range 400 {
+		off := vec.Vec3{X: 0.5 * float64(i%2), Y: 0.3 * float64(i%3)}
+		s.Add(sim.Body{
+			Pos:  vec.Vec3{X: 10 + rng.NormFloat64()*0.4, Y: 3 + rng.NormFloat64()*0.2, Z: -2 + rng.NormFloat64()*0.3}.Add(off),
+			Mass: 0.5 + rng.Float64(),
+		})
+	}
+	return s
+}
+
+func TestQuadrupoleImprovesFarField(t *testing.T) {
+	s := farCluster()
+	p := sim.Params{Softening: 1e-3}
+	want := accelerations(s, &direct.Solver{}, p)[0]
+	_, wantU := sim.Energy(s, p.Softening)
+	errOf := func(solver *Solver) (float64, float64) {
+		got := accelerations(s, solver, p)[0]
+		d := math.Sqrt((got[0]-want[0])*(got[0]-want[0]) + (got[1]-want[1])*(got[1]-want[1]) + (got[2]-want[2])*(got[2]-want[2]))
+		w := math.Sqrt(want[0]*want[0] + want[1]*want[1] + want[2]*want[2])
+		// Probe star's potential: U(all) − U(cluster alone) is dominated by the cluster–cluster
+		// part, so compare the probe's own ψ via the full tree potential instead.
+		u := solver.PotentialEnergy(s, p)
+		return d / w, math.Abs((u - wantU) / wantU)
+	}
+	// θ = 0.95 lets the probe accept the whole cluster (and its big subnodes) as single nodes.
+	mono, _ := errOf(&Solver{Theta: 0.95, MonopoleOnly: true})
+	quad, _ := errOf(&Solver{Theta: 0.95})
+	t.Logf("far-field force error: monopole %.2g, quadrupole %.2g", mono, quad)
+	if quad > mono/5 {
+		t.Errorf("quadrupole error %.3g should be well below monopole error %.3g", quad, mono)
+	}
+}
+
+func TestQuadrupoleForceIsGradientOfPotential(t *testing.T) {
+	// Probe the tree field (root accepted as a single node) numerically.
+	s := farCluster()
+	p := sim.Params{Softening: 1e-3}
+	b := &Solver{Theta: 0.95}
+	b.build(s, 0.95)
+	eps2 := p.Softening * p.Softening
+	const h = 1e-6
+	x, y, z := 0.0, 0.5, 0.2
+	ax, ay, az := b.walk(x, y, z, -1, eps2)
+	// a = ∇ψ (ψ = −Φ).
+	gx := (b.walkPotential(x+h, y, z, -1, eps2) - b.walkPotential(x-h, y, z, -1, eps2)) / (2 * h)
+	gy := (b.walkPotential(x, y+h, z, -1, eps2) - b.walkPotential(x, y-h, z, -1, eps2)) / (2 * h)
+	gz := (b.walkPotential(x, y, z+h, -1, eps2) - b.walkPotential(x, y, z-h, -1, eps2)) / (2 * h)
+	for _, c := range [][2]float64{{ax, gx}, {ay, gy}, {az, gz}} {
+		if math.Abs(c[0]-c[1]) > 1e-6*math.Abs(ax) {
+			t.Errorf("force %v vs gradient %v", c[0], c[1])
+		}
+	}
+}

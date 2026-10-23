@@ -381,7 +381,7 @@ func lightText(c, mass float64) string {
 	return fmt.Sprintf("c = %.1f  (< >)   r_s of mass %.2f = %.3f", c, mass, sim.SchwarzschildRadius(mass, c))
 }
 
-// driftText formats the energy drift; "~" marks a tree estimate, which is only good to ±30 %.
+// driftText formats the energy drift; "~" marks a tree estimate (error ~1e-6 since T-028).
 func driftText(d float64, q sim.EnergyQuality) string {
 	switch {
 	case q == sim.EnergyUnknown || math.IsNaN(d):
