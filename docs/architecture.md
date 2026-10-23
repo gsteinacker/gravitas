@@ -30,6 +30,10 @@ Aufbau.
 
 ## Rendering (M4)
 
+Die Belichtung ist automatisch: Während die Quads entstehen, wird das Licht in einem 96×60-Raster gesammelt,
+und die hellsten 10 % der belegten Zellen werden gerade weiß (wirkt ab dem nächsten Frame, geglättet).
+Additive 8-Bit-Bilder würden sonst sättigen und Dichtekontraste wie Spiralarme verschlucken.
+
 `render.Pipeline` pro Frame (das Sternbild wird nur bei neuer Snapshot-Version, Kamera- oder Doppler-Änderung
 neu gezeichnet): Sterne additiv in ein Offscreen-Bild (Farbe nach Masse, optional Doppler-Verschiebung)
 → optional Spuren (max-Blending mit verblassendem Vorbild) → über opaken Sternhimmel → optional

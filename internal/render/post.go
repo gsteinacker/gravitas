@@ -196,7 +196,7 @@ func (p *Pipeline) Draw(screen *ebiten.Image, cam *Camera, sn *sim.Snapshot, fx 
 	p.resize(w, h)
 
 	starFx := Effects{Doppler: fx.Doppler, Dark: fx.Dark} // the options that change the star image
-	if view := cam.View(); !p.drawnValid || sn.Version != p.drawnVersion || view != p.drawnView || starFx != p.drawnFx {
+	if view := cam.View(); !p.drawnValid || sn.Version != p.drawnVersion || view != p.drawnView || starFx != p.drawnFx || p.Stars.Adapting() {
 		p.stars.Clear()
 		p.Stars.DrawStars(p.stars, cam, sn, starFx)
 		p.drawnValid, p.drawnVersion, p.drawnView, p.drawnFx = true, sn.Version, view, starFx

@@ -55,6 +55,8 @@ type Component struct {
 	DiskMax      float64 `json:"diskMax,omitempty"`
 	Thickness    float64 `json:"thickness,omitempty"`
 	Dispersion   float64 `json:"dispersion,omitempty"`
+	ToomreQ      float64 `json:"toomreQ,omitempty"`      // > 0: dispersions from the Toomre criterion
+	ColdFraction float64 `json:"coldFraction,omitempty"` // young, cold population tracing spiral arms
 	HaloScale    float64 `json:"haloScale,omitempty"`    // scale radius of the halo
 	HaloProfile  string  `json:"haloProfile,omitempty"`  // "plummer" (default) or "hernquist"
 	HaloCut      float64 `json:"haloCut,omitempty"`      // plummer: halo mass fraction kept (0 means 0.99)
@@ -181,6 +183,7 @@ func addGalaxy(s *sim.State, c Component, n int, p sim.Params) {
 		HaloHernquist: hernquist, HaloMax: haloMax,
 		ScaleRadius: c.DiskScale, MinRadius: c.DiskMin, MaxRadius: c.DiskMax,
 		Thickness: c.Thickness, Softening: p.Softening, Dispersion: c.Dispersion,
+		Q: c.ToomreQ, ColdFraction: c.ColdFraction,
 		HaloMass: haloMass, HaloScale: c.HaloScale,
 		Center: v3(c.Position), Velocity: v3(c.Velocity),
 		Inclination: c.Inclination * deg, Orientation: c.Orientation * deg, Seed: c.Seed,

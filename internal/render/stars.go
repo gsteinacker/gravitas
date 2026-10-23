@@ -4,6 +4,8 @@ import (
 	"image"
 	"image/color"
 	"math"
+	"slices"
+	"sync"
 
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/vector"
@@ -24,6 +26,13 @@ type StarRenderer struct {
 	indices []uint32
 	bhs     []Hole
 	world   []worldHole
+
+	exposure       float64 // current auto exposure, 0 before the first frame
+	adapting       bool
+	light          [exposureGridW * exposureGridH]float32
+	lightMu        sync.Mutex
+	lightW, lightH float64
+	sortBuf        []float32
 }
 
 type worldHole struct{ x, y, z, rs, m float64 }
@@ -49,6 +58,21 @@ func glowSprite() *ebiten.Image {
 	}
 	return ebiten.NewImageFromImage(img)
 }
+
+// spriteMean is the mean intensity of the glow sprite over its quad.
+var spriteMean = func() float64 {
+	c := float64(spriteSize-1) / 2
+	var sum float64
+	for y := range spriteSize {
+		for x := range spriteSize {
+			d := math.Hypot(float64(x)-c, float64(y)-c) / c
+			if d < 1 {
+				sum += math.Min(1, math.Exp(-d*d*12)+0.25*math.Exp(-d*d*3))
+			}
+		}
+	}
+	return sum / (spriteSize * spriteSize)
+}()
 
 // starColor maps stellar mass (in units of the mean mass) to a rough black-body tint.
 func starColor(rel float64) (r, g, b float32) {
@@ -89,8 +113,12 @@ func (sr *StarRenderer) DrawStars(dst *ebiten.Image, cam *Camera, sn *sim.Snapsh
 		}
 	}
 	meanMass := starMass / math.Max(1, float64(stars))
-	// Keep the total brightness roughly constant: dense scenes would otherwise saturate to white.
-	exposure := math.Max(0.12, math.Min(1, math.Sqrt(10000/math.Max(1, float64(stars)))))
+	exposure := sr.exposure
+	if exposure == 0 { // first frame: rough guess from the star count, refined below
+		exposure = math.Max(0.02, math.Min(1, math.Sqrt(10000/math.Max(1, float64(stars)))))
+	}
+	sr.lightW, sr.lightH = cam.W/exposureGridW, cam.H/exposureGridH
+	clear(sr.light[:])
 	camPos := cam.Position()
 	doppler = doppler && sn.C > 0
 
@@ -117,6 +145,16 @@ func (sr *StarRenderer) DrawStars(dst *ebiten.Image, cam *Camera, sn *sim.Snapsh
 	view := cam.View()
 	sr.verts = resizeVerts(sr.verts, 4*n)
 	sim.ParallelFor(n, 4096, 0, func(lo, hi int) {
+		light := lightPool.Get().(*[exposureGridW * exposureGridH]float32)
+		clear(light[:])
+		defer func() {
+			sr.lightMu.Lock()
+			for k, v := range light {
+				sr.light[k] += v
+			}
+			sr.lightMu.Unlock()
+			lightPool.Put(light)
+		}()
 		for i := lo; i < hi; i++ {
 			q := sr.verts[4*i : 4*i+4 : 4*i+4]
 			if sn.Kind[i] == sim.DarkMatter && fx.Dark {
@@ -141,7 +179,7 @@ func (sr *StarRenderer) DrawStars(dst *ebiten.Image, cam *Camera, sn *sim.Snapsh
 				continue
 			}
 			cr, cg, cb := starColor(rel)
-			alpha := float32(exposure * math.Min(1, 0.55+0.2*rel))
+			alpha := float32(math.Min(1, 0.55+0.2*rel)) // before exposure
 			if doppler {
 				grav := 1.0
 				for _, h := range sr.world {
@@ -153,13 +191,57 @@ func (sr *StarRenderer) DrawStars(dst *ebiten.Image, cam *Camera, sn *sim.Snapsh
 				f := frequencyShift(float64(sn.VX[i]), float64(sn.VY[i]), float64(sn.VZ[i]), nx/l, ny/l, nz/l, sn.C, grav)
 				var beam float32
 				cr, cg, cb, beam = shiftColor(cr, cg, cb, f)
-				alpha = min(1, alpha*beam)
+				alpha *= beam
 			}
-			setQuad(q, float32(sx), float32(sy), float32(size/2), cr, cg, cb, alpha)
+			// Light this star adds at exposure 1, booked to the screen cell of its center.
+			if cx, cy := int(sx/sr.lightW), int(sy/sr.lightH); cx >= 0 && cy >= 0 && cx < exposureGridW && cy < exposureGridH {
+				light[cy*exposureGridW+cx] += alpha * float32(spriteMean*size*size)
+			}
+			setQuad(q, float32(sx), float32(sy), float32(size/2), cr, cg, cb, min(1, alpha*float32(exposure)))
 		}
 	})
 	sr.flush(dst)
+	sr.adaptExposure()
 }
+
+// Auto exposure (T-033): additive stars saturate an 8-bit image, and saturated pixels hide the
+// density contrast of spiral arms. The exposure is chosen so that the brightest exposurePercentile
+// of the lit screen cells just reach white. It is measured while drawing and applied from the next
+// frame on, smoothed so it does not flicker.
+const (
+	exposureGridW, exposureGridH = 96, 60
+	exposurePercentile           = 0.9
+	exposureTarget               = 0.9 // brightness of that percentile
+	exposureSmoothing            = 0.35
+)
+
+var lightPool = sync.Pool{New: func() any { return new([exposureGridW * exposureGridH]float32) }}
+
+func (sr *StarRenderer) adaptExposure() {
+	lit := sr.sortBuf[:0]
+	area := float32(sr.lightW * sr.lightH)
+	for _, v := range sr.light {
+		if v > 0 {
+			lit = append(lit, v/area)
+		}
+	}
+	sr.sortBuf = lit
+	if len(lit) == 0 {
+		return
+	}
+	slices.Sort(lit)
+	p := float64(lit[int(exposurePercentile*float64(len(lit)-1))])
+	target := math.Max(1e-4, math.Min(1, exposureTarget/p))
+	if sr.exposure == 0 {
+		sr.exposure = target
+	} else {
+		sr.exposure += exposureSmoothing * (target - sr.exposure)
+	}
+	sr.adapting = math.Abs(target-sr.exposure) > 0.03*sr.exposure
+}
+
+// Adapting reports whether the exposure is still converging, so the star image needs redrawing.
+func (sr *StarRenderer) Adapting() bool { return sr.adapting }
 
 // DrawHoles draws the black holes collected by the last DrawStars call.
 func (sr *StarRenderer) DrawHoles(dst *ebiten.Image) {
