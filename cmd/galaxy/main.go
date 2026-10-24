@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"path/filepath"
 	"runtime/pprof"
 	"strings"
 	"time"
@@ -46,6 +47,16 @@ func main() {
 	adapt := flag.Bool("adapt", false, "screenshots: adapt quality and star count like the app (default: fixed)")
 	lang := flag.String("lang", "", "user interface language: de or en (default: system)")
 	flag.Parse()
+	// Inside an .app bundle the window system changes to Contents/Resources while initializing,
+	// before main runs, so relative paths from the command line are resolved against the shell's
+	// directory ($PWD).
+	for _, f := range []*string{sceneFile, loadFile, shot, cpuprofile} {
+		if *f != "" && !filepath.IsAbs(*f) {
+			if dir := os.Getenv("PWD"); dir != "" {
+				*f = filepath.Join(dir, *f)
+			}
+		}
+	}
 	mac.Init()
 	if *lang != "" {
 		i18n.Set(i18n.FromLocale(*lang))
