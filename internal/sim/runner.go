@@ -23,6 +23,7 @@ type Snapshot struct {
 	Steps          int
 	C              float64 // speed of light of the run, 0 = Newtonian
 	Substeps       int     // inner substeps near black holes in the last step
+	HydroSubsteps  int     // parts of the last step for the Courant condition of gas
 	Version        uint64  // increases with every publish, so consumers can skip unchanged data
 	Gravity        GravityMode
 	DarkMatterOff  bool
@@ -60,6 +61,7 @@ func (sn *Snapshot) fill(m *Simulation) {
 		}
 	})
 	sn.Time, sn.Steps, sn.C, sn.Substeps, sn.Gravity = m.Time, m.Steps, m.Params.C, m.Substeps, m.Params.Gravity
+	sn.HydroSubsteps = m.HydroSubsteps
 	sn.DarkMatterOff = m.Params.DarkMatterOff
 }
 

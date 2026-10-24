@@ -122,13 +122,14 @@ type Game struct {
 	message            atomic.Pointer[note]
 
 	// Learning mode (explain.go).
-	explain  bool
-	level    learn.Level
-	topics   []string
-	topicIdx int
-	hinted   map[string]bool
-	substeps int
-	gravity  sim.GravityMode
+	explain     bool
+	level       learn.Level
+	topics      []string
+	topicIdx    int
+	hinted      map[string]bool
+	substeps    int
+	gasSubsteps int
+	gravity     sim.GravityMode
 }
 
 // SetEffects replaces the active render effects.
@@ -443,6 +444,7 @@ func (g *Game) Draw(screen *ebiten.Image) {
 	g.runner.View(func(sn *sim.Snapshot) {
 		g.pipeline.Draw(screen, &g.cam, sn, g.fx)
 		g.bodies, g.blackHoles, g.simTime, g.c, g.substeps, g.gravity = sn.Len(), 0, sn.Time, sn.C, sn.Substeps, sn.Gravity
+		g.gasSubsteps = sn.HydroSubsteps
 		g.dark, g.darkOff, g.gas, g.starsFormed = 0, sn.DarkMatterOff, 0, sn.StarsFormed
 		for _, k := range sn.Kind {
 			switch k {
@@ -501,9 +503,9 @@ func (g *Game) drawHUD(screen *ebiten.Image) {
 		title += "\n" + g.scene.Info
 	}
 	ebitenutil.DebugPrintAt(screen, fmt.Sprintf(
-		"%s\nbodies %d (black holes %d)   %s\n%s\nsteps/s %.0f (limit %s)   substeps near holes %d   FPS %.0f\n%s\n%s\n%s\n\ntool: %s, mass %.2f   (b/k/tab, m/n)",
+		"%s\nbodies %d (black holes %d)   %s\n%s\nsteps/s %.0f (limit %s)   substeps near holes %d, gas %d   FPS %.0f\n%s\n%s\n%s\n\ntool: %s, mass %.2f   (b/k/tab, m/n)",
 		title, g.bodies, g.blackHoles, timeText(g.simTime, g.scene), darkText(g.dark, g.darkOff, g.fx.Dark)+gasText(g.gas, g.starsFormed, g.fx.Gas),
-		g.runner.StepsPerSecond(), speed, g.substeps, ebiten.ActualFPS(), driftText(g.runner.EnergyDrift()),
+		g.runner.StepsPerSecond(), speed, g.substeps, max(1, g.gasSubsteps), ebiten.ActualFPS(), driftText(g.runner.EnergyDrift()),
 		lightText(g.c, g.bhMass, g.gravity), effectsText(g.fx), g.tool, g.bhMass), 10, 8)
 	if n := g.message.Load(); n != nil && time.Now().Before(n.until) {
 		w, _ := text.Measure(n.text, bodyFace, 0)

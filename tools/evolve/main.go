@@ -62,6 +62,13 @@ func main() {
 			s := m.State
 			fmt.Printf("step %d t=%.5f: body %d kind %d pos (%g %g %g) vel (%g %g %g) acc (%g %g %g) u %g h %g rho %g ion %g m %g\n",
 				steps, m.Time, i, s.Kind[i], s.PosX[i], s.PosY[i], s.PosZ[i], s.VelX[i], s.VelY[i], s.VelZ[i], s.AccX[i], s.AccY[i], s.AccZ[i], s.U[i], s.H[i], s.Rho[i], s.Ion[i], s.Mass[i])
+			for h := range s.Len() {
+				if s.Kind[h] == sim.BlackHole {
+					dx, dy, dz := s.PosX[h]-s.PosX[i], s.PosY[h]-s.PosY[i], s.PosZ[h]-s.PosZ[i]
+					fmt.Printf("  hole %d m %g at distance %g, speed %g\n", h, s.Mass[h], math.Sqrt(dx*dx+dy*dy+dz*dz),
+						math.Sqrt(s.VelX[h]*s.VelX[h]+s.VelY[h]*s.VelY[h]+s.VelZ[h]*s.VelZ[h]))
+				}
+			}
 			os.Exit(1)
 		}
 		if *every > 0 && m.Time >= next {

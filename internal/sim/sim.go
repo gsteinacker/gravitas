@@ -39,6 +39,9 @@ type Hydro interface {
 	// Forces adds pressure and viscosity accelerations of gas bodies to s.Acc*, fills s.Rho and s.H,
 	// and writes du/dt and the velocity divergence of every body (0 for non-gas) into dudt and divv.
 	Forces(s *State, p *Params, dudt, divv []float64)
+	// Timestep returns the largest stable time step (Courant condition) after the last Forces,
+	// +Inf without gas.
+	Timestep() float64
 }
 
 // SourceMass is the gravitating mass of a body of kind k and mass m under p.
@@ -75,6 +78,9 @@ type Simulation struct {
 	StarsFormed int
 	// Substeps is the number of inner substeps used near black holes in the last step.
 	Substeps int
+	// HydroSubsteps is the number of parts the last step was split into for the gas.
+	HydroSubsteps int
+	hydroDt       float64 // stable step of the gas after the last hydro evaluation (0: none yet)
 
 	accValid bool
 	holes    []int // alive black holes, refreshed every step
@@ -98,7 +104,7 @@ func New(s *State, solver Solver, p Params) *Simulation {
 // Reset replaces the state and restarts the clock.
 func (m *Simulation) Reset(s *State, p Params) {
 	m.State, m.Params, m.Time, m.Steps, m.accValid, m.ExternalEnergy = s, p, 0, 0, false, 0
-	m.StarsFormed = 0
+	m.StarsFormed, m.hydroDt = 0, 0
 	m.Epoch++
 	m.histories = nil
 }
@@ -113,6 +119,7 @@ func (m *Simulation) Restore(s *State, p Params, time float64, steps int, extern
 // without recomputing it, which matters for gas: the smoothing-length iteration is not idempotent.
 type Forces struct {
 	AccX, AccY, AccZ, Rho, DuDt, DivV []float64
+	HydroDt                           float64
 }
 
 // LastForces returns a copy of the last force evaluation, or nil if there is none.
@@ -124,6 +131,7 @@ func (m *Simulation) LastForces() *Forces {
 	return &Forces{
 		AccX: slices.Clone(s.AccX), AccY: slices.Clone(s.AccY), AccZ: slices.Clone(s.AccZ),
 		Rho: slices.Clone(s.Rho), DuDt: slices.Clone(m.dudt), DivV: slices.Clone(m.divv),
+		HydroDt: m.hydroDt,
 	}
 }
 
@@ -138,6 +146,7 @@ func (m *Simulation) RestoreForces(f *Forces) {
 	copy(s.AccZ, f.AccZ)
 	copy(s.Rho, f.Rho)
 	m.dudt, m.divv = slices.Clone(f.DuDt), slices.Clone(f.DivV)
+	m.hydroDt = f.HydroDt
 	m.accValid = true
 }
 
@@ -159,8 +168,31 @@ func (m *Simulation) AddBody(b Body) int {
 	return i
 }
 
-// Step advances the simulation by one time step.
+// maxHydroSubsteps caps the subdivision of a step for the Courant condition of gas.
+const maxHydroSubsteps = 64
+
+// Step advances the simulation by Params.Dt. If gas needs a shorter step (Courant condition, e.g.
+// in shocks where galaxies collide), the step is split into equal parts; otherwise the explicit
+// hydrodynamics becomes unstable and heats itself without bound.
 func (m *Simulation) Step() {
+	dt := m.Params.Dt
+	n := 1
+	if m.Hydro != nil && m.hydroDt > 0 && m.hydroDt < dt {
+		n = min(maxHydroSubsteps, int(math.Ceil(dt/m.hydroDt)))
+	}
+	m.HydroSubsteps = n
+	if n == 1 {
+		m.step()
+		return
+	}
+	m.Params.Dt = dt / float64(n)
+	for range n {
+		m.step()
+	}
+	m.Params.Dt = dt
+}
+
+func (m *Simulation) step() {
 	s, dt := m.State, m.Params.Dt
 	m.collectHoles()
 	if len(m.holes) > 0 {

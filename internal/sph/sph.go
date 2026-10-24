@@ -14,13 +14,23 @@ type Solver struct {
 	P, C  []float64 // pressure and sound speed per body (gas only)
 	todo  []int32   // bodies whose smoothing length is still iterating
 	again []bool
+	dt    float64 // Courant time step of the last Forces
 }
+
+// courant is the Courant factor of the time step condition dt ≤ courant · h / v_sig.
+const courant = 0.3
+
+// Timestep implements sim.Hydro: min over gas of courant · h_i / v_sig,i with the signal velocity
+// v_sig,i = max_j (c_i + c_j − 3 min(0, v_ij · r̂_ij)) (Monaghan 1997).
+func (sv *Solver) Timestep() float64 { return sv.dt }
 
 const (
 	maxDensityIterations = 6
 	hTolerance           = 0.05 // relative deviation of h from its target that ends the iteration
 	betaFactor           = 2    // β = 2α (Monaghan)
-	hMinFactor           = 1e-3
+	// hMinSoftening bounds h from below by this fraction of the gravitational softening: gas is
+	// not resolved below it anyway, and tiny h would force tiny Courant steps (as in GADGET).
+	hMinSoftening = 0.25
 )
 
 var stackPool = sync.Pool{New: func() any { s := make([]int32, 0, 64); return &s }}
@@ -49,12 +59,14 @@ func (sv *Solver) Forces(s *sim.State, p *sim.Params, dudt, divv []float64) {
 	}
 	clear(dudt)
 	clear(divv)
+	sv.dt = math.Inf(1)
 	if len(sv.gas) < 2 {
 		return
 	}
 	gamma, ngb, alpha := defaults(p.Gas)
 	x, y, z, m, h := s.PosX, s.PosY, s.PosZ, s.Mass, s.H
 	sv.initH(s, ngb)
+	hMin := hMinSoftening * p.Softening
 	sv.tree.build(sv.gas, x, y, z, h)
 
 	// Density and smoothing length: h = ½ (3 N m / 4π ρ)^⅓ for N neighbors inside 2h. Each body
@@ -73,10 +85,10 @@ func (sv *Solver) Forces(s *sim.State, p *sim.Params, dudt, divv []float64) {
 					rho += m[j] * W(math.Sqrt(r2), hi)
 				})
 				s.Rho[i] = rho
-				target := 0.5 * math.Cbrt(3*ngb*m[i]/(4*math.Pi*rho))
+				target := math.Max(hMin, 0.5*math.Cbrt(3*ngb*m[i]/(4*math.Pi*rho)))
 				redo := !last && math.Abs(target-hi) > hTolerance*hi
 				if redo {
-					h[i] = math.Max(0.5*hi, math.Min(2*hi, target)) // damped update
+					h[i] = math.Max(hMin, math.Max(0.5*hi, math.Min(2*hi, target))) // damped update
 				}
 				sv.again[lo+k] = redo
 			}
@@ -106,12 +118,15 @@ func (sv *Solver) Forces(s *sim.State, p *sim.Params, dudt, divv []float64) {
 	}
 
 	// Forces, energy equation and velocity divergence (symmetric variable-h formulation).
+	var dtMu sync.Mutex
 	sim.ParallelFor(len(sv.gas), 256, 0, func(lo, hi int) {
 		sp := stackPool.Get().(*[]int32)
+		dtMin := math.Inf(1)
 		for _, i := range sv.tree.order[lo:hi] {
 			hi, rhoi, pi := h[i], s.Rho[i], P[i]
 			fi := pi / (rhoi * rhoi)
 			var ax, ay, az, du, dv float64
+			vsig := 2 * C[i]
 			*sp = sv.tree.each(x[i], y[i], z[i], 2*hi, true, *sp, func(j int32, r2 float64) {
 				if j == i || r2 == 0 {
 					return
@@ -120,6 +135,7 @@ func (sv *Solver) Forces(s *sim.State, p *sim.Params, dudt, divv []float64) {
 				ex, ey, ez := (x[i]-x[j])/r, (y[i]-y[j])/r, (z[i]-z[j])/r
 				vx, vy, vz := s.VelX[i]-s.VelX[j], s.VelY[i]-s.VelY[j], s.VelZ[i]-s.VelZ[j]
 				vr := vx*ex + vy*ey + vz*ez // v_ij · r̂_ij
+				vsig = max(vsig, C[i]+C[j]-3*min(0, vr))
 				dwi, dwj := DW(r, hi), DW(r, h[j])
 				dwm := 0.5 * (dwi + dwj)
 				fj := P[j] / (s.Rho[j] * s.Rho[j])
@@ -139,8 +155,14 @@ func (sv *Solver) Forces(s *sim.State, p *sim.Params, dudt, divv []float64) {
 			s.AccZ[i] += az
 			dudt[i] = du
 			divv[i] = dv / rhoi
+			if vsig > 0 {
+				dtMin = min(dtMin, courant*hi/vsig)
+			}
 		}
 		stackPool.Put(sp)
+		dtMu.Lock()
+		sv.dt = min(sv.dt, dtMin)
+		dtMu.Unlock()
 	})
 }
 
@@ -170,7 +192,6 @@ func (sv *Solver) initH(s *sim.State, ngb float64) {
 			s.H[i] = guess
 		}
 	}
-	_ = hMinFactor
 }
 
 func resizeBool(s []bool, n int) []bool {

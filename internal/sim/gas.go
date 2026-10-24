@@ -16,6 +16,7 @@ func (m *Simulation) computeSlow() {
 	n := m.State.Len()
 	m.dudt, m.divv = resize(m.dudt, n), resize(m.divv, n)
 	m.Hydro.Forces(m.State, &m.Params, m.dudt, m.divv)
+	m.hydroDt = m.Hydro.Timestep()
 }
 
 func (m *Simulation) hasGas() bool {

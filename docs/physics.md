@@ -92,6 +92,11 @@ SPH-Gas mit Druck, Viskosität, Kühlung auf eine Untergrenze und Sternentstehun
 zusammenströmendem Gas. Junge Sterne werden blau gezeichnet (`o` zeigt das Gas selbst). Szenen 1, 2, 6, 7 haben
 15 % Gas in der Scheibe bei 10⁴ K.
 
+Zeitschritt: Gas verlangt Δt ≤ 0,3 h / v_sig (Courant, v_sig = c_i + c_j − 3 min(0, v_ij·r̂), Monaghan 1997).
+Ist der Szenen-Schritt länger, wird er in gleiche Teile zerlegt (höchstens 64, HUD „gas N“). Ohne das
+heizt sich Gas in Schocks bei Galaxienverschmelzungen explizit unbegrenzt auf und die Rechnung explodiert.
+h ist nach unten auf ε/4 begrenzt: Unterhalb der Gravitationsauflösung ist Gas ohnehin nicht aufgelöst.
+
 ## Was wir bewusst ignorieren
 
 - Allgemeine Relativität jenseits der obigen Näherungen (keine Metrik, kein Frame-Dragging).
