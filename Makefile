@@ -1,6 +1,6 @@
 GO ?= go
 
-.PHONY: check fmt vet test race bench run build shot plan next app dmg notarize icon
+.PHONY: check fmt vet test race bench run build shot plan next app dmg notarize icon lib lib-test app-swift
 
 check: fmt vet test
 	$(GO) run ./tools/plan check
@@ -88,3 +88,15 @@ icon: build
 	rm -rf bin/Galaxy.iconset
 	$(GO) run ./tools/icon -in bin/icon-src.png -out bin/Galaxy.iconset -size 0.82
 	iconutil -c icns bin/Galaxy.iconset -o packaging/macos/Galaxy.icns
+
+# ---- SwiftUI variant (branch swiftui-app, T-049/T-050) ------------------------------------------
+LIBFLAGS := CGO_ENABLED=1 CGO_CFLAGS="-mmacosx-version-min=13.0" CGO_LDFLAGS="-mmacosx-version-min=13.0"
+
+lib:
+	mkdir -p bin/lib
+	$(LIBFLAGS) $(GO) build -buildmode=c-archive -trimpath -o bin/lib/libgalaxy.a ./cmd/libgalaxy
+
+lib-test: lib
+	cc -o bin/lib/smoke cmd/libgalaxy/testdata/smoke.c -Ibin/lib bin/lib/libgalaxy.a \
+		-framework Metal -framework Foundation -framework CoreFoundation -lresolv
+	HOME=$$(mktemp -d) ./bin/lib/smoke
