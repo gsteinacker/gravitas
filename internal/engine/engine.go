@@ -35,6 +35,7 @@ type Engine struct {
 	ticks    int
 	spsCap   int
 	version  uint64
+	last     FrameInfo // snapshot part of the last copy, returned again while nothing changed
 }
 
 // New starts built-in scene preset (0-based) with stars bodies; stars ≤ 0 chooses them from the
@@ -189,9 +190,10 @@ type FrameInfo struct {
 
 // Frame copies the latest snapshot into dst (FloatsPerBody floats per body) if it is newer than
 // the last copy or force is set; it returns false if nothing was copied. Bodies beyond the
-// capacity of dst are dropped; Info.Bodies says how many were copied.
+// capacity of dst are dropped; Info.Bodies says how many were copied. Without a copy, the info
+// describes the last copied snapshot (the caller keeps drawing it) with the current camera.
 func (e *Engine) Frame(dst []float32, force bool) (FrameInfo, bool) {
-	var info FrameInfo
+	info := e.last
 	copied := false
 	e.Runner.View(func(sn *sim.Snapshot) {
 		e.Observe(sn)
@@ -199,6 +201,7 @@ func (e *Engine) Frame(dst []float32, force bool) (FrameInfo, bool) {
 			return
 		}
 		e.version = sn.Version
+		info = FrameInfo{}
 		n := min(sn.Len(), len(dst)/FloatsPerBody)
 		var starMass float64
 		for i := range n {
@@ -213,6 +216,7 @@ func (e *Engine) Frame(dst []float32, force bool) (FrameInfo, bool) {
 		}
 		info.Bodies, info.Version, info.Time, info.C, info.YoungAge = n, sn.Version, sn.Time, sn.C, sn.YoungAge
 		info.MeanStarMass = starMass / math.Max(1, float64(info.Stars))
+		e.last = info
 		copied = true
 	})
 	k := e.Cam

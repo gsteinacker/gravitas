@@ -21,8 +21,17 @@ func TestFrameCopiesBodies(t *testing.T) {
 			if info.Stars == 0 || info.MeanStarMass <= 0 || info.Distance <= 0 {
 				t.Errorf("frame info %+v", info)
 			}
-			if _, again := e.Frame(buf, false); again {
+			e.Runner.SetPaused(true)
+			e.Frame(buf, true)
+			first, _ := e.Frame(buf, true)
+			again, copied := e.Frame(buf, false)
+			if copied {
 				t.Error("an unchanged snapshot must not be copied again")
+			}
+			// The renderer keeps drawing the last copy: its description must stay valid (a zero
+			// mean star mass made every star maximally bright between steps).
+			if again.MeanStarMass != first.MeanStarMass || again.Bodies != first.Bodies || again.C != first.C {
+				t.Errorf("info without copy %+v, after copy %+v", again, first)
 			}
 			break
 		}
