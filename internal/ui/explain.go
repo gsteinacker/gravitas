@@ -11,6 +11,8 @@ import (
 	"github.com/hajimehoshi/ebiten/v2/vector"
 	"golang.org/x/image/font/gofont/gobold"
 	"golang.org/x/image/font/gofont/goregular"
+
+	"galaxy/internal/i18n"
 )
 
 // Learning mode (T-039): e opens a panel with the scene introduction and explanations of the
@@ -36,6 +38,7 @@ var (
 	panelColor  = color.RGBA{6, 9, 22, 225}
 	accentColor = color.RGBA{255, 170, 70, 255}
 	dimColor    = color.RGBA{150, 160, 185, 255}
+	hudColor    = color.RGBA{215, 220, 235, 255}
 )
 
 // panelWidth is the width of the explanation panel for a screen width.
@@ -51,7 +54,7 @@ func (g *Game) drawExplanation(screen *ebiten.Image) {
 	title, body := g.Explanation()
 	drawText(screen, title, titleFace, x, y, color.White)
 	y += 34
-	drawText(screen, "Zielgruppe: "+g.Level.Name()+"   ("+strconv.Itoa(g.TopicIdx+1)+"/"+strconv.Itoa(len(g.Topics))+")", smallFace, x, y, accentColor)
+	drawText(screen, i18n.T("Zielgruppe: ", "Audience: ")+g.Level.Name()+"   ("+strconv.Itoa(g.TopicIdx+1)+"/"+strconv.Itoa(len(g.Topics))+")", smallFace, x, y, accentColor)
 	y += 30
 	for _, line := range wrap(body, bodyFace, w-2*pad) {
 		if y > y0+h-60 {
@@ -61,7 +64,7 @@ func (g *Game) drawExplanation(screen *ebiten.Image) {
 		drawText(screen, line, bodyFace, x, y, color.White)
 		y += 23
 	}
-	drawText(screen, "←/→ Thema   ↑/↓ Zielgruppe   e oder Esc schließen", smallFace, x, y0+h-pad-14, dimColor)
+	drawText(screen, i18n.T("←/→ Thema   ↑/↓ Zielgruppe   e oder Esc schließen", "←/→ topic   ↑/↓ audience   e or Esc to close"), smallFace, x, y0+h-pad-14, dimColor)
 }
 
 func drawText(dst *ebiten.Image, s string, face *text.GoTextFace, x, y float64, c color.Color) {

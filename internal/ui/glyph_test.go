@@ -7,6 +7,7 @@ import (
 	"golang.org/x/image/font/gofont/goregular"
 	"golang.org/x/image/font/sfnt"
 
+	"galaxy/internal/i18n"
 	"galaxy/internal/learn"
 	"galaxy/internal/scene"
 )
@@ -42,6 +43,17 @@ func TestLearningTextsUseOnlyAvailableGlyphs(t *testing.T) {
 		}
 	}
 	check("ui", "←/→ Thema   ↑/↓ Zielgruppe   e oder Esc schließen …")
+	// HUD, help and messages in both languages (T-045).
+	defer i18n.Set(i18n.Current())
+	for _, l := range []i18n.Lang{i18n.German, i18n.English} {
+		i18n.Set(l)
+		for _, txt := range statusTexts() {
+			check("hud", txt)
+		}
+		for lv := learn.School; lv <= learn.Physics; lv++ {
+			check("level", lv.Name())
+		}
+	}
 	var rs []rune
 	for r := range missing {
 		rs = append(rs, r)

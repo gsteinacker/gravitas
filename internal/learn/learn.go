@@ -8,6 +8,8 @@ import (
 	"fmt"
 	"io/fs"
 	"slices"
+
+	"galaxy/internal/i18n"
 )
 
 // Level is the audience of a text.
@@ -24,7 +26,9 @@ const (
 func (l Level) Key() string { return [...]string{"school", "lay", "physics"}[l] }
 
 // Name is the label shown to the user.
-func (l Level) Name() string { return [...]string{"Schüler", "Interessierte", "Physik"}[l] }
+func (l Level) Name() string {
+	return [...]string{i18n.T("Schüler", "pupils"), i18n.T("Interessierte", "interested laypeople"), i18n.T("Physik", "physicists")}[l]
+}
 
 // Next and Prev cycle through the levels.
 func (l Level) Next() Level { return (l + 1) % levels }

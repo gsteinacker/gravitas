@@ -8,18 +8,21 @@ import (
 
 	"github.com/hajimehoshi/ebiten/v2/text/v2"
 
+	"galaxy/internal/i18n"
 	"galaxy/internal/sim"
 	"galaxy/internal/view"
 )
 
 func TestEffectsText(t *testing.T) {
 	fx := view.Effects{Glow: true, Trails: true, Lensing: true, Doppler: true}
-	if got := effectsText(fx); got != "effects:*glow(g)*trails(t)*lens(l)*doppler(d) dust(u) gas map(o)" {
+	i18n.Set(i18n.English)
+	if got := effectsText(fx); got != "effects: *glow(g) *trails(t) *lens(l) *doppler(d)  dust(u)  gas map(o)" {
 		t.Errorf("effectsText = %q", got)
 	}
 }
 
 func TestDriftText(t *testing.T) {
+	i18n.Set(i18n.English)
 	if got := driftText(1.234e-3, sim.EnergyExact); got != "energy drift +1.2e-03" {
 		t.Errorf("exact: %q", got)
 	}

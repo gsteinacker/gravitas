@@ -12,6 +12,7 @@ import (
 
 	"github.com/hajimehoshi/ebiten/v2"
 
+	"galaxy/internal/i18n"
 	"galaxy/internal/mac"
 	"galaxy/internal/prefs"
 	"galaxy/internal/scene"
@@ -41,8 +42,12 @@ func main() {
 	gravity := flag.String("gravity", "instant", "propagation of black hole gravity: instant, retarded, retarded+v")
 	effects := flag.String("fx", "", "render effects (glow, lens, doppler, trails, dark); default: the scene's or glow,lens,doppler")
 	cpuprofile := flag.String("cpuprofile", "", "write a CPU profile of the whole run to this file")
+	lang := flag.String("lang", "", "user interface language: de or en (default: system)")
 	flag.Parse()
 	mac.Init()
+	if *lang != "" {
+		i18n.Set(i18n.FromLocale(*lang))
+	}
 	settings := prefs.Load(prefs.Path())
 	nSet := false
 	flag.Visit(func(f *flag.Flag) { nSet = nSet || f.Name == "n" })

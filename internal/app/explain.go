@@ -3,6 +3,7 @@ package app
 import (
 	"slices"
 
+	"galaxy/internal/i18n"
 	"galaxy/internal/learn"
 )
 
@@ -30,7 +31,7 @@ func (c *Controller) hint(id string) {
 		return
 	}
 	c.focus(id)
-	c.Notify(t.Short + "   (e: mehr)")
+	c.Notify(t.Short + i18n.T("   (e: mehr)", "   (e: more)"))
 }
 
 func (c *Controller) focus(id string) {
@@ -60,7 +61,7 @@ func (c *Controller) Explanation() (title, body string) {
 	t := learn.Get(id)
 	body = t.Text(c.Level)
 	if t.Keys != "" {
-		body += "\n\nTasten: " + t.Keys
+		body += i18n.T("\n\nTasten: ", "\n\nKeys: ") + t.Keys
 	}
 	return t.Title, body
 }

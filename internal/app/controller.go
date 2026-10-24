@@ -9,6 +9,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"galaxy/internal/i18n"
 	"galaxy/internal/learn"
 	"galaxy/internal/prefs"
 	"galaxy/internal/save"
@@ -305,10 +306,10 @@ func (c *Controller) Save(path string) {
 		f := save.Capture(m, sp, cam)
 		go func() {
 			if err := save.Write(path, f); err != nil {
-				c.Notify("save failed: " + err.Error())
+				c.Notify(i18n.T("Sichern fehlgeschlagen: ", "save failed: ") + err.Error())
 				return
 			}
-			c.Notify("saved " + path)
+			c.Notify(i18n.T("Gesichert: ", "saved ") + path)
 		}()
 	})
 }
@@ -324,7 +325,7 @@ func (c *Controller) Load(path string) error {
 	c.Cam.Target = vec.Vec3{X: f.Camera.Target[0], Y: f.Camera.Target[1], Z: f.Camera.Target[2]}
 	c.Cam.Yaw, c.Cam.Pitch, c.Cam.Distance = f.Camera.Yaw, f.Camera.Pitch, f.Camera.Distance
 	c.Runner.Do(f.Restore)
-	c.Notify("loaded " + path)
+	c.Notify(i18n.T("Geladen: ", "loaded ") + path)
 	return nil
 }
 
@@ -349,7 +350,7 @@ func (c *Controller) applyScene(sp *scene.Spec) {
 	c.Scene = sp
 	c.Topics, c.TopicIdx = topicList(sp.Topics), 0
 	if len(sp.Intro) > 0 {
-		c.Notify(sp.Name + ": e öffnet eine Einführung")
+		c.Notify(sp.Name + i18n.T(": e öffnet eine Einführung", ": e opens an introduction"))
 	}
 	w, h := c.Cam.W, c.Cam.H
 	c.Cam = view.NewCamera()

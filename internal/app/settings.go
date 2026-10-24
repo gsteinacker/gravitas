@@ -4,6 +4,7 @@ import (
 	"maps"
 	"math"
 
+	"galaxy/internal/i18n"
 	"galaxy/internal/learn"
 	"galaxy/internal/prefs"
 	"galaxy/internal/sim"
@@ -86,7 +87,7 @@ func (c *Controller) SavePrefs() {
 	path := c.PrefsPath
 	go func() {
 		if err := p.Save(path); err != nil {
-			c.Notify("settings: " + err.Error())
+			c.Notify(i18n.T("Einstellungen: ", "settings: ") + err.Error())
 		}
 	}()
 }
