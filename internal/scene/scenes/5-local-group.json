@@ -51,7 +51,7 @@
       "seed": 11,
       "note": "Units: length 100 kpc, mass 1e12 Msun, so velocity 207 km/s and time 0.47 Gyr; c = 3e5/207. Galactic coordinates, disk in the xy plane. Sgr A* 4.3e6 Msun. Hernquist halos (flat rotation curve ~220 km/s from 8 to 50 kpc); scale radii after common models, truncation near the virial radius (smaller for the tidally limited LMC/SMC). Bulge ~0.9e10 Msun, a ≈ 0.7 kpc (Bland-Hawthorn & Gerhard 2016).",
       "bulgeFraction": 0.15,
-      "bulgeScale": 0.007
+      "bulgeScale": 0.005
     },
     {
       "type": "galaxy",

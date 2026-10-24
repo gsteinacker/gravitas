@@ -33,11 +33,11 @@
       "type": "galaxy",
       "weight": 0.6,
       "mass": 6,
-      "holeMass": 0.0012,
+      "holeMass": 0.00045,
       "diskScale": 0.7,
       "diskMin": 0.05,
       "diskMax": 3,
-      "thickness": 0.03,
+      "thickness": 0.1,
       "position": [
         -9,
         -2.5,
@@ -57,21 +57,23 @@
       "haloScale": 3.5,
       "haloMax": 30,
       "darkFraction": 0.5,
-      "note": "Disks as before (0.6 and 0.4), now inside Hernquist halos with 90 % dark matter and realistic central holes. Start ~47 kpc apart, opposite momenta (6 x 0.42 = 4 x 0.63), so the approach is visible before the halos merge.",
+      "note": "Disks as before (0.6 and 0.4), now inside Hernquist halos with 90 % dark matter and realistic central holes. Start ~47 kpc apart, opposite momenta (6 x 0.42 = 4 x 0.63), so the approach is visible before the halos merge. Structure (T-040 review): disk sech² scale z0 ≈ 2–3·10² pc (old thin disk), cold population ×0.3; gas disk scale length 2× the stars and 1.5× the stellar radius (H I is more extended); bulge Hernquist a ≈ 0.4 kpc truncated at 8a; black hole M_BH ≈ 0.005 M_bulge (Kormendy & Ho 2013).",
       "gasFraction": 0.15,
       "gasTemperature": 10000,
       "bulgeFraction": 0.15,
-      "bulgeScale": 0.2
+      "bulgeScale": 0.16,
+      "gasScale": 1.4,
+      "gasMax": 4.5
     },
     {
       "type": "galaxy",
       "weight": 0.4,
       "mass": 4,
-      "holeMass": 0.0008,
+      "holeMass": 0.0003,
       "diskScale": 0.6,
       "diskMin": 0.05,
       "diskMax": 2.5,
-      "thickness": 0.03,
+      "thickness": 0.1,
       "position": [
         9,
         2.5,
@@ -95,7 +97,10 @@
       "gasFraction": 0.15,
       "gasTemperature": 10000,
       "bulgeFraction": 0.15,
-      "bulgeScale": 0.18
+      "bulgeScale": 0.14,
+      "gasScale": 1.2,
+      "gasMax": 3.75,
+      "note": "Structure (T-040 review): disk sech² scale z0 ≈ 2–3·10² pc (old thin disk), cold population ×0.3; gas disk scale length 2× the stars and 1.5× the stellar radius (H I is more extended); bulge Hernquist a ≈ 0.4 kpc truncated at 8a; black hole M_BH ≈ 0.005 M_bulge (Kormendy & Ho 2013)."
     }
   ],
   "camera": {

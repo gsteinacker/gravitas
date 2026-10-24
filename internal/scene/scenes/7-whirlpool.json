@@ -48,19 +48,22 @@
       "diskScale": 0.5,
       "diskMin": 0.05,
       "diskMax": 3,
-      "thickness": 0.03,
+      "thickness": 0.08,
       "toomreQ": 1.2,
       "coldFraction": 0.15,
       "haloScale": 1.2,
       "darkFraction": 0.4,
-      "holeMass": 0.002,
+      "holeMass": 0.00011,
       "seed": 31,
       "haloProfile": "hernquist",
       "haloMax": 12,
       "gasFraction": 0.15,
       "gasTemperature": 10000,
       "bulgeFraction": 0.15,
-      "bulgeScale": 0.1
+      "bulgeScale": 0.08,
+      "gasScale": 1.0,
+      "gasMax": 4.5,
+      "note": "Structure (T-040 review): disk sech² scale z0 ≈ 2–3·10² pc (old thin disk), cold population ×0.3; gas disk scale length 2× the stars and 1.5× the stellar radius (H I is more extended); bulge Hernquist a ≈ 0.4 kpc truncated at 8a; black hole M_BH ≈ 0.005 M_bulge (Kormendy & Ho 2013)."
     },
     {
       "type": "galaxy",
@@ -71,12 +74,12 @@
       "diskScale": 0.2,
       "diskMin": 0.02,
       "diskMax": 0.8,
-      "thickness": 0.05,
+      "thickness": 0.06,
       "toomreQ": 1.5,
       "coldFraction": 0.05,
       "haloScale": 0.5,
       "darkFraction": 0.4,
-      "holeMass": 0.0006,
+      "holeMass": 0.00015,
       "inclination": 60,
       "position": [
         3.5,
@@ -89,13 +92,15 @@
         -0.2
       ],
       "seed": 32,
-      "note": "Bound orbit (0.8 of escape speed) aimed below the main disk; geometry inspired by, not fitted to, published M51 models. Bulge-dominated SB0 pec companion.",
+      "note": "Bound orbit (0.8 of escape speed) aimed below the main disk; geometry inspired by, not fitted to, published M51 models. Bulge-dominated SB0 pec companion. Structure (T-040 review): disk sech² scale z0 ≈ 2–3·10² pc (old thin disk), cold population ×0.3; gas disk scale length 2× the stars and 1.5× the stellar radius (H I is more extended); bulge Hernquist a ≈ 0.4 kpc truncated at 8a; black hole M_BH ≈ 0.005 M_bulge (Kormendy & Ho 2013).",
       "haloProfile": "hernquist",
       "haloMax": 5,
       "gasFraction": 0.05,
       "gasTemperature": 10000,
       "bulgeFraction": 0.4,
-      "bulgeScale": 0.06
+      "bulgeScale": 0.05,
+      "gasScale": 0.4,
+      "gasMax": 1.2
     }
   ]
 }

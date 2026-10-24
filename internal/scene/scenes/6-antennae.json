@@ -48,12 +48,12 @@
       "diskScale": 0.5,
       "diskMin": 0.05,
       "diskMax": 2.5,
-      "thickness": 0.03,
+      "thickness": 0.08,
       "toomreQ": 1.2,
       "coldFraction": 0.15,
       "haloScale": 1.5,
       "darkFraction": 0.4,
-      "holeMass": 0.002,
+      "holeMass": 0.00011,
       "inclination": 60,
       "position": [
         -5,
@@ -66,13 +66,15 @@
         0
       ],
       "seed": 21,
-      "note": "Parabolic orbit of two unit masses (point-mass approximation) from separation 10 to pericenter 1.5: v_rel = (-0.583, 0.245, 0). Both disks spin with the orbit (prograde), tilted 60 deg.",
+      "note": "Parabolic orbit of two unit masses (point-mass approximation) from separation 10 to pericenter 1.5: v_rel = (-0.583, 0.245, 0). Both disks spin with the orbit (prograde), tilted 60 deg. Structure (T-040 review): disk sech² scale z0 ≈ 2–3·10² pc (old thin disk), cold population ×0.3; gas disk scale length 2× the stars and 1.5× the stellar radius (H I is more extended); bulge Hernquist a ≈ 0.4 kpc truncated at 8a; black hole M_BH ≈ 0.005 M_bulge (Kormendy & Ho 2013).",
       "haloProfile": "hernquist",
       "haloMax": 15,
       "gasFraction": 0.15,
       "gasTemperature": 10000,
       "bulgeFraction": 0.15,
-      "bulgeScale": 0.1
+      "bulgeScale": 0.08,
+      "gasScale": 1.0,
+      "gasMax": 3.75
     },
     {
       "type": "galaxy",
@@ -83,12 +85,12 @@
       "diskScale": 0.5,
       "diskMin": 0.05,
       "diskMax": 2.5,
-      "thickness": 0.03,
+      "thickness": 0.08,
       "toomreQ": 1.2,
       "coldFraction": 0.15,
       "haloScale": 1.5,
       "darkFraction": 0.4,
-      "holeMass": 0.002,
+      "holeMass": 0.00011,
       "inclination": -60,
       "orientation": 30,
       "position": [
@@ -107,7 +109,10 @@
       "gasFraction": 0.15,
       "gasTemperature": 10000,
       "bulgeFraction": 0.15,
-      "bulgeScale": 0.1
+      "bulgeScale": 0.08,
+      "gasScale": 1.0,
+      "gasMax": 3.75,
+      "note": "Structure (T-040 review): disk sech² scale z0 ≈ 2–3·10² pc (old thin disk), cold population ×0.3; gas disk scale length 2× the stars and 1.5× the stellar radius (H I is more extended); bulge Hernquist a ≈ 0.4 kpc truncated at 8a; black hole M_BH ≈ 0.005 M_bulge (Kormendy & Ho 2013)."
     }
   ]
 }

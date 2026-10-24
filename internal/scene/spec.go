@@ -64,6 +64,8 @@ type Component struct {
 	ColdFraction float64 `json:"coldFraction,omitempty"`   // young, cold population tracing spiral arms
 	GasFraction  float64 `json:"gasFraction,omitempty"`    // share of the disk in gas (needs toomreQ)
 	GasK         float64 `json:"gasTemperature,omitempty"` // initial gas temperature in K
+	GasScale     float64 `json:"gasScale,omitempty"`       // scale length of the gas disk (0: diskScale)
+	GasMax       float64 `json:"gasMax,omitempty"`         // outer radius of the gas disk (0: diskMax)
 	HaloScale    float64 `json:"haloScale,omitempty"`      // scale radius of the halo
 	HaloProfile  string  `json:"haloProfile,omitempty"`    // "plummer" (default) or "hernquist"
 	HaloCut      float64 `json:"haloCut,omitempty"`        // plummer: halo mass fraction kept (0 means 0.99)
@@ -256,6 +258,7 @@ func addGalaxy(s *sim.State, c Component, n int, p sim.Params, gasU float64) {
 		ScaleRadius: c.DiskScale, MinRadius: c.DiskMin, MaxRadius: c.DiskMax,
 		Thickness: c.Thickness, Softening: p.Softening, Dispersion: c.Dispersion,
 		Q: c.ToomreQ, ColdFraction: c.ColdFraction, GasFraction: c.GasFraction, GasU: gasU,
+		GasScale: c.GasScale, GasMax: c.GasMax,
 		HaloMass: haloMass, HaloScale: c.HaloScale, BulgeMass: bulgeMass, BulgeScale: c.BulgeScale,
 		Center: v3(c.Position), Velocity: v3(c.Velocity),
 		Inclination: c.Inclination * deg, Orientation: c.Orientation * deg, Seed: c.Seed,

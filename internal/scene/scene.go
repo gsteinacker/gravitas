@@ -31,8 +31,11 @@ type DiskConfig struct {
 	// Needs Q > 0.
 	GasFraction float64
 	GasU        float64
-	HaloMass    float64 // mass of a dark matter halo around the disk (added separately)
-	HaloScale   float64 // its scale radius
+	// GasScale and GasMax give the gas its own exponential profile (0: like the stars); real gas
+	// disks are more extended than the stellar disk.
+	GasScale, GasMax float64
+	HaloMass         float64 // mass of a dark matter halo around the disk (added separately)
+	HaloScale        float64 // its scale radius
 	// HaloHernquist selects a Hernquist profile; HaloMass is then the mass inside HaloMax.
 	HaloHernquist bool
 	HaloMax       float64
@@ -53,14 +56,7 @@ func AddDisk(s *sim.State, c DiskConfig) {
 
 	radii := make([]float64, c.N)
 	for i := range radii {
-		for {
-			// Σ(r) ∝ exp(-r/Rd) ⇒ r follows Gamma(2, Rd).
-			r := -c.ScaleRadius * math.Log(rng.Float64()*rng.Float64())
-			if r >= c.MinRadius && r <= c.MaxRadius {
-				radii[i] = r
-				break
-			}
-		}
+		radii[i] = diskRadius(rng, c.ScaleRadius, c.MinRadius, c.MaxRadius)
 	}
 	slices.Sort(radii)
 
@@ -110,6 +106,16 @@ func AddDisk(s *sim.State, c DiskConfig) {
 	}
 }
 
+// diskRadius draws a radius of an exponential disk, Σ(r) ∝ exp(−r/rd), between lo and hi: r follows
+// Gamma(2, rd).
+func diskRadius(rng *rand.Rand, rd, lo, hi float64) float64 {
+	for {
+		if r := -rd * math.Log(rng.Float64()*rng.Float64()); r >= lo && r <= hi {
+			return r
+		}
+	}
+}
+
 // coldScale is the dispersion (and thickness) factor of the cold population, coldMass the mass
 // of its stars relative to the mean.
 const (
@@ -139,6 +145,29 @@ func addToomreDisk(s *sim.State, c DiskConfig, rng *rand.Rand, masses, radii []f
 	}
 	for i := range masses {
 		masses[i] *= c.StarMass / total
+	}
+	if c.GasFraction > 0 && c.GasScale > 0 {
+		// Gas gets its own, more extended profile; re-sort all bodies by radius.
+		gasMax := c.GasMax
+		if gasMax == 0 {
+			gasMax = c.MaxRadius
+		}
+		for i := range radii {
+			if gas[i] {
+				radii[i] = diskRadius(rng, c.GasScale, c.MinRadius, gasMax)
+			}
+		}
+		idx := make([]int, n)
+		for i := range idx {
+			idx[i] = i
+		}
+		sort.SliceStable(idx, func(a, b int) bool { return radii[idx[a]] < radii[idx[b]] })
+		r2, g2, c2, m2 := make([]float64, n), make([]bool, n), make([]bool, n), make([]float64, n)
+		for k, i := range idx {
+			r2[k], g2[k], c2[k], m2[k] = radii[i], gas[i], cold[i], masses[i]
+		}
+		copy(radii, r2)
+		gas, cold, masses = g2, c2, m2
 	}
 	cum := make([]float64, n) // disk mass inside radii[i], with the radii sorted
 	var acc float64
@@ -174,7 +203,7 @@ func addToomreDisk(s *sim.State, c DiskConfig, rng *rand.Rand, masses, radii []f
 		kappa2 := math.Max(r*(omega2(r+h)-omega2(r-h))/(2*h)+4*w2, 1e-12)
 		kappa, omega := math.Sqrt(kappa2), math.Sqrt(w2)
 		vc := omega * r
-		sigma := c.StarMass * math.Exp(-r/rd) / (2 * math.Pi * rd * rd * norm)
+		sigma := (1 - c.GasFraction) * c.StarMass * math.Exp(-r/rd) / (2 * math.Pi * rd * rd * norm) // stars
 		sigR := math.Min(c.Q*3.36*sigma/kappa, 0.6*vc)
 		z0 := c.Thickness
 		if cold[i] {
@@ -208,8 +237,9 @@ func addToomreDisk(s *sim.State, c DiskConfig, rng *rand.Rand, masses, radii []f
 	}
 }
 
-// bulgeTruncation is the bulge's truncation radius in units of its scale.
-const bulgeTruncation = 20
+// bulgeTruncation is the bulge's truncation radius in units of its scale; the Hernquist profile
+// has wide wings (31 % of the mass beyond 5 a), real bulges end at a few kpc.
+const bulgeTruncation = 8
 
 func (c DiskConfig) bulgeEnclosed(r float64) float64 {
 	if c.BulgeMass <= 0 {

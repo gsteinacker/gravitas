@@ -151,13 +151,18 @@ func (sr *StarRenderer) DrawStars(dst *ebiten.Image, cam *Camera, sn *sim.Snapsh
 		px := r * focal / depth
 		sr.bhs = append(sr.bhs, Hole{X: float32(sx), Y: float32(sy), R: float32(math.Max(minHolePixels, px)), PhysR: float32(px)})
 	}
-	// Dark matter is drawn much fainter than stars, scaled so that the total haze stays similar
-	// for any particle count.
-	darkAlpha := float32(math.Max(0.02, math.Min(0.25, 0.25*math.Sqrt(5000/math.Max(1, float64(dark))))))
-	gasAlpha := float32(math.Max(0.03, math.Min(0.3, 0.3*math.Sqrt(3000/math.Max(1, float64(gasCount))))))
+	// Dark matter and the gas map are a haze whose opacity follows from their projected density
+	// in this frame (hazeAlpha).
+	view := cam.View()
+	var darkAlpha, gasAlpha float32
+	if fx.Dark {
+		darkAlpha = sr.hazeAlpha(sn, sim.DarkMatter, &view, focal, cam)
+	}
+	if fx.Gas {
+		gasAlpha = sr.hazeAlpha(sn, sim.Gas, &view, focal, cam)
+	}
 	// Every body owns 4 vertex slots, so the quads can be built in parallel without coordination;
 	// holes and culled stars get an empty quad.
-	view := cam.View()
 	sr.verts = resizeVerts(sr.verts, 4*n)
 	dusty := fx.Dust && sr.dustOn
 	sim.ParallelFor(n, 4096, 0, func(lo, hi int) {
@@ -378,9 +383,50 @@ var (
 
 // darkQuad writes the faint quad of one dark matter or gas particle, or an empty quad if it is
 // off screen.
+// hazeSize is the sprite size of a haze body (dark matter, gas map) at the given depth.
+func hazeSize(focal, depth float64) float64 { return math.Max(6, math.Min(48, 0.12*focal/depth)) }
+
+// Haze opacity: the densest hazePercentile of the covered screen cells reach intensity hazeTarget.
+const (
+	hazePercentile = 0.9
+	hazeTarget     = 0.5
+)
+
+// hazeAlpha returns the per-sprite opacity of the bodies of kind k for this frame.
+func (sr *StarRenderer) hazeAlpha(sn *sim.Snapshot, k sim.Kind, view *View, focal float64, cam *Camera) float32 {
+	var grid [exposureGridW * exposureGridH]float32
+	cw, ch := cam.W/exposureGridW, cam.H/exposureGridH
+	for i := range sn.Len() {
+		if sn.Kind[i] != k {
+			continue
+		}
+		sx, sy, depth, ok := view.Project(float64(sn.X[i]), float64(sn.Y[i]), float64(sn.Z[i]))
+		if !ok {
+			continue
+		}
+		if cx, cy := int(sx/cw), int(sy/ch); cx >= 0 && cy >= 0 && cx < exposureGridW && cy < exposureGridH {
+			size := hazeSize(focal, depth)
+			grid[cy*exposureGridW+cx] += float32(spriteMean * size * size / (cw * ch))
+		}
+	}
+	lit := sr.sortBuf[:0]
+	for _, v := range grid {
+		if v > 0 {
+			lit = append(lit, v)
+		}
+	}
+	sr.sortBuf = lit
+	if len(lit) == 0 {
+		return 0
+	}
+	slices.Sort(lit)
+	p := lit[int(hazePercentile*float64(len(lit)-1))]
+	return min(1, hazeTarget/p)
+}
+
 func (sr *StarRenderer) darkQuad(q []ebiten.Vertex, view *View, x, y, z, focal float64, alpha float32, tint [3]float32, cam *Camera) {
 	sx, sy, depth, ok := view.Project(x, y, z)
-	size := math.Max(3, math.Min(16, 0.04*focal/depth))
+	size := hazeSize(focal, depth)
 	if !ok || sx < -size || sy < -size || sx > cam.W+size || sy > cam.H+size {
 		clear(q)
 		return
