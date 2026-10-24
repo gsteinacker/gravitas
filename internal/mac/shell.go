@@ -2,6 +2,7 @@ package mac
 
 import (
 	"fmt"
+	"log"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -184,6 +185,7 @@ func onOpenFile(path string) {
 }
 
 func openScene(c *app.Controller, path string) {
+	log.Printf("open scene %s", path)
 	sp, err := scene.LoadSpec(path)
 	if err != nil {
 		Alert(i18n.T("Szene kann nicht geöffnet werden", "Cannot open the scene"), fmt.Sprintf("%s\n\n%v", filepath.Base(path), err))
@@ -193,6 +195,7 @@ func openScene(c *app.Controller, path string) {
 }
 
 func openState(c *app.Controller, path string) {
+	log.Printf("open state %s", path)
 	if err := c.Load(path); err != nil {
 		Alert(i18n.T("Stand kann nicht geöffnet werden", "Cannot open the saved state"), fmt.Sprintf("%s\n\n%v", filepath.Base(path), err))
 	}

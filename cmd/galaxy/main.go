@@ -42,6 +42,7 @@ func main() {
 	effects := flag.String("fx", "", "render effects (glow, lens, doppler, trails, dark); default: the scene's or glow,lens,doppler")
 	cpuprofile := flag.String("cpuprofile", "", "write a CPU profile of the whole run to this file")
 	renderScale := flag.Float64("scale", 0, "render pixels per window point, e.g. 2 for Retina (0 = adaptive; screenshots: 1)")
+	overlays := flag.Bool("hud", true, "draw status, messages and help (false: the bare picture)")
 	adapt := flag.Bool("adapt", false, "screenshots: adapt quality and star count like the app (default: fixed)")
 	lang := flag.String("lang", "", "user interface language: de or en (default: system)")
 	flag.Parse()
@@ -144,6 +145,7 @@ func main() {
 		}
 		game.SetEffects(fx)
 	}
+	game.NoOverlays = !*overlays
 	game.ShotPath, game.ShotAfter = *shot, time.Duration(*shotAfter*float64(time.Second))
 	game.NativeMenu = *shot == "" && mac.Available()
 	game.Theta, game.ThetaUser, game.GPU = *theta, *theta, *useGPU

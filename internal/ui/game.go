@@ -64,6 +64,8 @@ type Game struct {
 	button           ebiten.MouseButton
 	screenW, screenH int // window size in points; the screen image has renderScale times as many pixels
 
+	// NoOverlays hides status, messages, help and panels (clean pictures, e.g. the app icon).
+	NoOverlays bool
 	// RenderScale, if > 0, fixes the render pixels per window point (-scale flag, screenshots);
 	// otherwise the governor chooses.
 	RenderScale float64
@@ -245,7 +247,9 @@ func (g *Game) Draw(screen *ebiten.Image) {
 			g.Notify(i18n.T("Bild gesichert: ", "Image saved: ") + path)
 		}
 	}
-	g.drawHUD(screen)
+	if !g.NoOverlays {
+		g.drawHUD(screen)
+	}
 	g.frame++
 	if g.started.IsZero() {
 		g.started = time.Now()
