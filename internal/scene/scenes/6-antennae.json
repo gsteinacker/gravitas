@@ -70,7 +70,9 @@
       "haloProfile": "hernquist",
       "haloMax": 15,
       "gasFraction": 0.15,
-      "gasTemperature": 10000
+      "gasTemperature": 10000,
+      "bulgeFraction": 0.15,
+      "bulgeScale": 0.1
     },
     {
       "type": "galaxy",
@@ -103,7 +105,9 @@
       "haloProfile": "hernquist",
       "haloMax": 15,
       "gasFraction": 0.15,
-      "gasTemperature": 10000
+      "gasTemperature": 10000,
+      "bulgeFraction": 0.15,
+      "bulgeScale": 0.1
     }
   ]
 }

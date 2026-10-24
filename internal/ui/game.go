@@ -207,6 +207,7 @@ func NewGame(runner *sim.Runner, n int, sp *scene.Spec) (*Game, error) {
 // applyScene takes over the camera, effects and HUD texts of a scene.
 func (g *Game) applyScene(sp *scene.Spec) {
 	g.scene = sp
+	g.pipeline.Stars.DustOpacity = sp.DustOpacity()
 	g.topics, g.topicIdx = topicList(sp.Topics), 0
 	if len(sp.Intro) > 0 {
 		g.notify(sp.Name + ": e öffnet eine Einführung")

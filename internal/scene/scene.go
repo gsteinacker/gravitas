@@ -36,11 +36,14 @@ type DiskConfig struct {
 	// HaloHernquist selects a Hernquist profile; HaloMass is then the mass inside HaloMax.
 	HaloHernquist bool
 	HaloMax       float64
-	Center        vec.Vec3
-	Velocity      vec.Vec3
-	Inclination   float64 // rotation around x, radians
-	Orientation   float64 // rotation around z after inclination, radians
-	Seed          uint64
+	// BulgeMass > 0 adds the potential of a Hernquist bulge (scale BulgeScale, truncated at
+	// bulgeTruncation·BulgeScale) to the rotation curve; the bulge stars come from AddBulge.
+	BulgeMass, BulgeScale float64
+	Center                vec.Vec3
+	Velocity              vec.Vec3
+	Inclination           float64 // rotation around x, radians
+	Orientation           float64 // rotation around z after inclination, radians
+	Seed                  uint64
 }
 
 // AddDisk adds a disk galaxy to s.
@@ -92,6 +95,7 @@ func AddDisk(s *sim.State, c DiskConfig) {
 				m += c.HaloMass * rr * math.Sqrt(rr) / math.Pow(rr+c.HaloScale*c.HaloScale, 1.5)
 			}
 		}
+		m += c.bulgeEnclosed(math.Sqrt(r*r + z*z))
 		vc := math.Sqrt(m * r * r / (r2 * math.Sqrt(r2)))
 		sinp, cosp := math.Sincos(phi)
 		pos := vec.Vec3{X: r * cosp, Y: r * sinp, Z: z}
@@ -117,7 +121,7 @@ const (
 // construction of disk initial conditions (Hernquist 1993): σ_R = Q · 3.36 G Σ / κ, σ_φ = σ_R κ / 2Ω
 // (epicycle approximation), σ_z² = π G Σ z0 (isothermal sheet, ρ ∝ sech²(z/z0)), and the mean
 // rotation lowered by the asymmetric drift v_φ² = v_c² + σ_R² (1 − κ²/4Ω² − 2R/R_d).
-// The rotation curve uses the spherically approximated enclosed mass of hole, disk and halo.
+// The rotation curve uses the spherically approximated enclosed mass of hole, disk, bulge and halo.
 func addToomreDisk(s *sim.State, c DiskConfig, rng *rand.Rand, masses, radii []float64, place func(p, v vec.Vec3) (vec.Vec3, vec.Vec3)) {
 	n := len(radii)
 	cold, gas := make([]bool, n), make([]bool, n)
@@ -155,7 +159,7 @@ func addToomreDisk(s *sim.State, c DiskConfig, rng *rand.Rand, masses, radii []f
 				m += c.HaloMass * r * r * r / math.Pow(r*r+c.HaloScale*c.HaloScale, 1.5)
 			}
 		}
-		return m
+		return m + c.bulgeEnclosed(r)
 	}
 	omega2 := func(r float64) float64 {
 		r2 := r*r + eps2
@@ -202,6 +206,110 @@ func addToomreDisk(s *sim.State, c DiskConfig, rng *rand.Rand, masses, radii []f
 		}
 		s.Add(b)
 	}
+}
+
+// bulgeTruncation is the bulge's truncation radius in units of its scale.
+const bulgeTruncation = 20
+
+func (c DiskConfig) bulgeEnclosed(r float64) float64 {
+	if c.BulgeMass <= 0 {
+		return 0
+	}
+	return hernquistEnclosed(c.BulgeMass, c.BulgeScale, bulgeTruncation*c.BulgeScale, r)
+}
+
+// enclosed returns the mass inside radius r of all components of the galaxy, with the disk
+// approximated as spherical (as for its rotation curve) and taken analytically.
+func (c DiskConfig) enclosed(r float64) float64 {
+	m := c.BHMass + c.bulgeEnclosed(r)
+	rd := c.ScaleRadius
+	gammaCDF := func(r float64) float64 { return 1 - math.Exp(-r/rd)*(1+r/rd) }
+	if lo, hi := c.MinRadius, c.MaxRadius; r > lo && hi > lo {
+		m += c.StarMass * (gammaCDF(math.Min(r, hi)) - gammaCDF(lo)) / (gammaCDF(hi) - gammaCDF(lo))
+	}
+	if c.HaloMass > 0 {
+		if c.HaloHernquist {
+			m += hernquistEnclosed(c.HaloMass, c.HaloScale, c.HaloMax, r)
+		} else {
+			m += c.HaloMass * r * r * r / math.Pow(r*r+c.HaloScale*c.HaloScale, 1.5)
+		}
+	}
+	return m
+}
+
+// AddBulge adds the n stars of the bulge of c: a Hernquist sphere with the isotropic Jeans
+// dispersion in the potential of the whole galaxy, σ²(r) = 1/ρ(r) ∫_r^rmax ρ(r') g(r') dr' with
+// g = G M(<r')/r'² (softened), drawn as Gaussians capped below the local escape speed. The bulge does
+// not rotate. Its stars are old: masses 0.1–1 instead of up to 10, so they are drawn redder.
+func AddBulge(s *sim.State, n int, c DiskConfig) {
+	if n <= 0 || c.BulgeMass <= 0 {
+		return
+	}
+	rng := rand.New(rand.NewPCG(c.Seed, 0xb019e))
+	a, mb := c.BulgeScale, c.BulgeMass
+	rmax := bulgeTruncation * a
+	eps2 := c.Softening * c.Softening
+	g := func(r float64) float64 { r2 := r*r + eps2; return c.enclosed(r) * r / (r2 * math.Sqrt(r2)) }
+	rho := func(r float64) float64 { return a / (r * (r + a) * (r + a) * (r + a)) } // shape only
+
+	// Tables on a logarithmic grid, integrated inwards (midpoint rule).
+	const steps = 400
+	rmin := 1e-4 * a
+	q := math.Pow(rmax/rmin, 1.0/steps)
+	radii, sigma2, phi := make([]float64, steps+1), make([]float64, steps+1), make([]float64, steps+1)
+	rOut := math.Max(rmax, math.Max(c.MaxRadius, c.HaloMax))
+	phiOut := -c.enclosed(rOut)/rOut - integrate(g, rmax, rOut, 200)
+	var pressure, pot float64 // ∫ρ g dr and ∫g dr from rmax inwards
+	radii[steps], phi[steps] = rmax, phiOut
+	for k := steps - 1; k >= 0; k-- {
+		r0, r1 := rmin*math.Pow(q, float64(k)), rmin*math.Pow(q, float64(k+1))
+		rm := 0.5 * (r0 + r1)
+		pressure += rho(rm) * g(rm) * (r1 - r0)
+		pot += g(rm) * (r1 - r0)
+		radii[k], sigma2[k], phi[k] = r0, pressure/rho(r0), phiOut-pot
+	}
+	lookup := func(table []float64, r float64) float64 {
+		if r <= rmin {
+			return table[0]
+		}
+		x := math.Log(r/rmin) / math.Log(q)
+		k := min(int(x), steps-1)
+		f := x - float64(k)
+		return table[k]*(1-f) + table[k+1]*f
+	}
+
+	masses := powerLawMasses(rng, n, mb, 0.1, 1)
+	mTot := hernquistTotal(mb, a, rmax)
+	smax := math.Sqrt(mb / mTot)
+	for i := range n {
+		su := smax * math.Sqrt(rng.Float64())
+		r := a * su / (1 - su)
+		sigma := math.Sqrt(math.Max(0, lookup(sigma2, r)))
+		vesc := math.Sqrt(-2 * lookup(phi, r))
+		var v vec.Vec3
+		for {
+			v = vec.Vec3{X: rng.NormFloat64(), Y: rng.NormFloat64(), Z: rng.NormFloat64()}.Scale(sigma)
+			if v.Len() < 0.95*vesc {
+				break
+			}
+		}
+		s.Add(sim.Body{Pos: randomDirection(rng).Scale(r).Add(c.Center), Vel: v.Add(c.Velocity), Mass: masses[i]})
+	}
+}
+
+// integrate returns ∫_lo^hi f dr with the midpoint rule on a logarithmic grid.
+func integrate(f func(float64) float64, lo, hi float64, steps int) float64 {
+	if hi <= lo {
+		return 0
+	}
+	q := math.Pow(hi/lo, 1/float64(steps))
+	var sum float64
+	for k := range steps {
+		r0 := lo * math.Pow(q, float64(k))
+		r1 := r0 * q
+		sum += f(0.5*(r0+r1)) * (r1 - r0)
+	}
+	return sum
 }
 
 // AddPlummer adds a Plummer sphere of stars in virial equilibrium (Aarseth, Hénon & Wielen 1974).
@@ -297,7 +405,12 @@ func AddHernquistHalo(s *sim.State, n int, mass, a, rmax float64, center, veloci
 
 // stellarMasses draws n masses from a Salpeter-like power law and normalizes them to total.
 func stellarMasses(rng *rand.Rand, n int, total float64) []float64 {
-	const lo, hi, alpha = 0.1, 10.0, 2.35
+	return powerLawMasses(rng, n, total, 0.1, 10)
+}
+
+// powerLawMasses draws n masses from a Salpeter power law between lo and hi, normalized to total.
+func powerLawMasses(rng *rand.Rand, n int, total, lo, hi float64) []float64 {
+	const alpha = 2.35
 	k := 1 - alpha
 	a, b := math.Pow(lo, k), math.Pow(hi, k)
 	masses := make([]float64, n)

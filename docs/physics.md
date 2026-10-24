@@ -72,6 +72,20 @@ Halos aus unsichtbaren Teilchen (`DarkMatter`), gravitativ wie Sterne. Mit `x` l
 abschalten (sie fliegen dann als Testteilchen weiter), mit `v` werden sie sichtbar. Galaxien in den Szenen
 5–7 haben Halos mit ~85–95 % der Masse.
 
+## Bulge (T-040)
+
+Hernquist-Kugel alter Sterne (Massen 0,1–1 statt bis 10, daher röter) mit isotroper Jeans-Dispersion im
+Gesamtpotential aus Bulge, Scheibe (sphärisch genähert), Halo und Loch; die Scheibe rotiert in diesem Potential.
+Milchstraße 15 %, M31 30 % der Sternmasse; M33 und die Magellanschen Wolken haben keinen. Kein Balken, keine
+Rotation des Bulges. Test: Virialverhältnis ≈ 1 und stabiler Halbmassenradius.
+
+## Staub (T-035, T-040)
+
+Staub folgt dem neutralen Gas. τ_V aus der Säulendichte in den Szeneneinheiten (N_H/A_V = 1,9·10²¹ cm⁻²,
+Milchstraßen-Verhältnis); Szenen ohne `velocityUnit` normieren automatisch. Jeder Stern und jedes Hα-Sprite wird
+mit dem Staub vor ihm geschwächt, τ · Φ((d − μ)/σ) aus Mittelwert und Streuung der Staubtiefe je Bildpunkt
+(`internal/render/dust.go`); der Himmelshintergrund liegt hinter allem Staub.
+
 ## Gas (ADR-0007)
 
 SPH-Gas mit Druck, Viskosität, Kühlung auf eine Untergrenze und Sternentstehung in dichtem, kaltem,

@@ -69,6 +69,8 @@ type Component struct {
 	HaloCut      float64 `json:"haloCut,omitempty"`        // plummer: halo mass fraction kept (0 means 0.99)
 	HaloMax      float64 `json:"haloMax,omitempty"`        // hernquist: truncation radius (0 means 10 haloScale)
 	DarkFraction float64 `json:"darkFraction,omitempty"`   // share of the galaxy's particles in the halo
+	BulgeFrac    float64 `json:"bulgeFraction,omitempty"`  // share of the stellar mass (Mass·diskFraction) in a Hernquist bulge
+	BulgeScale   float64 `json:"bulgeScale,omitempty"`     // its scale radius
 	HoleMass     float64 `json:"holeMass,omitempty"`
 	Inclination  float64 `json:"inclination,omitempty"` // degrees, around x
 	Orientation  float64 `json:"orientation,omitempty"` // degrees, around z afterwards
@@ -188,6 +190,22 @@ func (sp *Spec) specificEnergy(kelvin float64) float64 {
 	return u / (sp.KmPerS * sp.KmPerS)
 }
 
+// DustOpacity returns the visual (V band) optical depth of neutral gas per unit column density in
+// simulation units, or 0 if the scene does not define its units. The length unit follows from
+// velocityUnit · yearsPerUnit, the mass unit from G = 1; the column is converted to hydrogen
+// atoms (mass fraction X = 0.71) and to extinction with N_H / A_V = 1.9·10²¹ cm⁻² (Bohlin et al.
+// 1978), τ_V = A_V / 1.086. This assumes the Milky Way dust-to-gas ratio.
+func (sp *Spec) DustOpacity() float64 {
+	if sp.KmPerS <= 0 || sp.YearsPer <= 0 {
+		return 0
+	}
+	const g, yr, mp, x, nhPerAV = 6.674e-8, 3.15576e7, 1.67262e-24, 0.71, 1.9e21
+	v := sp.KmPerS * 1e5             // cm/s
+	l := v * sp.YearsPer * yr        // cm
+	sigma := v * v * l / g / (l * l) // g/cm² per unit column
+	return sigma * x / mp / nhPerAV / 1.086
+}
+
 // counts splits n by weight; the last weighted component takes the remainder.
 func (sp *Spec) counts(n int) []int {
 	counts := make([]int, len(sp.Components))
@@ -205,6 +223,9 @@ func (sp *Spec) counts(n int) []int {
 	return counts
 }
 
+// bulgeParticleMass is the mean bulge particle mass relative to the disk's (masses 0.1–1 vs 0.1–10).
+const bulgeParticleMass = 0.5
+
 func addGalaxy(s *sim.State, c Component, n int, p sim.Params, gasU float64) {
 	diskFrac := c.DiskFraction
 	if diskFrac == 0 {
@@ -220,16 +241,27 @@ func addGalaxy(s *sim.State, c Component, n int, p sim.Params, gasU float64) {
 	if haloMax == 0 {
 		haloMax = 10 * c.HaloScale
 	}
-	AddDisk(s, DiskConfig{
-		N: n - nDark, StarMass: diskMass, BHMass: c.HoleMass,
+	bulgeMass := diskMass * c.BulgeFrac
+	diskMass -= bulgeMass
+	nStars := n - nDark
+	nBulge := 0
+	if bulgeMass > 0 {
+		// Bulge stars are lighter (old population): bulgeParticleMass times the disk's mean.
+		wb := bulgeMass / bulgeParticleMass
+		nBulge = int(float64(nStars) * wb / (wb + diskMass))
+	}
+	dc := DiskConfig{
+		N: nStars - nBulge, StarMass: diskMass, BHMass: c.HoleMass,
 		HaloHernquist: hernquist, HaloMax: haloMax,
 		ScaleRadius: c.DiskScale, MinRadius: c.DiskMin, MaxRadius: c.DiskMax,
 		Thickness: c.Thickness, Softening: p.Softening, Dispersion: c.Dispersion,
 		Q: c.ToomreQ, ColdFraction: c.ColdFraction, GasFraction: c.GasFraction, GasU: gasU,
-		HaloMass: haloMass, HaloScale: c.HaloScale,
+		HaloMass: haloMass, HaloScale: c.HaloScale, BulgeMass: bulgeMass, BulgeScale: c.BulgeScale,
 		Center: v3(c.Position), Velocity: v3(c.Velocity),
 		Inclination: c.Inclination * deg, Orientation: c.Orientation * deg, Seed: c.Seed,
-	})
+	}
+	AddDisk(s, dc)
+	AddBulge(s, nBulge, dc)
 	if nDark > 0 && hernquist {
 		AddHernquistHalo(s, nDark, haloMass, c.HaloScale, haloMax, v3(c.Position), v3(c.Velocity), c.Seed+1000)
 	} else if nDark > 0 {

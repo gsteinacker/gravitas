@@ -27,16 +27,17 @@ type StarRenderer struct {
 	bhs     []Hole
 	world   []worldHole
 
-	exposure       float64 // current auto exposure, 0 before the first frame
-	emNorm         float64 // current emission normalization
-	emLight        [exposureGridW * exposureGridH]float32
-	emLightMu      sync.Mutex
-	dustNorm       float64 // current dust normalization, 0 before the first frame
+	exposure  float64 // current auto exposure, 0 before the first frame
+	emNorm    float64 // current emission normalization
+	emLight   [exposureGridW * exposureGridH]float32
+	emLightMu sync.Mutex
+	// DustOpacity is the V-band optical depth per unit column density (simulation units) of
+	// neutral gas, from the scene's physical units; 0 normalizes the dust automatically.
+	DustOpacity    float64
+	dustNorm       float64 // automatic dust opacity, 0 before the first frame
 	dustVerts      []ebiten.Vertex
-	backVerts      []ebiten.Vertex
-	dustMass       [depthGridW * depthGridH]float64
-	dustDepth      [depthGridW * depthGridH]float64
-	depthW, depthH float64
+	dust           dustMap
+	dustOn         bool // the dust map is valid for this frame
 	adapting       bool
 	light          [exposureGridW * exposureGridH]float32
 	lightMu        sync.Mutex
@@ -100,11 +101,9 @@ type Hole struct {
 func (sr *StarRenderer) Holes() []Hole { return sr.bhs }
 
 // DrawStars renders all stars of sn as seen by cam into dst and collects the black holes.
-// With doppler set, star colors and brightness follow the relativistic frequency shift.
-//
-// With back != nil, stars behind the dust (deeper than the mass-weighted dust depth of their screen
-// cell, see DrawDust) go to back instead, so only they are attenuated.
-func (sr *StarRenderer) DrawStars(dst, back *ebiten.Image, cam *Camera, sn *sim.Snapshot, fx Effects) {
+// With doppler set, star colors and brightness follow the relativistic frequency shift. With dust
+// set (after DrawDust), stars and emission are attenuated by the dust in front of them (dust.go).
+func (sr *StarRenderer) DrawStars(dst *ebiten.Image, cam *Camera, sn *sim.Snapshot, fx Effects) {
 	doppler := fx.Doppler
 	n := sn.Len()
 	var starMass float64
@@ -160,10 +159,7 @@ func (sr *StarRenderer) DrawStars(dst, back *ebiten.Image, cam *Camera, sn *sim.
 	// holes and culled stars get an empty quad.
 	view := cam.View()
 	sr.verts = resizeVerts(sr.verts, 4*n)
-	split := back != nil
-	if split {
-		sr.backVerts = resizeVerts(sr.backVerts, 4*n)
-	}
+	dusty := fx.Dust && sr.dustOn
 	sim.ParallelFor(n, 4096, 0, func(lo, hi int) {
 		light := lightPool.Get().(*[exposureGridW * exposureGridH]float32)
 		clear(light[:])
@@ -177,9 +173,6 @@ func (sr *StarRenderer) DrawStars(dst, back *ebiten.Image, cam *Camera, sn *sim.
 		}()
 		for i := lo; i < hi; i++ {
 			q := sr.verts[4*i : 4*i+4 : 4*i+4]
-			if split {
-				clear(sr.backVerts[4*i : 4*i+4])
-			}
 			if sn.Kind[i] == sim.DarkMatter && fx.Dark {
 				sr.darkQuad(q, &view, float64(sn.X[i]), float64(sn.Y[i]), float64(sn.Z[i]), focal, darkAlpha, darkColor, cam)
 				continue
@@ -192,7 +185,7 @@ func (sr *StarRenderer) DrawStars(dst, back *ebiten.Image, cam *Camera, sn *sim.
 				continue
 			}
 			if sn.Kind[i] == sim.Gas && sn.GasIon[i] > minEmissionIon {
-				sr.emissionQuad(q, split, i, &view, sn, focal, cam)
+				sr.emissionQuad(q, dusty, i, &view, sn, focal, cam)
 				continue
 			}
 			if sn.Kind[i] != sim.Star {
@@ -234,23 +227,19 @@ func (sr *StarRenderer) DrawStars(dst, back *ebiten.Image, cam *Camera, sn *sim.
 				cr, cg, cb, beam = shiftColor(cr, cg, cb, f)
 				alpha *= beam
 			}
+			if dusty {
+				tr, tg, tb := transmission(sr.dust.front(sx, sy, depth))
+				cr, cg, cb = cr*tr, cg*tg, cb*tb
+				alpha *= tg // the exposure sees the attenuated light
+			}
 			// Light this star adds at exposure 1, booked to the screen cell of its center.
 			if cx, cy := int(sx/sr.lightW), int(sy/sr.lightH); cx >= 0 && cy >= 0 && cx < exposureGridW && cy < exposureGridH {
 				light[cy*exposureGridW+cx] += alpha * float32(spriteMean*size*size)
-			}
-			if split && sr.behindDust(sx, sy, depth) {
-				clear(q)
-				q = sr.backVerts[4*i : 4*i+4 : 4*i+4]
 			}
 			setQuad(q, float32(sx), float32(sy), float32(size/2), cr, cg, cb, min(1, alpha*float32(exposure)))
 		}
 	})
 	sr.flush(dst)
-	if split {
-		sr.verts, sr.backVerts = sr.backVerts, sr.verts
-		sr.flush(back)
-		sr.verts, sr.backVerts = sr.backVerts, sr.verts
-	}
 	sr.adaptExposure()
 	sr.adaptEmission()
 }
@@ -323,7 +312,7 @@ const (
 
 var emissionColor = [3]float32{1.0, 0.16, 0.22} // Hα 656 nm (with a little Hβ)
 
-func (sr *StarRenderer) emissionQuad(q []ebiten.Vertex, split bool, i int, view *View, sn *sim.Snapshot, focal float64, cam *Camera) {
+func (sr *StarRenderer) emissionQuad(q []ebiten.Vertex, dusty bool, i int, view *View, sn *sim.Snapshot, focal float64, cam *Camera) {
 	sx, sy, depth, ok := view.Project(float64(sn.X[i]), float64(sn.Y[i]), float64(sn.Z[i]))
 	size := math.Max(3, math.Min(120, 3*float64(sn.GasH[i])*focal/depth))
 	if !ok || sx < -size || sy < -size || sx > cam.W+size || sy > cam.H+size {
@@ -332,6 +321,9 @@ func (sr *StarRenderer) emissionQuad(q []ebiten.Vertex, split bool, i int, view 
 	}
 	ion := float64(sn.GasIon[i])
 	brightness := ion * ion * float64(sn.Mass[i]) * float64(sn.GasRho[i]) / (size * size) // n_e n_p ∝ (x ρ)²
+	if dusty {
+		brightness *= math.Exp(-sr.dust.front(sx, sy, depth) * dustK[0]) // Hα is red
+	}
 	if cx, cy := int(sx/sr.lightW), int(sy/sr.lightH); cx >= 0 && cy >= 0 && cx < exposureGridW && cy < exposureGridH {
 		sr.emLightMu.Lock()
 		sr.emLight[cy*exposureGridW+cx] += float32(brightness * spriteMean * size * size)
@@ -340,10 +332,6 @@ func (sr *StarRenderer) emissionQuad(q []ebiten.Vertex, split bool, i int, view 
 	norm := sr.emNorm
 	if norm == 0 {
 		norm = 1
-	}
-	if split && sr.behindDust(sx, sy, depth) {
-		clear(q)
-		q = sr.backVerts[4*i : 4*i+4 : 4*i+4]
 	}
 	setQuad(q, float32(sx), float32(sy), float32(size/2), emissionColor[0], emissionColor[1], emissionColor[2], float32(-math.Expm1(-norm*brightness)))
 }
@@ -436,45 +424,30 @@ func (sr *StarRenderer) flush(dst *ebiten.Image) {
 	}
 }
 
-// Dust (T-035): gas particles are drawn as column density into a separate image. Their footprint is
-// the core of their SPH kernel (diameter 2h, about its full width at half maximum), their weight
-// mass / area, so compact dense gas absorbs most. The
-// normalization adapts like the exposure: the densest dustPercentile of the covered cells reach
-// dustTarget (the image is 8-bit and must not saturate everywhere).
+// Dust (T-035, T-040): DrawDust fills the dust map (dust.go) used to attenuate stars and emission,
+// and draws the gas as column density into dst, which attenuates the background behind it (the
+// dust shader; τ = alpha · dustStrength). Footprints are the core of the SPH kernel (diameter 2h).
+// Without physical units (DustOpacity 0) the opacity adapts: the densest dustPercentile of the
+// covered screen reaches optical depth dustAutoTau.
 const (
 	dustPercentile = 0.9
-	dustTarget     = 0.45
+	dustAutoTau    = 1.5
 )
 
-// depthGridW, depthGridH: resolution of the dust depth map used to sort stars in front of or
-// behind the dust.
-const depthGridW, depthGridH = 192, 120
-
-// behindDust reports whether a star at screen (sx, sy) and depth is behind the dust there.
-func (sr *StarRenderer) behindDust(sx, sy, depth float64) bool {
-	cx, cy := int(sx/sr.depthW), int(sy/sr.depthH)
-	if cx < 0 || cy < 0 || cx >= depthGridW || cy >= depthGridH {
-		return false
-	}
-	k := cy*depthGridW + cx
-	return sr.dustMass[k] > 0 && depth > sr.dustDepth[k]/sr.dustMass[k]
-}
-
-// DrawDust renders the dust column density of sn into dst and records the dust depth map. Call it
-// before DrawStars.
+// DrawDust must run before DrawStars.
 func (sr *StarRenderer) DrawDust(dst *ebiten.Image, cam *Camera, sn *sim.Snapshot) {
 	n := sn.Len()
 	view, focal := cam.View(), cam.focal()
-	norm := sr.dustNorm
-	if norm == 0 {
-		norm = 1
+	kappa := sr.DustOpacity
+	if kappa == 0 {
+		kappa = sr.dustNorm
+		if kappa == 0 {
+			kappa = 1
+		}
 	}
 	sr.dustVerts = resizeVerts(sr.dustVerts, 0)
-	clear(sr.light[:]) // reused as the column density grid
-	sr.lightW, sr.lightH = cam.W/exposureGridW, cam.H/exposureGridH
-	clear(sr.dustMass[:])
-	clear(sr.dustDepth[:])
-	sr.depthW, sr.depthH = cam.W/depthGridW, cam.H/depthGridH
+	sr.dust.reset(cam.W)
+	sr.dustOn = true
 	for i := range n {
 		if sn.Kind[i] != sim.Gas {
 			continue
@@ -487,15 +460,10 @@ func (sr *StarRenderer) DrawDust(dst *ebiten.Image, cam *Camera, sn *sim.Snapsho
 		if sx < -size || sy < -size || sx > cam.W+size || sy > cam.H+size {
 			continue
 		}
-		column := float64(sn.Mass[i]) * (1 - float64(sn.GasIon[i])) / (size * size) // dust survives in neutral gas
-		if cx, cy := int(sx/sr.depthW), int(sy/sr.depthH); cx >= 0 && cy >= 0 && cx < depthGridW && cy < depthGridH {
-			sr.dustMass[cy*depthGridW+cx] += float64(sn.Mass[i])
-			sr.dustDepth[cy*depthGridW+cx] += float64(sn.Mass[i]) * depth
-		}
-		if cx, cy := int(sx/sr.lightW), int(sy/sr.lightH); cx >= 0 && cy >= 0 && cx < exposureGridW && cy < exposureGridH {
-			sr.light[cy*exposureGridW+cx] += float32(column * spriteMean * size * size)
-		}
-		a := float32(math.Min(1, norm*column))
+		// τ · footprint in pixels² = κ m (focal/depth)² for the neutral mass (dust survives there).
+		tauArea := kappa * float64(sn.Mass[i]) * (1 - float64(sn.GasIon[i])) * (focal / depth) * (focal / depth)
+		sr.dust.deposit(sx, sy, size, tauArea, depth)
+		a := float32(math.Min(1, tauArea/(spriteMean*size*size)/dustStrength))
 		sr.dustVerts = append(sr.dustVerts, make([]ebiten.Vertex, 4)...)
 		setQuad(sr.dustVerts[len(sr.dustVerts)-4:], float32(sx), float32(sy), float32(size/2), 1, 1, 1, a)
 	}
@@ -503,12 +471,17 @@ func (sr *StarRenderer) DrawDust(dst *ebiten.Image, cam *Camera, sn *sim.Snapsho
 	sr.verts = sr.dustVerts
 	sr.flush(dst)
 	sr.dustVerts, sr.verts = sr.verts, verts
-	// Adapt: column per screen cell, densest percentile → dustTarget.
+	if sr.DustOpacity > 0 {
+		return
+	}
+	// Automatic opacity: sample the total optical depth on the exposure grid.
 	lit := sr.sortBuf[:0]
-	area := float32(sr.lightW * sr.lightH)
-	for _, v := range sr.light {
-		if v > 0 {
-			lit = append(lit, v/area)
+	for cy := range exposureGridH {
+		for cx := range exposureGridW {
+			x, y := (float64(cx)+0.5)*cam.W/exposureGridW, (float64(cy)+0.5)*cam.H/exposureGridH
+			if tau, _, _ := sr.dust.sample(x, y); tau > 0 {
+				lit = append(lit, float32(tau))
+			}
 		}
 	}
 	sr.sortBuf = lit
@@ -517,7 +490,7 @@ func (sr *StarRenderer) DrawDust(dst *ebiten.Image, cam *Camera, sn *sim.Snapsho
 	}
 	slices.Sort(lit)
 	p := float64(lit[int(dustPercentile*float64(len(lit)-1))])
-	target := dustTarget / p
+	target := kappa * dustAutoTau / p
 	if sr.dustNorm == 0 {
 		sr.dustNorm = target
 	} else {

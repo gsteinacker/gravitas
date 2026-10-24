@@ -1,0 +1,11 @@
+{
+  "id": "bulge",
+  "title": "Bulge",
+  "keys": "",
+  "short": "Die kugelige Verdickung im Zentrum einer Spiralgalaxie – alte, rötliche Sterne.",
+  "levels": {
+    "school": "Von der Seite sieht eine Spiralgalaxie aus wie zwei Spiegeleier, die Rücken an Rücken liegen: eine flache Scheibe mit einer dicken Kugel in der Mitte. Diese Kugel heißt Bulge (englisch für Ausbuchtung).\n\nIm Bulge leben vor allem alte Sterne. Sie sind eher gelb und rot, während in der Scheibe viele junge, blaue Sterne entstehen. Die Sterne im Bulge kreisen nicht ordentlich in einer Ebene, sondern schwirren kreuz und quer wie Bienen um einen Bienenstock.",
+    "lay": "Der Bulge der Milchstraße enthält etwa 10 Milliarden Sonnenmassen, rund ein Fünftel ihrer Sterne, in einigen tausend Lichtjahren um das Zentrum. Seine Sterne sind meist über 10 Milliarden Jahre alt; massereiche, blaue Sterne sind dort längst erloschen.\n\nWeil sich die Bulge-Sterne ungeordnet bewegen, ist er rund und nicht flach. Er macht das Zentrum der Galaxie schwerer, deshalb steigt die Rotationsgeschwindigkeit der Scheibe innen schnell an. Schaut man von der Seite, zieht sich das Staubband der Scheibe als dunkler Streifen vor dem hellen Bulge vorbei – berühmt beim Sombrero-Nebel. Probier es: Ziehe die Ansicht in Szene 1 auf die Kante.",
+    "physics": "Hernquist-Kugel ρ ~ 1/(r (r+a)³), abgeschnitten bei 20 a, Massenanteil bulgeFraction der Sternmasse (Milchstraße ≈ 0,15–0,2, a ≈ 0,6 kpc; M31 ≈ 0,3). Isotrope Jeans-Dispersion im Gesamtpotential: σ²(r) = 1/ρ ∫_r ρ G M(<r')/r'² dr', mit M aus Bulge, Scheibe (sphärisch genähert), Halo und Loch; Gauß-Ziehung unterhalb der Fluchtgeschwindigkeit. Die Scheibe rotiert im Potential mit Bulge.\n\nVereinfachungen: keine Rotation des Bulges, keine Abplattung, kein Balken (der Milchstraßen-Bulge ist eigentlich ein boxförmiger Balken), alte Population nur über Massen 0,1–1 statt bis 10 (rötere Farbe)."
+  }
+}

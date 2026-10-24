@@ -59,7 +59,9 @@
       "darkFraction": 0.5,
       "note": "Disks as before (0.6 and 0.4), now inside Hernquist halos with 90 % dark matter and realistic central holes. Start ~47 kpc apart, opposite momenta (6 x 0.42 = 4 x 0.63), so the approach is visible before the halos merge.",
       "gasFraction": 0.15,
-      "gasTemperature": 10000
+      "gasTemperature": 10000,
+      "bulgeFraction": 0.15,
+      "bulgeScale": 0.2
     },
     {
       "type": "galaxy",
@@ -91,7 +93,9 @@
       "haloMax": 25,
       "darkFraction": 0.5,
       "gasFraction": 0.15,
-      "gasTemperature": 10000
+      "gasTemperature": 10000,
+      "bulgeFraction": 0.15,
+      "bulgeScale": 0.18
     }
   ],
   "camera": {

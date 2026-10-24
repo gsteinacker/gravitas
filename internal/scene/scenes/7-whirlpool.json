@@ -9,7 +9,8 @@
     "spiral-arms",
     "tides",
     "star-formation",
-    "dust"
+    "dust",
+    "bulge"
   ],
   "info": "spiral with a companion passing below its disk, after models of the M51 / NGC 5195 encounter; read as 1 unit = 2.5 kpc, 2e10 Msun, c reduced to 10",
   "yearsPerUnit": 13200000.0,
@@ -57,7 +58,9 @@
       "haloProfile": "hernquist",
       "haloMax": 12,
       "gasFraction": 0.15,
-      "gasTemperature": 10000
+      "gasTemperature": 10000,
+      "bulgeFraction": 0.15,
+      "bulgeScale": 0.1
     },
     {
       "type": "galaxy",
@@ -86,11 +89,13 @@
         -0.2
       ],
       "seed": 32,
-      "note": "Bound orbit (0.8 of escape speed) aimed below the main disk; geometry inspired by, not fitted to, published M51 models.",
+      "note": "Bound orbit (0.8 of escape speed) aimed below the main disk; geometry inspired by, not fitted to, published M51 models. Bulge-dominated SB0 pec companion.",
       "haloProfile": "hernquist",
       "haloMax": 5,
       "gasFraction": 0.05,
-      "gasTemperature": 10000
+      "gasTemperature": 10000,
+      "bulgeFraction": 0.4,
+      "bulgeScale": 0.06
     }
   ]
 }

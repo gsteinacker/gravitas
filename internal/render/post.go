@@ -130,7 +130,7 @@ type Pipeline struct {
 	w, h             int
 
 	stars, trailA, trailB, frame, lensed *ebiten.Image
-	dustImg, dusted, starsBack           *ebiten.Image
+	dustImg, dusted                      *ebiten.Image
 	small, blurA, blurB, background      *ebiten.Image
 	fadeFloor                            *ebiten.Image
 	uniform                              []float32
@@ -169,7 +169,7 @@ func (p *Pipeline) resize(w, h int) {
 		return
 	}
 	p.drawnValid = false
-	for _, img := range []*ebiten.Image{p.stars, p.trailA, p.trailB, p.frame, p.lensed, p.small, p.blurA, p.blurB, p.background, p.dustImg, p.dusted, p.starsBack} {
+	for _, img := range []*ebiten.Image{p.stars, p.trailA, p.trailB, p.frame, p.lensed, p.small, p.blurA, p.blurB, p.background, p.dustImg, p.dusted} {
 		if img != nil {
 			img.Deallocate()
 		}
@@ -177,7 +177,7 @@ func (p *Pipeline) resize(w, h int) {
 	p.w, p.h = w, h
 	p.stars, p.trailA, p.trailB = ebiten.NewImage(w, h), ebiten.NewImage(w, h), ebiten.NewImage(w, h)
 	p.frame, p.lensed = ebiten.NewImage(w, h), ebiten.NewImage(w, h)
-	p.dustImg, p.dusted, p.starsBack = ebiten.NewImage(w, h), ebiten.NewImage(w, h), ebiten.NewImage(w, h)
+	p.dustImg, p.dusted = ebiten.NewImage(w, h), ebiten.NewImage(w, h)
 	sw, sh := max(1, w/bloomScale), max(1, h/bloomScale)
 	p.small, p.blurA, p.blurB = ebiten.NewImage(sw, sh), ebiten.NewImage(sw, sh), ebiten.NewImage(sw, sh)
 	p.background = starfield(w, h)
@@ -227,16 +227,11 @@ func (p *Pipeline) Draw(screen *ebiten.Image, cam *Camera, sn *sim.Snapshot, fx 
 	starFx := Effects{Doppler: fx.Doppler, Dark: fx.Dark, Gas: fx.Gas, Dust: fx.Dust} // the options that change the star image
 	if view := cam.View(); !p.drawnValid || sn.Version != p.drawnVersion || view != p.drawnView || starFx != p.drawnFx || p.Stars.Adapting() {
 		p.stars.Clear()
-		p.starsBack.Clear()
 		p.dustImg.Clear()
-		var back *ebiten.Image
 		if fx.Dust {
-			p.Stars.DrawDust(p.dustImg, cam, sn) // first: stars are sorted by the dust depth map
-			if !fx.Trails {
-				back = p.starsBack
-			}
+			p.Stars.DrawDust(p.dustImg, cam, sn) // first: stars are attenuated through the dust map
 		}
-		p.Stars.DrawStars(p.stars, back, cam, sn, starFx)
+		p.Stars.DrawStars(p.stars, cam, sn, starFx)
 		p.drawnValid, p.drawnVersion, p.drawnView, p.drawnFx = true, sn.Version, view, starFx
 	}
 	stars := p.stars
@@ -258,16 +253,9 @@ func (p *Pipeline) Draw(screen *ebiten.Image, cam *Camera, sn *sim.Snapshot, fx 
 		p.trailA.Clear()
 	}
 
-	// Behind the dust: background and (with dust and no trails) the stars sorted behind it; these
-	// are attenuated. The stars in front are added afterwards.
-	split := fx.Dust && !fx.Trails
+	// The background lies behind all dust and is attenuated by the dust image; stars and emission
+	// were attenuated individually (dust.go) and are added afterwards.
 	p.frame.DrawImage(p.background, &ebiten.DrawImageOptions{Blend: ebiten.BlendCopy})
-	if split {
-		p.frame.DrawImage(p.starsBack, &ebiten.DrawImageOptions{Blend: ebiten.BlendLighter})
-	} else {
-		p.frame.DrawImage(stars, &ebiten.DrawImageOptions{Blend: ebiten.BlendLighter})
-	}
-
 	out := p.frame
 	if fx.Dust {
 		p.dusted.DrawRectShader(w, h, p.dust, &ebiten.DrawRectShaderOptions{
@@ -275,11 +263,9 @@ func (p *Pipeline) Draw(screen *ebiten.Image, cam *Camera, sn *sim.Snapshot, fx 
 			Images:   [4]*ebiten.Image{p.frame, p.dustImg},
 			Uniforms: map[string]any{"Strength": float32(dustStrength)},
 		})
-		if split {
-			p.dusted.DrawImage(stars, &ebiten.DrawImageOptions{Blend: ebiten.BlendLighter})
-		}
 		out = p.dusted
 	}
+	out.DrawImage(stars, &ebiten.DrawImageOptions{Blend: ebiten.BlendLighter})
 	if holes := p.Stars.Holes(); fx.Lensing && len(holes) > 0 {
 		count := min(len(holes), maxLensHoles)
 		for i := range count {
