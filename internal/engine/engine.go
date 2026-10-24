@@ -74,7 +74,9 @@ func New(preset, stars int) *Engine {
 	if auto {
 		e.StarsFor = e.stars
 	}
-	e.SavePrefs()
+	if err := e.settings.Save(e.PrefsPath); err != nil { // synchronously: keep the calibration
+		log.Printf("engine: settings: %v", err)
+	}
 	log.Printf("engine: %s, %d stars, GPU %v", e.hw, stars, gpu)
 	return e
 }
