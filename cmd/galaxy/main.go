@@ -15,6 +15,7 @@ import (
 
 	"galaxy/internal/i18n"
 	"galaxy/internal/mac"
+	"galaxy/internal/perf"
 	"galaxy/internal/prefs"
 	"galaxy/internal/scene"
 	"galaxy/internal/sim"
@@ -40,6 +41,8 @@ func main() {
 	gravity := flag.String("gravity", "instant", "propagation of black hole gravity: instant, retarded, retarded+v")
 	effects := flag.String("fx", "", "render effects (glow, lens, doppler, trails, dark); default: the scene's or glow,lens,doppler")
 	cpuprofile := flag.String("cpuprofile", "", "write a CPU profile of the whole run to this file")
+	renderScale := flag.Float64("scale", 0, "render pixels per window point, e.g. 2 for Retina (0 = adaptive; screenshots: 1)")
+	adapt := flag.Bool("adapt", false, "screenshots: adapt quality and star count like the app (default: fixed)")
 	lang := flag.String("lang", "", "user interface language: de or en (default: system)")
 	flag.Parse()
 	mac.Init()
@@ -51,11 +54,11 @@ func main() {
 	flag.Visit(func(f *flag.Flag) { set[f.Name] = true })
 	if *shot != "" {
 		settings = prefs.Default() // screenshots and measurements must not depend on user settings
-		if !set["n"] {
+		if !set["n"] && !*adapt {
 			*n = defaultStars
 		}
 	}
-	tune := newTuning(settings)
+	tune := newTuning(settings, set["gpu"] && !*useGPU)
 	if !set["gpu"] {
 		*useGPU = tune.gpu()
 	}
@@ -143,7 +146,14 @@ func main() {
 	}
 	game.ShotPath, game.ShotAfter = *shot, time.Duration(*shotAfter*float64(time.Second))
 	game.NativeMenu = *shot == "" && mac.Available()
-	game.Theta, game.GPU = *theta, *useGPU
+	game.Theta, game.ThetaUser, game.GPU = *theta, *theta, *useGPU
+	profile := perf.ProfileByID(settings.Profile)
+	game.TargetSPS, game.MaxRenderScale = profile.TargetSPS, profile.MaxRenderScale
+	game.RenderScale = *renderScale
+	game.Adaptive = *shot == "" || *adapt
+	if *shot != "" && !*adapt && *renderScale == 0 {
+		game.RenderScale = 1 // reproducible screenshots
+	}
 	if game.NativeMenu {
 		// Menu and inspector replace the key help and the status text.
 		game.ShowHUD, game.ShowHelp = false, false
@@ -156,8 +166,9 @@ func main() {
 		if profile == "" {
 			profile = "auto"
 		}
-		return fmt.Sprintf("profile=%s auto_stars=%v gpu=%v", profile, autoStars, game.GPU)
+		return fmt.Sprintf("profile=%s auto_stars=%v gpu=%v scale=%g theta=%.2f", profile, autoStars, game.GPU, game.Scale(), game.Theta)
 	}
+	game.Tick = func() { tune.observe(game) }
 	game.PrefsChanged = func() {
 		game.StarsFor = tune.stars // a setting overrides a fixed -n
 		tune.apply(game)

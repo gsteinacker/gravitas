@@ -21,3 +21,6 @@ extern char *galaxyFormValues(int ident);
 extern void galaxyFormChanged(int ident, char *id, double value);
 extern void galaxyFormClosed(int ident);
 extern void galaxyFormOpened(int ident);
+
+// Thermal state (0–3) and, in bit 8, low power mode; callable from any thread.
+int mac_thermal(void);

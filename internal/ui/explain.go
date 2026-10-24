@@ -3,6 +3,7 @@ package ui
 import (
 	"bytes"
 	"image/color"
+	"math"
 	"strconv"
 	"strings"
 
@@ -48,7 +49,8 @@ func (g *Game) drawExplanation(screen *ebiten.Image) {
 	w := panelWidth(g.screenW)
 	x0, y0 := float64(g.screenW)-w-16, 16.0
 	h := float64(g.screenH) - 32
-	vector.FillRect(screen, float32(x0), float32(y0), float32(w), float32(h), panelColor, false)
+	k := float32(uiScale)
+	vector.FillRect(screen, k*float32(x0), k*float32(y0), k*float32(w), k*float32(h), panelColor, false)
 	pad := 22.0
 	x, y := x0+pad, y0+pad
 	title, body := g.Explanation()
@@ -67,11 +69,37 @@ func (g *Game) drawExplanation(screen *ebiten.Image) {
 	drawText(screen, i18n.T("←/→ Thema   ↑/↓ Zielgruppe   e oder Esc schließen", "←/→ topic   ↑/↓ audience   e or Esc to close"), smallFace, x, y0+h-pad-14, dimColor)
 }
 
+// uiScale is the number of screen pixels per window point of the frame being drawn. Overlays are
+// laid out in points; drawText scales positions and font size, so text stays sharp on Retina.
+var uiScale = 1.0
+
+// scaledFaces caches the faces at the sizes uiScale needs.
+var scaledFaces = map[faceKey]*text.GoTextFace{}
+
+type faceKey struct {
+	face  *text.GoTextFace
+	scale float64
+}
+
+func scaledFace(face *text.GoTextFace) *text.GoTextFace {
+	if uiScale == 1 {
+		return face
+	}
+	k := faceKey{face, uiScale}
+	f, ok := scaledFaces[k]
+	if !ok {
+		f = &text.GoTextFace{Source: face.Source, Size: face.Size * uiScale}
+		scaledFaces[k] = f
+	}
+	return f
+}
+
+// drawText draws s with its top left corner at (x, y) in window points.
 func drawText(dst *ebiten.Image, s string, face *text.GoTextFace, x, y float64, c color.Color) {
 	op := &text.DrawOptions{}
-	op.GeoM.Translate(x, y)
+	op.GeoM.Translate(math.Round(x*uiScale), math.Round(y*uiScale))
 	op.ColorScale.ScaleWithColor(c)
-	text.Draw(dst, s, face, op)
+	text.Draw(dst, s, scaledFace(face), op)
 }
 
 // wrap breaks s into lines no wider than width; "\n" starts a new paragraph (with an empty line

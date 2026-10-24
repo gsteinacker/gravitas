@@ -123,14 +123,7 @@ func StarsForGas(c prefs.Calibration, budget time.Duration, gas float64) int {
 	if c.SecPerNL <= 0 || c.BodiesPerStar <= 0 {
 		return 0
 	}
-	gasCost := c.SecPerGasNL
-	if gasCost <= 0 {
-		gasCost = 4 * c.SecPerNL // uncalibrated: SPH costs a few gravity evaluations
-	}
-	cost := func(n float64) float64 {
-		m := c.BodiesPerStar * n
-		return stepOverhead*c.SecPerNL*nlogn(m) + gasOverhead*gasCost*nlogn(gas*m)
-	}
+	cost := func(n float64) float64 { return StepSeconds(c, n, gas) }
 	lo, hi := float64(MinStars), float64(MaxStars)
 	if cost(hi) <= budget.Seconds() {
 		return MaxStars
@@ -147,6 +140,17 @@ func StarsForGas(c prefs.Calibration, budget time.Duration, gas float64) int {
 		}
 	}
 	return roundDown(int(lo))
+}
+
+// StepSeconds is the predicted time of one evolved step of a scene with the given stars and gas
+// fraction.
+func StepSeconds(c prefs.Calibration, stars, gas float64) float64 {
+	gasCost := c.SecPerGasNL
+	if gasCost <= 0 {
+		gasCost = 4 * c.SecPerNL // uncalibrated: SPH costs a few gravity evaluations
+	}
+	m := c.BodiesPerStar * stars
+	return stepOverhead*c.SecPerNL*nlogn(m) + gasOverhead*gasCost*nlogn(gas*m)
 }
 
 // roundDown keeps two significant digits: 87 341 → 87 000, 312 000 → 310 000.

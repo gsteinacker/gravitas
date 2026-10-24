@@ -46,8 +46,15 @@ const (
 	ThetaMax = 1.0
 )
 
-// SetTheta changes the opening angle of a Barnes-Hut solver.
+// SetTheta sets the user's opening angle of a Barnes-Hut solver; the governor may raise the
+// applied one (ApplyTheta).
 func (c *Controller) SetTheta(theta float64) {
+	c.ThetaUser = math.Max(ThetaMin, math.Min(ThetaMax, theta))
+	c.ApplyTheta(c.ThetaUser)
+}
+
+// ApplyTheta changes the opening angle in use without changing the user's choice.
+func (c *Controller) ApplyTheta(theta float64) {
 	theta = math.Max(ThetaMin, math.Min(ThetaMax, theta))
 	c.Theta = theta
 	c.Runner.Do(func(m *sim.Simulation) {

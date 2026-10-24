@@ -178,6 +178,9 @@ func formValue(id string, s app.State, p *prefs.Prefs, hardware string) (v float
 	case "perf":
 		text = fmt.Sprintf(T("%.0f Schritte/s · %.0f FPS · %s Körper", "%.0f steps/s · %.0f FPS · %s bodies"),
 			s.StepsPerSec, s.FPS, GroupDigits(s.Sim.Bodies))
+		if s.RenderScale > 0 {
+			text += fmt.Sprintf(T(" · Auflösung %g×", " · resolution %g×"), s.RenderScale)
+		}
 	case "drift":
 		switch {
 		case s.DriftQuality == sim.EnergyUnknown || math.IsNaN(s.Drift):
@@ -199,7 +202,10 @@ func formValue(id string, s app.State, p *prefs.Prefs, hardware string) (v float
 	case "dm":
 		v, enabled = b(!s.DarkMatterOff), s.Sim.Dark > 0
 	case "theta":
-		v, text = s.Theta, fmt.Sprintf("θ = %.2f", s.Theta)
+		v, text = s.ThetaUser, fmt.Sprintf("θ = %.2f", s.Theta)
+		if s.Theta > s.ThetaUser+1e-9 {
+			text += " (auto)" // the governor relieves the simulation
+		}
 	case "tool":
 		v = float64(s.Tool)
 	case "mass":

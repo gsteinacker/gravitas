@@ -3,6 +3,7 @@ package render
 import (
 	"image"
 	"image/color"
+	"math"
 	"math/rand/v2"
 
 	"github.com/hajimehoshi/ebiten/v2"
@@ -86,9 +87,12 @@ func Fragment(dstPos vec4, srcPos vec2, color vec4) vec4 {
 // stars → (trails) → over background → (lens) → screen → (+ bloom) → holes.
 type Pipeline struct {
 	Stars *StarRenderer
+	// PixelScale is the number of render pixels per window point; see StarRenderer.PixelScale.
+	PixelScale float64
 
 	lens, blur, dust *ebiten.Shader
 	w, h             int
+	ps               float64 // pixel scale of the allocated images
 
 	stars, trailA, trailB, frame, lensed *ebiten.Image
 	dustImg, dusted                      *ebiten.Image
@@ -125,10 +129,20 @@ func NewPipeline() (*Pipeline, error) {
 	}, nil
 }
 
+// bloomDiv is the downsampling of the bloom pass: proportional to the pixel scale, so the blur has
+// the same size on screen and costs the same at every resolution.
+func (p *Pipeline) bloomDiv() int { return max(1, int(math.Round(bloomScale*p.ps))) }
+
 func (p *Pipeline) resize(w, h int) {
-	if w == p.w && h == p.h {
+	ps := p.PixelScale
+	if ps <= 0 {
+		ps = 1
+	}
+	p.Stars.PixelScale = ps
+	if w == p.w && h == p.h && ps == p.ps {
 		return
 	}
+	p.ps = ps
 	p.drawnValid = false
 	for _, img := range []*ebiten.Image{p.stars, p.trailA, p.trailB, p.frame, p.lensed, p.small, p.blurA, p.blurB, p.background, p.dustImg, p.dusted} {
 		if img != nil {
@@ -139,9 +153,9 @@ func (p *Pipeline) resize(w, h int) {
 	p.stars, p.trailA, p.trailB = ebiten.NewImage(w, h), ebiten.NewImage(w, h), ebiten.NewImage(w, h)
 	p.frame, p.lensed = ebiten.NewImage(w, h), ebiten.NewImage(w, h)
 	p.dustImg, p.dusted = ebiten.NewImage(w, h), ebiten.NewImage(w, h)
-	sw, sh := max(1, w/bloomScale), max(1, h/bloomScale)
+	sw, sh := max(1, w/p.bloomDiv()), max(1, h/p.bloomDiv())
 	p.small, p.blurA, p.blurB = ebiten.NewImage(sw, sh), ebiten.NewImage(sw, sh), ebiten.NewImage(sw, sh)
-	p.background = starfield(w, h)
+	p.background = starfield(w, h, ps)
 }
 
 // blendMax keeps the brighter of source and destination per channel.
@@ -166,13 +180,13 @@ var skyColor = color.RGBA{2, 2, 8, 255}
 
 // starfield is a static, opaque sky with faint stars, so the lens has something to distort.
 // It must be opaque: every later pass relies on the frame covering the whole screen.
-func starfield(w, h int) *ebiten.Image {
+func starfield(w, h int, ps float64) *ebiten.Image {
 	img := image.NewRGBA(image.Rect(0, 0, w, h))
 	for i := 0; i < len(img.Pix); i += 4 {
 		img.Pix[i], img.Pix[i+1], img.Pix[i+2], img.Pix[i+3] = skyColor.R, skyColor.G, skyColor.B, skyColor.A
 	}
 	rng := rand.New(rand.NewPCG(7, 11))
-	for range w * h * backgroundStars / 1_000_000 {
+	for range int(float64(w*h) * backgroundStars / 1_000_000 / (ps * ps)) { // per window area
 		v := uint8(20 + rng.IntN(70))
 		tint := uint8(rng.IntN(25))
 		img.SetRGBA(rng.IntN(w), rng.IntN(h), color.RGBA{v - tint/2, v - tint/3, v, 255})
@@ -246,7 +260,8 @@ func (p *Pipeline) Draw(screen *ebiten.Image, cam *view.Camera, sn *sim.Snapshot
 
 	if fx.Glow {
 		op := &ebiten.DrawImageOptions{Filter: ebiten.FilterLinear, Blend: ebiten.BlendCopy}
-		op.GeoM.Scale(1.0/bloomScale, 1.0/bloomScale)
+		div := float64(p.bloomDiv())
+		op.GeoM.Scale(1/div, 1/div)
 		p.small.DrawImage(out, op)
 		sw, sh := p.small.Bounds().Dx(), p.small.Bounds().Dy()
 		p.blurA.DrawRectShader(sw, sh, p.blur, &ebiten.DrawRectShaderOptions{
@@ -256,7 +271,7 @@ func (p *Pipeline) Draw(screen *ebiten.Image, cam *view.Camera, sn *sim.Snapshot
 			Blend: ebiten.BlendCopy, Images: [4]*ebiten.Image{p.blurA}, Uniforms: map[string]any{"Dir": []float32{0, 1}},
 		})
 		op = &ebiten.DrawImageOptions{Filter: ebiten.FilterLinear, Blend: ebiten.BlendLighter}
-		op.GeoM.Scale(bloomScale, bloomScale)
+		op.GeoM.Scale(div, div)
 		op.ColorScale.Scale(bloomStrength, bloomStrength, bloomStrength, bloomStrength)
 		screen.DrawImage(p.blurB, op)
 	}

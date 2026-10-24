@@ -54,6 +54,11 @@ func galaxyFormClosed(w C.int) { onFormVisible(Window(w), false) }
 //export galaxyFormOpened
 func galaxyFormOpened(w C.int) { onFormVisible(Window(w), true) }
 
+func thermal() (state int, lowPower bool) {
+	s := int(C.mac_thermal())
+	return s & 0xff, s&0x100 != 0
+}
+
 //export galaxyMenuAction
 func galaxyMenuAction(tag C.int) { onMenu(int(tag)) }
 

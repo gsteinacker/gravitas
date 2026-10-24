@@ -555,3 +555,11 @@ void mac_form_show(int ident, int show) {
 		}
 	});
 }
+
+// mac_thermal returns the thermal state (0 nominal … 3 critical) and, in bit 8, low power mode.
+int mac_thermal(void) {
+	NSProcessInfo *p = NSProcessInfo.processInfo;
+	int s = (int)p.thermalState;
+	if (p.isLowPowerModeEnabled) s |= 0x100;
+	return s;
+}

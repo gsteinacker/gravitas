@@ -94,7 +94,7 @@ func TestGasScenesGetFewerStars(t *testing.T) {
 		t.Fatal("need a gas scene and a gas-free scene")
 	}
 	auto := ProfileByID("")
-	g, s := auto.SceneStars(c, gasScene, 0), auto.SceneStars(c, plain, 0)
+	g, s := auto.SceneStars(c, gasScene, 1, 0), auto.SceneStars(c, plain, 1, 0)
 	if g*2 > s {
 		t.Errorf("gas scene %d stars, gas-free %d", g, s)
 	}
@@ -102,5 +102,13 @@ func TestGasScenesGetFewerStars(t *testing.T) {
 	cost := stepOverhead*c.SecPerNL*nlogn(m) + gasOverhead*c.SecPerGasNL*nlogn(GasFraction(gasScene)*m)
 	if cost > StepBudget.Seconds() {
 		t.Errorf("gas scene with %d stars costs %.1f ms", g, cost*1e3)
+	}
+}
+
+func TestCorrectionLowersStars(t *testing.T) {
+	c := prefs.Calibration{SecPerNL: 5e-3 / nlogn(150_000), BodiesPerStar: 1}
+	p := ProfileByID("")
+	if slow, fine := p.SceneStars(c, nil, 2, 0), p.SceneStars(c, nil, 1, 0); slow >= fine {
+		t.Errorf("twice the measured step time: %d stars, as predicted: %d", slow, fine)
 	}
 }

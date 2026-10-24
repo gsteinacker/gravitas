@@ -247,3 +247,7 @@ func onFormVisible(w Window, visible bool) {
 		})
 	}
 }
+
+// Thermal reports the thermal state of the Mac (perf.ThermalNominal … ThermalCritical) and whether
+// low power mode is on; nominal and off elsewhere.
+func Thermal() (state int, lowPower bool) { return thermal() }

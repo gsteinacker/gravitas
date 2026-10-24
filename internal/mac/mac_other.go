@@ -16,3 +16,4 @@ func about(string, string)                  {}
 func systemLanguage() i18n.Lang             { return i18n.Current() }
 func defineForm(Window, string, string)     {}
 func showForm(Window, int)                  {}
+func thermal() (int, bool)                  { return 0, false }

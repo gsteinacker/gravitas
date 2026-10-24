@@ -11,13 +11,13 @@ import (
 	"time"
 
 	"github.com/hajimehoshi/ebiten/v2"
-	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
 	"github.com/hajimehoshi/ebiten/v2/inpututil"
 	"github.com/hajimehoshi/ebiten/v2/vector"
 
 	"galaxy/internal/app"
 	"galaxy/internal/i18n"
 	"galaxy/internal/mac"
+	"galaxy/internal/perf"
 	"galaxy/internal/render"
 	"galaxy/internal/scene"
 	"galaxy/internal/sim"
@@ -62,7 +62,23 @@ type Game struct {
 	launching        bool // Alt-drag: place a black hole with an initial velocity
 	chars            []rune
 	button           ebiten.MouseButton
-	screenW, screenH int
+	screenW, screenH int // window size in points; the screen image has renderScale times as many pixels
+
+	// RenderScale, if > 0, fixes the render pixels per window point (-scale flag, screenshots);
+	// otherwise the governor chooses.
+	RenderScale float64
+	renderScale float64
+	// Adaptive lets a governor adapt quality at run time (T-047), with render scales up to
+	// MaxRenderScale (and the display's).
+	Adaptive       bool
+	MaxRenderScale float64
+	governor       *perf.Governor
+	// TargetSPS is the step rate the governor aims at (from the performance profile).
+	TargetSPS float64
+	// Tick, if set, runs after every governor tick (about twice per second).
+	Tick   func()
+	ticks  int
+	spsCap int
 }
 
 // SetEffects replaces the active render effects.
@@ -90,6 +106,7 @@ func (g *Game) Update() error {
 		return ebiten.Termination
 	}
 	if g.ShotPath != "" {
+		g.govern() // with -adapt, measurements see the governor like the app
 		return nil // screenshots must be reproducible: ignore stray input on the window
 	}
 	if g.NativeMenu && !g.installed {
@@ -99,7 +116,7 @@ func (g *Game) Update() error {
 	g.Drain()
 	g.handleKeys()
 	g.handleMouse()
-	g.Runner.SetTargetSPS(g.SpeedLimit())
+	g.govern()
 	g.FPS = ebiten.ActualFPS()
 	g.Publish()
 	return nil
@@ -160,13 +177,14 @@ func (g *Game) handleMouse() {
 	if !g.dragging {
 		return
 	}
-	if abs(x-g.pressX) > clickThreshold || abs(y-g.pressY) > clickThreshold {
+	threshold := int(math.Ceil(clickThreshold * g.Scale()))
+	if abs(x-g.pressX) > threshold || abs(y-g.pressY) > threshold {
 		g.movedSincePress = true
 	}
 	dx, dy := float64(x-g.lastX), float64(y-g.lastY)
 	if g.movedSincePress && !g.launching {
 		if g.button == ebiten.MouseButtonLeft && !ebiten.IsKeyPressed(ebiten.KeyShift) {
-			g.Cam.Rotate(dx, dy)
+			g.Cam.Rotate(dx/g.Scale(), dy/g.Scale()) // the same angle per point at every resolution
 		} else {
 			g.Cam.Pan(dx, dy)
 		}
@@ -190,22 +208,26 @@ func (g *Game) drawLaunchPreview(screen *ebiten.Image) {
 	x, y := ebiten.CursorPosition()
 	x0, y0, x1, y1 := float32(g.pressX), float32(g.pressY), float32(x), float32(y)
 	orange := color.RGBA{255, 150, 50, 255}
-	vector.StrokeLine(screen, x0, y0, x1, y1, 2, orange, true)
-	vector.StrokeCircle(screen, x0, y0, 7, 2, orange, true)
-	if dx, dy := x1-x0, y1-y0; dx*dx+dy*dy > 25 {
+	k := float32(g.Scale())
+	vector.StrokeLine(screen, x0, y0, x1, y1, 2*k, orange, true)
+	vector.StrokeCircle(screen, x0, y0, 7*k, 2*k, orange, true)
+	if dx, dy := x1-x0, y1-y0; dx*dx+dy*dy > 25*k*k {
 		l := float32(math.Hypot(float64(dx), float64(dy)))
 		ux, uy := dx/l, dy/l
 		for _, side := range []float32{1, -1} {
-			vector.StrokeLine(screen, x1, y1, x1-10*ux+6*side*uy, y1-10*uy-6*side*ux, 2, orange, true)
+			vector.StrokeLine(screen, x1, y1, x1-k*(10*ux-6*side*uy), y1-k*(10*uy+6*side*ux), 2*k, orange, true)
 		}
 	}
 	v := app.LaunchVelocity(&g.Cam, float64(g.pressX), float64(g.pressY), float64(x), float64(y))
-	ebitenutil.DebugPrintAt(screen, fmt.Sprintf("v = %.2f", v.Len()), x+12, y+8)
+	drawText(screen, fmt.Sprintf("v = %.2f", v.Len()), smallFace, float64(x)/g.Scale()+12, float64(y)/g.Scale()+8, orange)
 }
 
 func (g *Game) Draw(screen *ebiten.Image) {
 	screen.Fill(color.RGBA{2, 2, 8, 255})
-	g.Cam.W, g.Cam.H = float64(g.screenW), float64(g.screenH)
+	b := screen.Bounds()
+	g.Cam.W, g.Cam.H = float64(b.Dx()), float64(b.Dy())
+	g.pipeline.PixelScale = g.Scale()
+	uiScale = g.Scale()
 	g.Runner.View(func(sn *sim.Snapshot) {
 		g.pipeline.Draw(screen, &g.Cam, sn, g.FX)
 		g.Observe(sn)
@@ -255,9 +277,75 @@ func saveScreenshot(screen *ebiten.Image, path string) error {
 	return f.Close()
 }
 
+// Layout makes the screen renderScale times the window size, so on a Retina display (scale 2)
+// every display pixel is rendered. Overlays are laid out in window points (screenW, screenH).
 func (g *Game) Layout(w, h int) (int, int) {
 	g.screenW, g.screenH = w, h
-	return w, h
+	s := g.Scale()
+	return int(math.Round(float64(w) * s)), int(math.Round(float64(h) * s))
+}
+
+// Scale is the current number of render pixels per window point.
+func (g *Game) Scale() float64 {
+	switch {
+	case g.RenderScale > 0:
+		return g.RenderScale
+	case g.renderScale > 0:
+		return g.renderScale
+	}
+	return 1
+}
+
+// SetProfile changes the step rate the governor aims at and its highest render scale.
+func (g *Game) SetProfile(targetSPS, maxRenderScale float64) {
+	g.TargetSPS, g.MaxRenderScale = targetSPS, maxRenderScale
+	g.governor = nil // restart at the best quality of the new profile
+}
+
+// governorTicks is the number of updates (at 60 per second) between governor ticks.
+const governorTicks = 30
+
+// govern runs the governor every governorTicks updates and applies its settings.
+func (g *Game) govern() {
+	if !g.Adaptive {
+		g.Runner.SetTargetSPS(g.SpeedLimit())
+		return
+	}
+	if g.governor == nil {
+		device := 1.0
+		if m := ebiten.Monitor(); m != nil {
+			device = m.DeviceScaleFactor()
+		}
+		g.governor = perf.NewGovernor(g.MaxRenderScale, device, g.ThetaUser)
+		g.renderScale = g.governor.Current().RenderScale
+	}
+	g.ticks++
+	if g.ticks%governorTicks == 1 {
+		thermal, lowPower := mac.Thermal()
+		sps := g.Runner.StepsPerSecond()
+		if g.Runner.Paused() {
+			sps = 0
+		}
+		g.governor.ThetaBase = g.ThetaUser
+		set, _ := g.governor.Tick(perf.Inputs{
+			FPS: ebiten.ActualFPS(), StepsPerSec: sps, TargetSPS: g.TargetSPS, UserLimit: g.SpeedLimit(),
+			Thermal: thermal, LowPower: lowPower,
+		})
+		g.renderScale = set.RenderScale
+		if set.Theta != g.Theta {
+			g.ApplyTheta(set.Theta)
+		}
+		g.spsCap = set.SPSCap
+		g.RenderScaleNow = g.Scale()
+		if g.Tick != nil {
+			g.Tick()
+		}
+	}
+	limit := g.SpeedLimit()
+	if g.spsCap > 0 && (limit == 0 || g.spsCap < limit) {
+		limit = g.spsCap
+	}
+	g.Runner.SetTargetSPS(limit)
 }
 
 func abs(x int) int {

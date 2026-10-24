@@ -78,8 +78,11 @@ type Controller struct {
 	// FPS is the frame rate measured by the front end.
 	FPS float64
 	// Theta and GPU mirror the Barnes-Hut solver settings (set by main, changed by SetTheta/SetGPU).
-	Theta float64
-	GPU   bool
+	Theta     float64 // in use
+	ThetaUser float64 // chosen by the user (flag or inspector); the governor may raise Theta
+	GPU       bool
+	// RenderScaleNow is the render pixels per window point in use, for display.
+	RenderScaleNow float64
 	// Prefs are the persistent settings, saved to PrefsPath; nil disables persistence.
 	Prefs     *prefs.Prefs
 	PrefsPath string

@@ -3,6 +3,30 @@
 Chronologisches Log relevanter Benchmark-Ergebnisse. Neueste oben. Format:
 
 ```
+## 2026-10-24 · T-046/T-047 · Anpassung an den Rechner
+
+Maschine: M4 Pro (8P+4E). **Unter Fremdlast:** Parallel lief eine Galaxy-Instanz mit 100k Sternen und ~4 Kernen
+(PID des Nutzers, nicht beendet). Die absoluten Zahlen sind deshalb zu niedrig; der Vergleich fest/adaptiv lief
+unter gleicher Last.
+
+Schwacher Rechner, nachgestellt mit `GOMAXPROCS=2 -gpu=false`, Spiralgalaxie, Screenshot nach 25 s:
+
+```
+fest, -n 50000                       50 001 Körper   11,9 Schritte/s   57 FPS   θ 0,90
+fest, -n 50000, -adapt (Regler)      50 001 Körper   15,4 Schritte/s   58 FPS   θ 1,00
+adaptiv (-adapt, Kalibrierung CPU)   17 001 Körper   34,7 Schritte/s   57 FPS   θ 0,90
+```
+
+M4 Pro mit GPU, `-n 0` (Profil „Automatisch“), nach 20 s:
+- Spiralgalaxie 100k: 68 Schritte/s;
+- Kollision 120k: 53 Schritte/s;
+- Antennae 93k: 61 Schritte/s;
+- Pferdekopf 22k Gas: 8 Schritte/s (4 Courant-Teilschritte; die Korrektur über die gemessene Schrittzeit greift
+  beim nächsten Laden der Szene).
+
+Retina (`-scale 2`, 30k): 60 FPS wie bei Faktor 1. Bloom-Verkleinerung wächst mit dem Faktor, ihr Aufwand bleibt
+gleich.
+
 ## YYYY-MM-DD · <Task-ID> · <kurze Beschreibung>
 Maschine: M4 Pro, GOMAXPROCS=12, Go 1.27.x
 <benchstat- oder go test -bench Ausgabe>

@@ -28,6 +28,8 @@ type State struct {
 	YearsPer      float64 // physical years per time unit of the scene, 0 = none
 	Stars         int     // stars a new scene gets
 	Theta         float64
+	ThetaUser     float64
+	RenderScale   float64
 	GPU           bool
 	Drift         float64
 	DriftQuality  sim.EnergyQuality
@@ -44,7 +46,7 @@ func (c *Controller) Publish() {
 		ShowHUD: c.ShowHUD, ShowHelp: c.ShowHelp, Explain: c.Explain, Level: c.Level,
 		Scene: -1, Sim: c.sim, StepsPerSec: c.Runner.StepsPerSecond(), FPS: c.FPS,
 	}
-	s.Theta, s.GPU, s.Stars = c.Theta, c.GPU, c.N
+	s.Theta, s.ThetaUser, s.GPU, s.Stars, s.RenderScale = c.Theta, c.ThetaUser, c.GPU, c.N, c.RenderScaleNow
 	s.Drift, s.DriftQuality = c.Runner.EnergyDrift()
 	if c.Scene != nil {
 		s.SceneName, s.SceneInfo, s.YearsPer = c.Scene.Name, c.Scene.Info, c.Scene.YearsPer

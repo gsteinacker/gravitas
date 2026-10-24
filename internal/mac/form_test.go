@@ -47,7 +47,7 @@ func TestFormIDsAreUniqueAndEncodable(t *testing.T) {
 
 // TestFormValuesStayInRange: every control reports a value its widget can show.
 func TestFormValuesStayInRange(t *testing.T) {
-	s := app.State{C: 10, Mass: 0.5, Theta: 0.9, Speed: 5, Gravity: sim.GravityRetarded, Level: learn.Physics, Stars: 50000}
+	s := app.State{C: 10, Mass: 0.5, Theta: 0.9, ThetaUser: 0.9, Speed: 5, Gravity: sim.GravityRetarded, Level: learn.Physics, Stars: 50000}
 	p := prefs.Default()
 	p.Stars, p.Profile = 100000, "high"
 	for _, form := range [][]control{inspectorForm(), settingsForm()} {

@@ -52,15 +52,19 @@ func (p Profile) Name() string {
 
 // Stars is the star count of a gas-free scene for this profile on a calibrated machine; fallback
 // if the machine is not calibrated.
-func (p Profile) Stars(c prefs.Calibration, fallback int) int { return p.SceneStars(c, nil, fallback) }
+func (p Profile) Stars(c prefs.Calibration, fallback int) int {
+	return p.SceneStars(c, nil, 1, fallback)
+}
 
-// SceneStars is Stars for a scene, taking its gas into account; sp may be nil.
-func (p Profile) SceneStars(c prefs.Calibration, sp *scene.Spec, fallback int) int {
+// SceneStars is Stars for a scene, taking its gas into account; sp may be nil. correction is the
+// measured step time of the scene relative to the prediction (1 = as predicted).
+func (p Profile) SceneStars(c prefs.Calibration, sp *scene.Spec, correction float64, fallback int) int {
 	gas := 0.0
 	if sp != nil {
 		gas = GasFraction(sp)
 	}
-	if n := StarsForGas(c, time.Duration(float64(time.Second)/p.TargetSPS), gas); n > 0 {
+	budget := time.Duration(float64(time.Second) / p.TargetSPS / max(0.1, correction))
+	if n := StarsForGas(c, budget, gas); n > 0 {
 		return n
 	}
 	return fallback

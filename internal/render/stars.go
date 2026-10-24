@@ -22,6 +22,11 @@ const minHolePixels = 3
 
 // StarRenderer draws a snapshot as additive glowing sprites, batched into few draw calls.
 type StarRenderer struct {
+	// PixelScale is the number of render pixels per window point (2 on Retina at full quality);
+	// sizes given in pixels scale with it, so the picture looks the same at every resolution.
+	// 0 means 1.
+	PixelScale float64
+
 	sprite  *ebiten.Image
 	verts   []ebiten.Vertex
 	indices []uint32
@@ -98,6 +103,14 @@ type Hole struct {
 	PhysR float32 // actual horizon radius in pixels (for lensing; may be far below a pixel)
 }
 
+// ps is the pixel scale, at least a tiny positive value.
+func (sr *StarRenderer) ps() float64 {
+	if sr.PixelScale <= 0 {
+		return 1
+	}
+	return sr.PixelScale
+}
+
 // Holes returns the black holes collected by the last DrawStars call.
 func (sr *StarRenderer) Holes() []Hole { return sr.bhs }
 
@@ -150,11 +163,12 @@ func (sr *StarRenderer) DrawStars(dst *ebiten.Image, cam *view.Camera, sn *sim.S
 			r = 0.06 * math.Sqrt(h.m)
 		}
 		px := r * focal / depth
-		sr.bhs = append(sr.bhs, Hole{X: float32(sx), Y: float32(sy), R: float32(math.Max(minHolePixels, px)), PhysR: float32(px)})
+		sr.bhs = append(sr.bhs, Hole{X: float32(sx), Y: float32(sy), R: float32(math.Max(minHolePixels*sr.ps(), px)), PhysR: float32(px)})
 	}
 	// Dark matter and the gas map are a haze whose opacity follows from their projected density
 	// in this frame (hazeAlpha).
 	vw := cam.View()
+	ps := sr.ps()
 	var darkAlpha, gasAlpha float32
 	if fx.Dark {
 		darkAlpha = sr.hazeAlpha(sn, sim.DarkMatter, &vw, focal, cam)
@@ -206,7 +220,7 @@ func (sr *StarRenderer) DrawStars(dst *ebiten.Image, cam *view.Camera, sn *sim.S
 			}
 			rel := float64(sn.Mass[i]) / meanMass
 			size := 0.05 * math.Cbrt(rel) * focal / depth
-			size = math.Max(3.5, math.Min(28, size))
+			size = math.Max(3.5*ps, math.Min(28*ps, size))
 			if sx < -size || sy < -size || sx > cam.W+size || sy > cam.H+size {
 				clear(q)
 				continue
@@ -296,7 +310,7 @@ func (sr *StarRenderer) DrawHoles(dst *ebiten.Image) {
 		// 1.5 r_s, and the horizon. The glow uses a premultiplied color with zero alpha, so it adds light.
 		ring := float32(math.Max(1.5, float64(bh.R)*0.25))
 		vector.FillCircle(dst, bh.X, bh.Y, bh.R*2.6, color.RGBA{18, 7, 2, 0}, true)
-		if bh.R > minHolePixels {
+		if bh.R > minHolePixels*float32(sr.ps()) {
 			// Innermost stable circular orbit of the Paczyński-Wiita potential: stars inside plunge.
 			vector.StrokeCircle(dst, bh.X, bh.Y, bh.R*3, 1, color.RGBA{90, 60, 40, 120}, true)
 		}
@@ -320,7 +334,8 @@ var emissionColor = [3]float32{1.0, 0.16, 0.22} // Hα 656 nm (with a little Hβ
 
 func (sr *StarRenderer) emissionQuad(q []ebiten.Vertex, dusty bool, i int, vw *view.View, sn *sim.Snapshot, focal float64, cam *view.Camera) {
 	sx, sy, depth, ok := vw.Project(float64(sn.X[i]), float64(sn.Y[i]), float64(sn.Z[i]))
-	size := math.Max(3, math.Min(120, 3*float64(sn.GasH[i])*focal/depth))
+	ps := sr.ps()
+	size := math.Max(3*ps, math.Min(120*ps, 3*float64(sn.GasH[i])*focal/depth))
 	if !ok || sx < -size || sy < -size || sx > cam.W+size || sy > cam.H+size {
 		clear(q)
 		return
@@ -385,7 +400,10 @@ var (
 // darkQuad writes the faint quad of one dark matter or gas particle, or an empty quad if it is
 // off screen.
 // hazeSize is the sprite size of a haze body (dark matter, gas map) at the given depth.
-func hazeSize(focal, depth float64) float64 { return math.Max(6, math.Min(48, 0.12*focal/depth)) }
+func (sr *StarRenderer) hazeSize(focal, depth float64) float64 {
+	ps := sr.ps()
+	return math.Max(6*ps, math.Min(48*ps, 0.12*focal/depth))
+}
 
 // Haze opacity: the densest hazePercentile of the covered screen cells reach intensity hazeTarget.
 const (
@@ -406,7 +424,7 @@ func (sr *StarRenderer) hazeAlpha(sn *sim.Snapshot, k sim.Kind, vw *view.View, f
 			continue
 		}
 		if cx, cy := int(sx/cw), int(sy/ch); cx >= 0 && cy >= 0 && cx < exposureGridW && cy < exposureGridH {
-			size := hazeSize(focal, depth)
+			size := sr.hazeSize(focal, depth)
 			grid[cy*exposureGridW+cx] += float32(spriteMean * size * size / (cw * ch))
 		}
 	}
@@ -427,7 +445,7 @@ func (sr *StarRenderer) hazeAlpha(sn *sim.Snapshot, k sim.Kind, vw *view.View, f
 
 func (sr *StarRenderer) darkQuad(q []ebiten.Vertex, vw *view.View, x, y, z, focal float64, alpha float32, tint [3]float32, cam *view.Camera) {
 	sx, sy, depth, ok := vw.Project(x, y, z)
-	size := hazeSize(focal, depth)
+	size := sr.hazeSize(focal, depth)
 	if !ok || sx < -size || sy < -size || sx > cam.W+size || sy > cam.H+size {
 		clear(q)
 		return
@@ -485,6 +503,7 @@ const (
 func (sr *StarRenderer) DrawDust(dst *ebiten.Image, cam *view.Camera, sn *sim.Snapshot) {
 	n := sn.Len()
 	vw, focal := cam.View(), cam.Focal()
+	ps := sr.ps()
 	kappa := sr.DustOpacity
 	if kappa == 0 {
 		kappa = sr.dustNorm
@@ -503,7 +522,7 @@ func (sr *StarRenderer) DrawDust(dst *ebiten.Image, cam *view.Camera, sn *sim.Sn
 		if !ok {
 			continue
 		}
-		size := math.Max(2, math.Min(80, 2*float64(sn.GasH[i])*focal/depth))
+		size := math.Max(2*ps, math.Min(80*ps, 2*float64(sn.GasH[i])*focal/depth))
 		if sx < -size || sy < -size || sx > cam.W+size || sy > cam.H+size {
 			continue
 		}
