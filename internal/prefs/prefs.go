@@ -29,9 +29,10 @@ type Prefs struct {
 
 // Calibration is the measured speed of one machine.
 type Calibration struct {
-	UseGPU   bool    `json:"useGPU"`
-	SecPerNL float64 `json:"secPerNLogN"` // seconds per N·log2(N) of one force evaluation
-	Stars    int     `json:"stars"`       // recommended stars for the step budget
+	UseGPU        bool    `json:"useGPU"`
+	SecPerNL      float64 `json:"secPerNLogN"`    // seconds per M·log2(M) of one force evaluation of M bodies
+	BodiesPerStar float64 `json:"bodiesPerStar"`  // bodies (stars, dark matter, gas) per star of a scene
+	SecPerGasNL   float64 `json:"secPerGasNLogN"` // seconds per G·log2(G) of one SPH evaluation of G gas bodies
 }
 
 // Default returns the settings of a first start.

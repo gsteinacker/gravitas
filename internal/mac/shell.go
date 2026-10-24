@@ -17,10 +17,26 @@ import (
 type Hooks struct {
 	ExportImage  func(path string) // save the next frame as PNG
 	PrefsChanged func()            // profile, star count or GPU setting changed
+	Recalibrate  func()            // measure the machine again
 }
 
-// Hardware describes the machine in the settings window; set by main.
-var Hardware string
+var hardware struct {
+	sync.Mutex
+	text string
+}
+
+// SetHardware sets the description of the machine in the settings window.
+func SetHardware(s string) {
+	hardware.Lock()
+	hardware.text = s
+	hardware.Unlock()
+}
+
+func hardwareText() string {
+	hardware.Lock()
+	defer hardware.Unlock()
+	return hardware.text
+}
 
 // Version is shown in the About panel; set by main from the build.
 var Version = "dev"
@@ -202,7 +218,7 @@ func formValues(w Window) string {
 		if ctl.id == "" {
 			continue
 		}
-		v, text, enabled := formValue(ctl.id, s, p, Hardware)
+		v, text, enabled := formValue(ctl.id, s, p, hardwareText())
 		en := "0"
 		if enabled {
 			en = "1"

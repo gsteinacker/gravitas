@@ -295,6 +295,7 @@ static NSTextField *label(NSString *s, BOOL bold, BOOL small) {
 - (void)update {
 	// Do not fight the user: skip updates while a control is being changed.
 	BOOL editing = CFAbsoluteTimeGetCurrent() - self.lastEdit < 0.4;
+	BOOL resize = NO;
 	char *raw = galaxyFormValues(self.ident);
 	NSString *all = [NSString stringWithUTF8String:raw];
 	free(raw);
@@ -305,7 +306,10 @@ static NSTextField *label(NSString *s, BOOL bold, BOOL small) {
 		double v = f[1].doubleValue;
 		BOOL enabled = f[3].boolValue;
 		NSTextField *t = self.texts[ident];
-		if (t != nil && ![t.stringValue isEqualToString:f[2]]) t.stringValue = f[2];
+		if (t != nil && ![t.stringValue isEqualToString:f[2]]) {
+			t.stringValue = f[2];
+			resize = YES;
+		}
 		NSControl *c = self.controls[ident];
 		if (c == nil) continue;
 		c.enabled = enabled;
@@ -318,6 +322,18 @@ static NSTextField *label(NSString *s, BOOL bold, BOOL small) {
 		case 'R': if (f[2].length > 0) ((NSButton *)c).title = f[2]; break;
 		}
 	}
+	if (resize) [self fit];
+}
+
+// fit adapts the window to its content (texts can wrap), keeping the top left corner.
+- (void)fit {
+	NSView *v = self.window.contentView;
+	[v layoutSubtreeIfNeeded];
+	NSSize want = v.fittingSize;
+	NSRect r = [self.window contentRectForFrameRect:self.window.frame];
+	if (fabs(want.height - r.size.height) < 1 && fabs(want.width - r.size.width) < 1) return;
+	NSRect f = [self.window frameRectForContentRect:NSMakeRect(r.origin.x, NSMaxY(r) - want.height, want.width, want.height)];
+	[self.window setFrame:f display:YES];
 }
 
 - (void)windowWillClose:(NSNotification *)n {
@@ -403,8 +419,8 @@ static NSTextField *label(NSString *s, BOOL bold, BOOL small) {
 			break;
 		}
 		case 'V': {
-			NSTextField *v = label(@"", NO, NO);
-			v.lineBreakMode = NSLineBreakByTruncatingTail;
+			NSTextField *v = [NSTextField wrappingLabelWithString:@""];
+			v.preferredMaxLayoutWidth = 260;
 			[v.widthAnchor constraintLessThanOrEqualToConstant:260].active = YES;
 			self.texts[ident] = v;
 			right = v;
@@ -488,6 +504,7 @@ static void snapshotForms(NSString *dir) {
 		GalaxyForm *f = forms[i];
 		if (f == nil) continue;
 		[f update];
+		[f fit];
 		NSView *v = f.window.contentView;
 		[v layoutSubtreeIfNeeded];
 		NSBitmapImageRep *rep = [v bitmapImageRepForCachingDisplayInRect:v.bounds];

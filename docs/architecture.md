@@ -98,3 +98,32 @@ Die Laufzeit ist proportional zu den Wechselwirkungen pro Stern (T-027). Der Gru
 Quadrupole (T-028) haben geholfen.
 
 Benchmarks liegen neben dem Code (`*_bench_test.go`), Ergebnisse in [perf-log.md](perf-log.md).
+
+## Anpassung an den Rechner (T-046, T-047)
+
+Die App soll auf jedem Mac flüssig laufen, nicht nur auf dem M4 Pro, auf dem das Budget oben gemessen ist.
+
+- **Erkennung** (`perf.Probe`): CPU-Name, P- und E-Kerne, Speicher (sysctl), Metal-Gerät.
+- **Kalibrierung** (`perf.Calibrate`, 50–150 ms beim ersten Start, gecacht pro Hardware in den Einstellungen):
+  - eine Kraftauswertung der Standardszene mit 20k Körpern, auf CPU und GPU; der schnellere Pfad gewinnt;
+  - eine SPH-Auswertung der Gasszene mit 10k Teilchen.
+- **Hochrechnung** auf eine Sternzahl: Kosten ≈ 2,1 · k·M log M + 1,6 · k_g·G log G, mit M Körpern und G Gasteilchen.
+  - Der Faktor 2,1 ist das Verhältnis „voller Schritt im entwickelten Zustand“ zu „Kraftauswertung im
+    Anfangszustand“ (Tabelle oben).
+  - Der Faktor 1,6 entspricht den SPH-Auswertungen pro Schritt (perf-log T-038).
+  - Die Sternzahl wird pro Szene aus ihrem Gasanteil bestimmt.
+- **Profile** in den Einstellungen:
+
+  | Profil | Ziel | Renderauflösung |
+  |---|---|---|
+  | Automatisch (Standard) | 30 Schritte/s | voll |
+  | Niedrig | 60 Schritte/s | ohne Retina |
+  | Mittel | 45 Schritte/s | mittel |
+  | Hoch | 30 Schritte/s | voll |
+  | Maximal | 12 Schritte/s | voll |
+
+  Eine feste Sternzahl in den Einstellungen oder `-n` überschreibt das Profil. Screenshots ohne `-n` nutzen
+  50 000 und ignorieren die Einstellungen, damit Messungen reproduzierbar bleiben.
+- **Grenze des Modells:** Courant-Teilschritte wachsen mit der Auflösung des Gases (Pferdekopf: 4 statt 1,6).
+  Der Laufzeit-Regler (T-047) misst die echte Schrittzeit und korrigiert damit die Sternzahl der nächsten
+  Szene.

@@ -37,10 +37,12 @@ type Game struct {
 	// time, not frames: at low frame rates a frame count would take arbitrarily long.
 	ShotPath  string
 	ShotAfter time.Duration
-	started   time.Time
-	frame     int
-	shotErr   error
-	shotDone  bool
+	// ShotInfo, if set, is appended to the screenshot summary line (e.g. the performance profile).
+	ShotInfo func() string
+	started  time.Time
+	frame    int
+	shotErr  error
+	shotDone bool
 
 	pipeline *render.Pipeline
 
@@ -48,8 +50,10 @@ type Game struct {
 	NativeMenu bool
 	// PrefsChanged runs when the settings window changed profile, stars or GPU.
 	PrefsChanged func()
-	installed    bool
-	exportPath   string // save the next frame as PNG here
+	// Recalibrate measures the machine again (settings window).
+	Recalibrate func()
+	installed   bool
+	exportPath  string // save the next frame as PNG here
 
 	dragging         bool
 	pressX, pressY   int
@@ -90,7 +94,7 @@ func (g *Game) Update() error {
 	}
 	if g.NativeMenu && !g.installed {
 		g.installed = true
-		mac.Install(g.Controller, mac.Hooks{ExportImage: func(path string) { g.exportPath = path }, PrefsChanged: g.PrefsChanged})
+		mac.Install(g.Controller, mac.Hooks{ExportImage: func(path string) { g.exportPath = path }, PrefsChanged: g.PrefsChanged, Recalibrate: g.Recalibrate})
 	}
 	g.Drain()
 	g.handleKeys()
@@ -228,8 +232,12 @@ func (g *Game) Draw(screen *ebiten.Image) {
 		g.shotErr, g.shotDone = saveScreenshot(screen, g.ShotPath), true
 		// Machine-readable summary for the harness (the HUD text is only in the image).
 		s := g.Sim()
-		fmt.Printf("shot %s: bodies=%d fps=%.1f steps_per_s=%.1f substeps=%d t=%.2f\n",
-			g.ShotPath, s.Bodies, ebiten.ActualFPS(), g.Runner.StepsPerSecond(), s.Substeps, s.Time)
+		extra := ""
+		if g.ShotInfo != nil {
+			extra = " " + g.ShotInfo()
+		}
+		fmt.Printf("shot %s: bodies=%d fps=%.1f steps_per_s=%.1f substeps=%d gas_substeps=%d t=%.2f%s\n",
+			g.ShotPath, s.Bodies, ebiten.ActualFPS(), g.Runner.StepsPerSecond(), s.Substeps, s.HydroSubsteps, s.Time, extra)
 	}
 }
 

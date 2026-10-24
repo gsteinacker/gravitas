@@ -27,6 +27,12 @@ static int gpu_init(const char *src, char *err, int errlen) {
 	return 0;
 }
 
+// gpu_name writes the device name; only valid after a successful gpu_init.
+static void gpu_name(char *out, int len) {
+	strncpy(out, dev ? dev.name.UTF8String : "", len);
+	out[len - 1] = 0;
+}
+
 // gpu_buffer allocates a CPU/GPU shared buffer; the returned handle owns one retain.
 static void *gpu_buffer(size_t bytes) {
 	id<MTLBuffer> b = [dev newBufferWithLength:bytes options:MTLResourceStorageModeShared];
@@ -134,6 +140,19 @@ func GPUAvailable() error {
 	})
 	return gpuErr
 }
+
+// GPUName is the name of the Metal device, or "" if the GPU walk is unavailable.
+func GPUName() string {
+	if GPUAvailable() != nil {
+		return ""
+	}
+	var name [256]C.char
+	C.gpu_name(&name[0], C.int(len(name)))
+	return C.GoString(&name[0])
+}
+
+// LastGPUSeconds is the kernel time of the last GPU walk, 0 before the first one.
+func (b *Solver) LastGPUSeconds() float64 { return b.gpu.lastSeconds }
 
 // gpuBuffers are the shared buffers of one Solver.
 type gpuBuffers struct {

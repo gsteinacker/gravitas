@@ -12,7 +12,7 @@ func TestRoundTrip(t *testing.T) {
 	p := Default()
 	p.Profile, p.Stars, p.GPU, p.Level = "high", 120000, GPUOff, 2
 	p.SetInspectorVisible(false)
-	p.Calibration = map[string]Calibration{"M4": {UseGPU: true, SecPerNL: 1e-9, Stars: 80000}}
+	p.Calibration = map[string]Calibration{"M4": {UseGPU: true, SecPerNL: 1e-9, BodiesPerStar: 1.5}}
 	if err := p.Save(path); err != nil {
 		t.Fatal(err)
 	}

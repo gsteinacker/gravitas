@@ -4,6 +4,7 @@ package main
 import (
 	"context"
 	"flag"
+	"fmt"
 	"log"
 	"os"
 	"runtime/pprof"
@@ -24,11 +25,8 @@ import (
 	"galaxy/internal/view"
 )
 
-// defaultStars is the star count without -n or a setting.
-const defaultStars = 50000
-
 func main() {
-	n := flag.Int("n", defaultStars, "number of stars")
+	n := flag.Int("n", 0, "number of stars (0 = from the performance profile; screenshots: 50000)")
 	solverName := flag.String("solver", "bh", "force solver: bh (Barnes-Hut) or direct")
 	useGPU := flag.Bool("gpu", true, "run the Barnes-Hut tree walk on the GPU if available (macOS/Metal)")
 	theta := flag.Float64("theta", bh.DefaultTheta, "Barnes-Hut opening angle (smaller = more accurate)")
@@ -49,17 +47,19 @@ func main() {
 		i18n.Set(i18n.FromLocale(*lang))
 	}
 	settings := prefs.Load(prefs.Path())
-	nSet := false
-	flag.Visit(func(f *flag.Flag) { nSet = nSet || f.Name == "n" })
+	set := map[string]bool{}
+	flag.Visit(func(f *flag.Flag) { set[f.Name] = true })
 	if *shot != "" {
 		settings = prefs.Default() // screenshots and measurements must not depend on user settings
+		if !set["n"] {
+			*n = defaultStars
+		}
 	}
-	if !nSet && settings.Stars > 0 {
-		*n = settings.Stars
+	tune := newTuning(settings)
+	if !set["gpu"] {
+		*useGPU = tune.gpu()
 	}
-	if settings.GPU == prefs.GPUOff {
-		*useGPU = false
-	}
+	mac.SetHardware(tune.describe())
 	if *cpuprofile != "" {
 		f, err := os.Create(*cpuprofile)
 		if err != nil {
@@ -78,6 +78,10 @@ func main() {
 		if spec, err = scene.LoadSpec(*sceneFile); err != nil {
 			log.Fatal(err)
 		}
+	}
+	autoStars := *n <= 0
+	if autoStars {
+		*n = tune.stars(spec)
 	}
 	s, params := spec.Build(*n)
 	mode, err := sim.ParseGravityMode(*gravity)
@@ -144,13 +148,23 @@ func main() {
 		// Menu and inspector replace the key help and the status text.
 		game.ShowHUD, game.ShowHelp = false, false
 	}
-	game.PrefsChanged = func() {
-		if settings.Stars > 0 {
-			game.N = settings.Stars
-		} else {
-			game.N = defaultStars
+	if autoStars {
+		game.StarsFor = tune.stars
+	}
+	game.ShotInfo = func() string {
+		profile := settings.Profile
+		if profile == "" {
+			profile = "auto"
 		}
-		game.SetGPU(settings.GPU != prefs.GPUOff)
+		return fmt.Sprintf("profile=%s auto_stars=%v gpu=%v", profile, autoStars, game.GPU)
+	}
+	game.PrefsChanged = func() {
+		game.StarsFor = tune.stars // a setting overrides a fixed -n
+		tune.apply(game)
+	}
+	game.Recalibrate = func() { recalibrate(game, tune) }
+	if *shot == "" {
+		game.SavePrefs() // keep the calibration
 	}
 	if err := ebiten.RunGame(game); err != nil {
 		pprof.StopCPUProfile()

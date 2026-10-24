@@ -122,7 +122,7 @@ func settingsForm() []control {
 	T := i18n.T
 	stars := make([]string, len(StarChoices))
 	for i, n := range StarChoices {
-		stars[i] = groupDigits(n)
+		stars[i] = GroupDigits(n)
 	}
 	stars[0] = T("Automatisch", "Automatic")
 	return []control{
@@ -134,17 +134,18 @@ func settingsForm() []control {
 			T("Automatisch", "Automatic"), T("Ein", "On"), T("Aus", "Off")}},
 		{kind: ctlValue, id: "starsNow", title: T("Aktuell", "Current")},
 		{kind: ctlValue, id: "hardware", title: T("Rechner", "Computer")},
+		{kind: ctlButtons, id: "recalibrate", opts: []string{T("Leistung neu messen", "Measure Again")}},
 		{kind: ctlSection, title: T("Lernmodus", "Learning mode")},
 		{kind: ctlPopup, id: "level", title: T("Zielgruppe", "Audience"), opts: []string{
 			T("Schüler", "Pupils"), T("Interessierte", "Interested laypeople"), T("Physik", "Physicists")}},
 	}
 }
 
-// groupDigits writes 50000 as "50 000" (thin grouping works in both languages).
-func groupDigits(n int) string {
+// GroupDigits writes 50000 as "50 000" with a no-break space (readable in both languages).
+func GroupDigits(n int) string {
 	s := strconv.Itoa(n)
 	for i := len(s) - 3; i > 0; i -= 3 {
-		s = s[:i] + " " + s[i:]
+		s = s[:i] + "\u00a0" + s[i:] // no line break inside numbers
 	}
 	return s
 }
@@ -176,7 +177,7 @@ func formValue(id string, s app.State, p *prefs.Prefs, hardware string) (v float
 		}
 	case "perf":
 		text = fmt.Sprintf(T("%.0f Schritte/s · %.0f FPS · %s Körper", "%.0f steps/s · %.0f FPS · %s bodies"),
-			s.StepsPerSec, s.FPS, groupDigits(s.Sim.Bodies))
+			s.StepsPerSec, s.FPS, GroupDigits(s.Sim.Bodies))
 	case "drift":
 		switch {
 		case s.DriftQuality == sim.EnergyUnknown || math.IsNaN(s.Drift):
@@ -228,7 +229,7 @@ func formValue(id string, s app.State, p *prefs.Prefs, hardware string) (v float
 	case "gpu":
 		v = float64(max(0, index(gpuChoices, p.GPU)))
 	case "starsNow":
-		text = fmt.Sprintf(T("%s Sterne, ab nächster Szene", "%s stars, from the next scene"), groupDigits(s.Stars))
+		text = fmt.Sprintf(T("%s Sterne, ab nächster Szene", "%s stars, from the next scene"), GroupDigits(s.Stars))
 	case "hardware":
 		text = hardware
 	case "level":
@@ -290,6 +291,10 @@ func onFormChange(c *app.Controller, h Hooks, id string, v float64) {
 		toggle(c.ShowHUD, app.ActionToggleHUD)
 	case "explain":
 		toggle(c.Explain, app.ActionToggleExplain)
+	case "recalibrate":
+		if h.Recalibrate != nil {
+			h.Recalibrate()
+		}
 	case "level":
 		c.SetLevel(learn.Level(max(0, min(int(learn.Physics), i))))
 	case "profile", "stars", "gpu":

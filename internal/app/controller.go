@@ -95,6 +95,8 @@ type Controller struct {
 	SaveDir string
 	// ToggleFullscreen is provided by the front end; nil disables the action.
 	ToggleFullscreen func()
+	// StarsFor, if set, chooses the star count of a scene (performance profile); otherwise N is used.
+	StarsFor func(*scene.Spec) int
 	// SceneLoaded, if set, is called after a scene or saved state replaced the running one.
 	SceneLoaded func(*scene.Spec)
 
@@ -337,6 +339,9 @@ func (c *Controller) saveCamera() save.Camera {
 // LoadScene replaces the running scene.
 func (c *Controller) LoadScene(sp *scene.Spec) {
 	c.applyScene(sp)
+	if c.StarsFor != nil {
+		c.N = c.StarsFor(sp)
+	}
 	s, p := sp.Build(c.N)
 	c.Runner.Do(func(m *sim.Simulation) {
 		// Propagation mode and dark matter switch are user choices, not part of the scene.
