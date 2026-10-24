@@ -18,6 +18,8 @@ import (
 	"github.com/hajimehoshi/ebiten/v2/vector"
 
 	"galaxy/internal/app"
+	"galaxy/internal/i18n"
+	"galaxy/internal/mac"
 	"galaxy/internal/render"
 	"galaxy/internal/scene"
 	"galaxy/internal/sim"
@@ -43,6 +45,11 @@ type Game struct {
 	shotDone  bool
 
 	pipeline *render.Pipeline
+
+	// NativeMenu installs the macOS menu bar on the first update (not in screenshot mode).
+	NativeMenu bool
+	installed  bool
+	exportPath string // save the next frame as PNG here
 
 	dragging         bool
 	pressX, pressY   int
@@ -80,6 +87,10 @@ func (g *Game) Update() error {
 	}
 	if g.ShotPath != "" {
 		return nil // screenshots must be reproducible: ignore stray input on the window
+	}
+	if g.NativeMenu && !g.installed {
+		g.installed = true
+		mac.Install(g.Controller, mac.Hooks{ExportImage: func(path string) { g.exportPath = path }})
 	}
 	g.Drain()
 	g.handleKeys()
@@ -197,6 +208,16 @@ func (g *Game) Draw(screen *ebiten.Image) {
 	})
 	if g.dragging && g.launching {
 		g.drawLaunchPreview(screen)
+	}
+	if g.exportPath != "" {
+		// Before the HUD, so the image shows only the simulation.
+		path := g.exportPath
+		g.exportPath = ""
+		if err := saveScreenshot(screen, path); err != nil {
+			mac.Alert(i18n.T("Bild kann nicht gesichert werden", "Cannot save the image"), err.Error())
+		} else {
+			g.Notify(i18n.T("Bild gesichert: ", "Image saved: ") + path)
+		}
 	}
 	if g.ShowHUD {
 		g.drawHUD(screen)

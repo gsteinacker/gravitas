@@ -41,7 +41,11 @@ Stack: **Go 1.27 + Ebitengine v2**, Physik auf der CPU (siehe `docs/adr/0001-go-
 - Parallelität über Chunking auf `runtime.GOMAXPROCS(0)` Worker. Jede parallele Änderung braucht `make race`.
 - Physik-Änderungen brauchen einen Invarianten-Test aus `docs/physics.md` (Energie-Drift, Impuls, |v| < c).
 - Nur Standardbibliothek plus Ebitengine. Neue Abhängigkeiten nur per ADR. Ausnahme per ADR-0004: Metal über
-  cgo in `internal/sim/bh/gpu_darwin.go`. Jede GPU-Änderung braucht `TestGPUWalkMatchesCPU`.
+  cgo in `internal/sim/bh/gpu_darwin.go`. Jede GPU-Änderung braucht `TestGPUWalkMatchesCPU`. Per ADR-0009:
+  AppKit über cgo in `internal/mac` (Objective-C in `mac_darwin.m`, Logik plattformneutral in Go). AppKit nur per
+  `dispatch_async` aufrufen, nie synchron warten. Prüfung ohne Bildschirm: `GALAXY_MENU_SELFTEST=1 ./bin/galaxy`.
+- Aktionen laufen über `internal/app` (ohne Ebitengine): neue Bedienfunktion = neue `app.Action`, im Menü
+  (`internal/mac/menu.go`) und ggf. als Taste. Nutzertexte zweisprachig mit `i18n.T("deutsch", "english")`.
 - Simulationseinheiten: G = 1. `c` ist ein Parameter und keine Konstante.
 - Szenen sind Daten (`internal/scene/scenes/*.json`, Format in `docs/scenes.md`). Neue Strukturen als JSON
   anlegen, mit Quellen und Annahmen in `note` und physikalischen Einheiten in `info` und `yearsPerUnit`.

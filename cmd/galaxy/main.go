@@ -12,6 +12,7 @@ import (
 
 	"github.com/hajimehoshi/ebiten/v2"
 
+	"galaxy/internal/mac"
 	"galaxy/internal/scene"
 	"galaxy/internal/sim"
 	"galaxy/internal/sim/bh"
@@ -37,6 +38,7 @@ func main() {
 	effects := flag.String("fx", "", "render effects (glow, lens, doppler, trails, dark); default: the scene's or glow,lens,doppler")
 	cpuprofile := flag.String("cpuprofile", "", "write a CPU profile of the whole run to this file")
 	flag.Parse()
+	mac.Init()
 	if *cpuprofile != "" {
 		f, err := os.Create(*cpuprofile)
 		if err != nil {
@@ -113,6 +115,7 @@ func main() {
 		game.SetEffects(fx)
 	}
 	game.ShotPath, game.ShotAfter = *shot, time.Duration(*shotAfter*float64(time.Second))
+	game.NativeMenu = *shot == ""
 	if err := ebiten.RunGame(game); err != nil {
 		pprof.StopCPUProfile()
 		log.Fatal(err)
