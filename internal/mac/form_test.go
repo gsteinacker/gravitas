@@ -83,7 +83,7 @@ func TestFormValuesStayInRange(t *testing.T) {
 func TestFormChangesReachController(t *testing.T) {
 	c := testController(t)
 	c.Prefs = prefs.Default()
-	c.PrefsPath = t.TempDir() + "/prefs.json"
+	c.PrefsPath = "" // saving runs in the background; nothing to write here
 	changed := 0
 	h := Hooks{PrefsChanged: func() { changed++ }}
 
