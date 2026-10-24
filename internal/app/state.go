@@ -24,6 +24,13 @@ type State struct {
 	Level         learn.Level
 	Scene         int // index of the built-in scene, -1 for others
 	SceneName     string
+	SceneInfo     string
+	YearsPer      float64 // physical years per time unit of the scene, 0 = none
+	Stars         int     // stars a new scene gets
+	Theta         float64
+	GPU           bool
+	Drift         float64
+	DriftQuality  sim.EnergyQuality
 	Sim           SimState
 	StepsPerSec   float64
 	FPS           float64
@@ -37,8 +44,10 @@ func (c *Controller) Publish() {
 		ShowHUD: c.ShowHUD, ShowHelp: c.ShowHelp, Explain: c.Explain, Level: c.Level,
 		Scene: -1, Sim: c.sim, StepsPerSec: c.Runner.StepsPerSecond(), FPS: c.FPS,
 	}
+	s.Theta, s.GPU, s.Stars = c.Theta, c.GPU, c.N
+	s.Drift, s.DriftQuality = c.Runner.EnergyDrift()
 	if c.Scene != nil {
-		s.SceneName = c.Scene.Name
+		s.SceneName, s.SceneInfo, s.YearsPer = c.Scene.Name, c.Scene.Info, c.Scene.YearsPer
 		for i, p := range scene.Presets {
 			if p.Spec == c.Scene {
 				s.Scene = i

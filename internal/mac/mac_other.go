@@ -14,3 +14,5 @@ func savePanel(int, string, string, string) {}
 func alert(string, string)                  {}
 func about(string, string)                  {}
 func systemLanguage() i18n.Lang             { return i18n.Current() }
+func defineForm(Window, string, string)     {}
+func showForm(Window, int)                  {}

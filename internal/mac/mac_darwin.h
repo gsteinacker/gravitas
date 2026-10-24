@@ -13,3 +13,11 @@ extern void galaxyMenuAction(int tag);
 extern int galaxyMenuState(int tag);
 extern void galaxyPanelDone(int id, char *path);
 extern void galaxyOpenFile(char *path);
+
+// Forms (inspector, settings).
+void mac_form_define(int ident, char *spec, char *title);
+void mac_form_show(int ident, int show);
+extern char *galaxyFormValues(int ident);
+extern void galaxyFormChanged(int ident, char *id, double value);
+extern void galaxyFormClosed(int ident);
+extern void galaxyFormOpened(int ident);

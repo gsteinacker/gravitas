@@ -1,6 +1,7 @@
 package app
 
 import (
+	"fmt"
 	"math"
 	"os"
 	"path/filepath"
@@ -9,6 +10,7 @@ import (
 	"time"
 
 	"galaxy/internal/learn"
+	"galaxy/internal/prefs"
 	"galaxy/internal/save"
 	"galaxy/internal/scene"
 	"galaxy/internal/sim"
@@ -74,6 +76,12 @@ type Controller struct {
 	ShowHelp bool
 	// FPS is the frame rate measured by the front end.
 	FPS float64
+	// Theta and GPU mirror the Barnes-Hut solver settings (set by main, changed by SetTheta/SetGPU).
+	Theta float64
+	GPU   bool
+	// Prefs are the persistent settings, saved to PrefsPath; nil disables persistence.
+	Prefs     *prefs.Prefs
+	PrefsPath string
 
 	// Learning mode.
 	Explain  bool
@@ -423,3 +431,17 @@ func (c *Controller) Observe(sn *sim.Snapshot) {
 
 // Sim is what the controller last saw of the simulation.
 func (c *Controller) Sim() SimState { return c.sim }
+
+// FormatYears picks a readable unit: yr, kyr, Myr or Gyr.
+func FormatYears(y float64) string {
+	switch a := math.Abs(y); {
+	case a >= 1e9:
+		return fmt.Sprintf("%.3g Gyr", y/1e9)
+	case a >= 1e6:
+		return fmt.Sprintf("%.3g Myr", y/1e6)
+	case a >= 1e3:
+		return fmt.Sprintf("%.3g kyr", y/1e3)
+	default:
+		return fmt.Sprintf("%.3g yr", y)
+	}
+}

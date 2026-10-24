@@ -9,13 +9,18 @@ import (
 
 	"galaxy/internal/app"
 	"galaxy/internal/i18n"
+	"galaxy/internal/prefs"
 	"galaxy/internal/scene"
 )
 
 // Hooks are the parts of a command only the front end can do. They run on the update goroutine.
 type Hooks struct {
-	ExportImage func(path string) // save the next frame as PNG
+	ExportImage  func(path string) // save the next frame as PNG
+	PrefsChanged func()            // profile, star count or GPU setting changed
 }
+
+// Hardware describes the machine in the settings window; set by main.
+var Hardware string
 
 // Version is shown in the About panel; set by main from the build.
 var Version = "dev"
@@ -52,6 +57,11 @@ func Install(c *app.Controller, h Hooks) {
 	shell.pending = nil
 	shell.mu.Unlock()
 	installMenu(encode(menuBar()))
+	defineForm(WindowInspector, encodeForm(inspectorForm()), i18n.T("Inspektor", "Inspector"))
+	defineForm(WindowSettings, encodeForm(settingsForm()), i18n.T("Einstellungen", "Settings"))
+	if c.Prefs == nil || c.Prefs.InspectorVisible() {
+		showForm(WindowInspector, 1)
+	}
 	for _, p := range pending {
 		onOpenFile(p)
 	}
@@ -89,6 +99,10 @@ func onMenu(tag int) {
 		savePanel(int(CmdSaveState), "galaxy", fileName(c.State().SceneName, ".galaxy"), T("Stand sichern", "Save the state"))
 	case CmdExportImage:
 		savePanel(int(CmdExportImage), "png", fileName(c.State().SceneName, ".png"), T("Bild exportieren", "Export an image"))
+	case CmdInspector:
+		showForm(WindowInspector, -1)
+	case CmdSettings:
+		showForm(WindowSettings, 1)
 	case CmdAbout:
 		about(Version, T("Interaktive N-Körper-Simulation mit Schwarzen Löchern und einstellbarer Lichtgeschwindigkeit.",
 			"Interactive N-body simulation with black holes and an adjustable speed of light."))
@@ -165,5 +179,55 @@ func openScene(c *app.Controller, path string) {
 func openState(c *app.Controller, path string) {
 	if err := c.Load(path); err != nil {
 		Alert(i18n.T("Stand kann nicht geöffnet werden", "Cannot open the saved state"), fmt.Sprintf("%s\n\n%v", filepath.Base(path), err))
+	}
+}
+
+// formValues encodes the current values of a form's controls, one line per control.
+func formValues(w Window) string {
+	c, _ := controller()
+	if c == nil {
+		return ""
+	}
+	cs := inspectorForm()
+	if w == WindowSettings {
+		cs = settingsForm()
+	}
+	s := c.State()
+	p := c.Prefs
+	if p == nil {
+		p = prefs.Default()
+	}
+	var b strings.Builder
+	for _, ctl := range cs {
+		if ctl.id == "" {
+			continue
+		}
+		v, text, enabled := formValue(ctl.id, s, p, Hardware)
+		en := "0"
+		if enabled {
+			en = "1"
+		}
+		fmt.Fprintf(&b, "%s%s%g%s%s%s%s\n", ctl.id, fieldSep, v, fieldSep, strings.ReplaceAll(text, "\n", " "), fieldSep, en)
+	}
+	return b.String()
+}
+
+func onForm(id string, v float64) {
+	c, h := controller()
+	if c != nil {
+		c.Post(func(c *app.Controller) { onFormChange(c, h, id, v) })
+	}
+}
+
+// onFormVisible remembers whether the user wants the inspector.
+func onFormVisible(w Window, visible bool) {
+	c, _ := controller()
+	if c != nil && w == WindowInspector {
+		c.Post(func(c *app.Controller) {
+			if c.Prefs != nil && c.Prefs.InspectorVisible() != visible {
+				c.Prefs.SetInspectorVisible(visible)
+				c.SavePrefs()
+			}
+		})
 	}
 }

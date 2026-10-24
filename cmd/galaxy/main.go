@@ -13,6 +13,7 @@ import (
 	"github.com/hajimehoshi/ebiten/v2"
 
 	"galaxy/internal/mac"
+	"galaxy/internal/prefs"
 	"galaxy/internal/scene"
 	"galaxy/internal/sim"
 	"galaxy/internal/sim/bh"
@@ -22,8 +23,11 @@ import (
 	"galaxy/internal/view"
 )
 
+// defaultStars is the star count without -n or a setting.
+const defaultStars = 50000
+
 func main() {
-	n := flag.Int("n", 50000, "number of stars")
+	n := flag.Int("n", defaultStars, "number of stars")
 	solverName := flag.String("solver", "bh", "force solver: bh (Barnes-Hut) or direct")
 	useGPU := flag.Bool("gpu", true, "run the Barnes-Hut tree walk on the GPU if available (macOS/Metal)")
 	theta := flag.Float64("theta", bh.DefaultTheta, "Barnes-Hut opening angle (smaller = more accurate)")
@@ -39,6 +43,18 @@ func main() {
 	cpuprofile := flag.String("cpuprofile", "", "write a CPU profile of the whole run to this file")
 	flag.Parse()
 	mac.Init()
+	settings := prefs.Load(prefs.Path())
+	nSet := false
+	flag.Visit(func(f *flag.Flag) { nSet = nSet || f.Name == "n" })
+	if *shot != "" {
+		settings = prefs.Default() // screenshots and measurements must not depend on user settings
+	}
+	if !nSet && settings.Stars > 0 {
+		*n = settings.Stars
+	}
+	if settings.GPU == prefs.GPUOff {
+		*useGPU = false
+	}
 	if *cpuprofile != "" {
 		f, err := os.Create(*cpuprofile)
 		if err != nil {
@@ -98,6 +114,8 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+	game.ApplyPrefs(settings)
+	game.PrefsPath = prefs.Path()
 	if *explain != "" {
 		level, topic, _ := strings.Cut(*explain, ":")
 		game.OpenExplanation(level, topic)
@@ -115,7 +133,20 @@ func main() {
 		game.SetEffects(fx)
 	}
 	game.ShotPath, game.ShotAfter = *shot, time.Duration(*shotAfter*float64(time.Second))
-	game.NativeMenu = *shot == ""
+	game.NativeMenu = *shot == "" && mac.Available()
+	game.Theta, game.GPU = *theta, *useGPU
+	if game.NativeMenu {
+		// Menu and inspector replace the key help and the status text.
+		game.ShowHUD, game.ShowHelp = false, false
+	}
+	game.PrefsChanged = func() {
+		if settings.Stars > 0 {
+			game.N = settings.Stars
+		} else {
+			game.N = defaultStars
+		}
+		game.SetGPU(settings.GPU != prefs.GPUOff)
+	}
 	if err := ebiten.RunGame(game); err != nil {
 		pprof.StopCPUProfile()
 		log.Fatal(err)

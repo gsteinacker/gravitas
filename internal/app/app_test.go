@@ -305,3 +305,11 @@ func TestNoEbitengine(t *testing.T) {
 		t.Error("internal/app must not depend on Ebitengine")
 	}
 }
+
+func TestFormatYears(t *testing.T) {
+	for y, want := range map[float64]string{2.5: "2.5 yr", 47200: "47.2 kyr", 13.2e6: "13.2 Myr", 1.09e9: "1.09 Gyr"} {
+		if got := FormatYears(y); got != want {
+			t.Errorf("FormatYears(%v) = %q, want %q", y, got, want)
+		}
+	}
+}

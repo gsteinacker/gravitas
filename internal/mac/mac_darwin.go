@@ -36,6 +36,24 @@ func systemLanguage() i18n.Lang {
 	return i18n.FromLocale(C.GoString(l))
 }
 
+func defineForm(w Window, spec, title string) {
+	C.mac_form_define(C.int(w), C.CString(spec), C.CString(title))
+}
+
+func showForm(w Window, show int) { C.mac_form_show(C.int(w), C.int(show)) }
+
+//export galaxyFormValues
+func galaxyFormValues(w C.int) *C.char { return C.CString(formValues(Window(w))) }
+
+//export galaxyFormChanged
+func galaxyFormChanged(w C.int, id *C.char, v C.double) { onForm(C.GoString(id), float64(v)) }
+
+//export galaxyFormClosed
+func galaxyFormClosed(w C.int) { onFormVisible(Window(w), false) }
+
+//export galaxyFormOpened
+func galaxyFormOpened(w C.int) { onFormVisible(Window(w), true) }
+
 //export galaxyMenuAction
 func galaxyMenuAction(tag C.int) { onMenu(int(tag)) }
 

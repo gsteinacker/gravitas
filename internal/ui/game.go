@@ -48,8 +48,10 @@ type Game struct {
 
 	// NativeMenu installs the macOS menu bar on the first update (not in screenshot mode).
 	NativeMenu bool
-	installed  bool
-	exportPath string // save the next frame as PNG here
+	// PrefsChanged runs when the settings window changed profile, stars or GPU.
+	PrefsChanged func()
+	installed    bool
+	exportPath   string // save the next frame as PNG here
 
 	dragging         bool
 	pressX, pressY   int
@@ -90,7 +92,7 @@ func (g *Game) Update() error {
 	}
 	if g.NativeMenu && !g.installed {
 		g.installed = true
-		mac.Install(g.Controller, mac.Hooks{ExportImage: func(path string) { g.exportPath = path }})
+		mac.Install(g.Controller, mac.Hooks{ExportImage: func(path string) { g.exportPath = path }, PrefsChanged: g.PrefsChanged})
 	}
 	g.Drain()
 	g.handleKeys()
@@ -219,9 +221,7 @@ func (g *Game) Draw(screen *ebiten.Image) {
 			g.Notify(i18n.T("Bild gesichert: ", "Image saved: ") + path)
 		}
 	}
-	if g.ShowHUD {
-		g.drawHUD(screen)
-	}
+	g.drawHUD(screen)
 	g.frame++
 	if g.started.IsZero() {
 		g.started = time.Now()
@@ -249,6 +249,7 @@ func saveScreenshot(screen *ebiten.Image, path string) error {
 	return f.Close()
 }
 
+// drawHUD draws the status text (if shown), messages, the learning panel and the key help.
 func (g *Game) drawHUD(screen *ebiten.Image) {
 	speed := "max"
 	if l := g.SpeedLimit(); l > 0 {
@@ -263,11 +264,13 @@ func (g *Game) drawHUD(screen *ebiten.Image) {
 		title += "\n" + g.Scene.Info
 	}
 	s := g.Sim()
-	ebitenutil.DebugPrintAt(screen, fmt.Sprintf(
-		"%s\nbodies %d (black holes %d)   %s\n%s\nsteps/s %.0f (limit %s)   substeps near holes %d, gas %d   FPS %.0f\n%s\n%s\n%s\n\ntool: %s, mass %.2f   (b/k/tab, m/n)",
-		title, s.Bodies, s.BlackHoles, timeText(s.Time, g.Scene), darkText(s.Dark, s.DarkMatterOff, g.FX.Dark)+gasText(s.Gas, s.StarsFormed, g.FX.Gas),
-		g.Runner.StepsPerSecond(), speed, s.Substeps, max(1, s.HydroSubsteps), ebiten.ActualFPS(), driftText(g.Runner.EnergyDrift()),
-		lightText(s.C, g.Mass, s.Gravity), effectsText(g.FX), g.Tool, g.Mass), 10, 8)
+	if g.ShowHUD {
+		ebitenutil.DebugPrintAt(screen, fmt.Sprintf(
+			"%s\nbodies %d (black holes %d)   %s\n%s\nsteps/s %.0f (limit %s)   substeps near holes %d, gas %d   FPS %.0f\n%s\n%s\n%s\n\ntool: %s, mass %.2f   (b/k/tab, m/n)",
+			title, s.Bodies, s.BlackHoles, timeText(s.Time, g.Scene), darkText(s.Dark, s.DarkMatterOff, g.FX.Dark)+gasText(s.Gas, s.StarsFormed, g.FX.Gas),
+			g.Runner.StepsPerSecond(), speed, s.Substeps, max(1, s.HydroSubsteps), ebiten.ActualFPS(), driftText(g.Runner.EnergyDrift()),
+			lightText(s.C, g.Mass, s.Gravity), effectsText(g.FX), g.Tool, g.Mass), 10, 8)
+	}
 	if msg, ok := g.Message(); ok {
 		w, _ := text.Measure(msg, bodyFace, 0)
 		area := float64(g.screenW)
@@ -324,21 +327,7 @@ func timeText(t float64, sp *scene.Spec) string {
 	if sp.YearsPer <= 0 {
 		return fmt.Sprintf("t = %.2f (no physical units)", t)
 	}
-	return fmt.Sprintf("t = %.2f (%s)", t, formatYears(t*sp.YearsPer))
-}
-
-// formatYears picks a readable unit: yr, kyr, Myr or Gyr.
-func formatYears(y float64) string {
-	switch a := math.Abs(y); {
-	case a >= 1e9:
-		return fmt.Sprintf("%.3g Gyr", y/1e9)
-	case a >= 1e6:
-		return fmt.Sprintf("%.3g Myr", y/1e6)
-	case a >= 1e3:
-		return fmt.Sprintf("%.3g kyr", y/1e3)
-	default:
-		return fmt.Sprintf("%.3g yr", y)
-	}
+	return fmt.Sprintf("t = %.2f (%s)", t, app.FormatYears(t*sp.YearsPer))
 }
 
 // gasText describes the gas of the scene, if any.

@@ -31,14 +31,6 @@ func TestDriftText(t *testing.T) {
 	}
 }
 
-func TestFormatYears(t *testing.T) {
-	for y, want := range map[float64]string{2.5: "2.5 yr", 47200: "47.2 kyr", 13.2e6: "13.2 Myr", 1.09e9: "1.09 Gyr"} {
-		if got := formatYears(y); got != want {
-			t.Errorf("formatYears(%v) = %q, want %q", y, got, want)
-		}
-	}
-}
-
 func TestWrapKeepsLinesWithinWidth(t *testing.T) {
 	s := "Alles, was Masse hat, zieht sich gegenseitig an: die Erde dich, die Sonne die Erde.\n\nNeuer Absatz mit Umlauten äöü und θ."
 	lines := wrap(s, bodyFace, 200)

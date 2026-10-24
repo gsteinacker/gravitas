@@ -23,7 +23,8 @@ const (
 	CmdSaveState
 	CmdExportImage
 	CmdAbout
-	commandCount
+	CmdInspector
+	CmdSettings
 )
 
 // commandBase separates command tags from action tags.
@@ -97,6 +98,8 @@ func menuBar() []entry {
 	b.menu("Galaxy")
 	b.command(T("Über Galaxy", "About Galaxy"), CmdAbout, "", "")
 	b.sep()
+	b.command(T("Einstellungen …", "Settings…"), CmdSettings, ",", "c")
+	b.sep()
 	b.mark(kindServices)
 	b.sep()
 	b.system(T("Galaxy ausblenden", "Hide Galaxy"), "hide:", "h", "c")
@@ -169,6 +172,7 @@ func menuBar() []entry {
 	b.action(T("Gas zeigen", "Show Gas"), app.ActionToggleGas, "o", "")
 	b.action(T("Dunkle Materie zeigen", "Show Dark Matter"), app.ActionToggleDark, "v", "")
 	b.sep()
+	b.command(T("Inspektor", "Inspector"), CmdInspector, "i", "co")
 	b.action(T("Statusanzeige", "Status Overlay"), app.ActionToggleHUD, "h", "")
 	b.action(T("Ansicht zentrieren", "Center View"), app.ActionCenterView, "c", "")
 	b.action(T("Vollbild", "Full Screen"), app.ActionToggleFullscreen, "f", "ct")
