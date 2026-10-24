@@ -1,0 +1,168 @@
+import AppKit
+import CGalaxy
+import SwiftUI
+import UniformTypeIdentifiers
+
+/// Arguments: -preset N (1-based), -n stars, -shot file.png -shot-after seconds (same summary line
+/// as the Go app, for the comparison in T-051).
+struct Arguments {
+    var preset = 1, stars = 0
+    var shot: String?
+    var shotAfter = 6.0
+    var explain = false
+
+    init() {
+        var it = CommandLine.arguments.dropFirst().makeIterator()
+        while let a = it.next() {
+            switch a {
+            case "-preset": preset = Int(it.next() ?? "") ?? 1
+            case "-n": stars = Int(it.next() ?? "") ?? 0
+            case "-shot": shot = it.next()
+            case "-shot-after": shotAfter = Double(it.next() ?? "") ?? 6
+            case "-explain": explain = true
+            default: break
+            }
+        }
+    }
+}
+
+@main
+struct GalaxyApp: App {
+    @NSApplicationDelegateAdaptor(AppDelegate.self) var delegate
+    @StateObject private var engine: Engine
+    private let renderer: Renderer
+    @StateObject private var ui = UIState()
+
+    init() {
+        let args = Arguments()
+        let e = Engine(preset: args.preset - 1, stars: args.stars)
+        _engine = StateObject(wrappedValue: e)
+        guard let r = Renderer(engine: e) else { fatalError("Metal is not available") }
+        if let shot = args.shot {
+            r.shot = (URL(fileURLWithPath: shot), args.shotAfter, CFAbsoluteTimeGetCurrent())
+        }
+        renderer = r
+        AppDelegate.engine = e
+        if args.explain { e.set("explain", 1) }
+    }
+
+    var body: some Scene {
+        WindowGroup("Galaxy") {
+            ContentView(engine: engine, renderer: renderer, showInspector: $ui.showInspector, showLearning: $ui.showLearning)
+                .frame(minWidth: 900, minHeight: 600)
+                .fileImporter(isPresented: $ui.importing, allowedContentTypes: [.galaxyState, .json]) { result in
+                    guard case let .success(url) = result else { return }
+                    let access = url.startAccessingSecurityScopedResource()
+                    defer { if access { url.stopAccessingSecurityScopedResource() } }
+                    if let err = engine.open(url) { alert(L("Datei kann nicht geöffnet werden", "Cannot open the file"), err) }
+                }
+        }
+        .defaultSize(width: 1440, height: 900)
+        .commands { commands }
+
+        Settings { SettingsView(engine: engine) }
+    }
+
+    @CommandsBuilder private var commands: some Commands {
+        CommandGroup(replacing: .newItem) {
+            Menu(L("Neu aus Szene", "New from Scene")) {
+                ForEach(Array(engine.presets.enumerated()), id: \.offset) { i, name in
+                    Button(name) { engine.action("scene\(i)") }
+                        .keyboardShortcut(i < 9 ? KeyEquivalent(Character("\(i + 1)")) : "0", modifiers: [])
+                }
+            }
+            Button(L("Öffnen …", "Open…")) { ui.importing = true }.keyboardShortcut("o")
+            Divider()
+            Button(L("Stand sichern …", "Save State…")) { save(type: .galaxyState, ext: "galaxy") { engine.save($0) } }
+                .keyboardShortcut("s")
+            Button(L("Bild exportieren …", "Export Image…")) { save(type: .png, ext: "png") { renderer.exportURL = $0 } }
+                .keyboardShortcut("e", modifiers: [.command, .shift])
+        }
+        CommandMenu(L("Simulation", "Simulation")) {
+            Toggle(L("Pause", "Pause"), isOn: Binding(get: { engine.state.paused != 0 }, set: { engine.set("paused", $0 ? 1 : 0) }))
+            Button(L("Einzelschritt", "Single Step")) { engine.action("step") }.keyboardShortcut(".", modifiers: [])
+            Divider()
+            Button(L("Schneller", "Faster")) { engine.action("faster") }
+            Button(L("Langsamer", "Slower")) { engine.action("slower") }.keyboardShortcut("-", modifiers: [])
+            Divider()
+            Button(L("Szene neu starten", "Restart Scene")) { engine.action("restart") }.keyboardShortcut("r", modifiers: [])
+        }
+        CommandMenu(L("Physik", "Physics")) {
+            Button(L("Licht schneller (>)", "Faster Light (>)")) { engine.action("lightFaster") }
+            Button(L("Licht langsamer (<)", "Slower Light (<)")) { engine.action("lightSlower") }
+            Divider()
+            Picker(L("Gravitation der Löcher", "Black Hole Gravity"),
+                   selection: Binding(get: { Int(engine.state.gravity) }, set: { engine.set("gravity", Double($0)) })) {
+                Text(L("Sofort (Newton)", "Instant (Newton)")).tag(0)
+                Text(L("Retardiert", "Retarded")).tag(1)
+                Text(L("Retardiert + v·Δt", "Retarded + v·Δt")).tag(2)
+            }
+            Toggle(L("Dunkle Materie wirkt", "Dark Matter Gravity"),
+                   isOn: Binding(get: { engine.state.darkOff == 0 }, set: { engine.set("darkOff", $0 ? 0 : 1) }))
+                .keyboardShortcut("x", modifiers: [])
+        }
+        CommandMenu(L("Werkzeug", "Tool")) {
+            Picker(L("Werkzeug", "Tool"), selection: Binding(get: { Int(engine.state.tool) }, set: { engine.set("tool", Double($0)) })) {
+                Text(L("Schwarzes Loch", "Black Hole")).tag(0)
+                Text(L("Sternhaufen", "Star Cluster")).tag(1)
+            }
+            .pickerStyle(.inline)
+            Divider()
+            Button(L("Mehr Masse", "More Mass")) { engine.action("massUp") }.keyboardShortcut("m", modifiers: [])
+            Button(L("Weniger Masse", "Less Mass")) { engine.action("massDown") }.keyboardShortcut("n", modifiers: [])
+        }
+        CommandGroup(after: .toolbar) {
+            Toggle(L("Leuchten", "Glow"), isOn: engine.fxBinding(Engine.glow)).keyboardShortcut("g", modifiers: [])
+            Toggle(L("Spuren", "Trails"), isOn: engine.fxBinding(Engine.trails)).keyboardShortcut("t", modifiers: [])
+            Toggle(L("Gravitationslinse", "Lensing"), isOn: engine.fxBinding(Engine.lens)).keyboardShortcut("l", modifiers: [])
+            Toggle(L("Doppler-Farben", "Doppler Colors"), isOn: engine.fxBinding(Engine.doppler)).keyboardShortcut("d", modifiers: [])
+            Divider()
+            Toggle(L("Inspektor", "Inspector"), isOn: $ui.showInspector).keyboardShortcut("i", modifiers: [.command, .option])
+            Toggle(L("Lernmodus", "Learning Mode"), isOn: $ui.showLearning).keyboardShortcut("e", modifiers: [])
+            Button(L("Ansicht zentrieren", "Center View")) { engine.action("center") }.keyboardShortcut("c", modifiers: [])
+        }
+    }
+
+    private func save(type: UTType, ext: String, _ done: @escaping (URL) -> Void) {
+        let p = NSSavePanel()
+        p.allowedContentTypes = [type]
+        let stamp = ISO8601DateFormatter().string(from: Date()).prefix(16).replacingOccurrences(of: ":", with: ".")
+        p.nameFieldStringValue = "\(engine.sceneName) \(stamp).\(ext)"
+        if let w = NSApp.keyWindow {
+            p.beginSheetModal(for: w) { if $0 == .OK, let u = p.url { done(u) } }
+        } else if p.runModal() == .OK, let u = p.url {
+            done(u)
+        }
+    }
+}
+
+/// UIState holds the window state. A class instead of @State: the SwiftUI macros need Xcode, the
+/// Command Line Tools only have the property wrappers.
+@MainActor
+final class UIState: ObservableObject {
+    @Published var showInspector = true
+    @Published var showLearning = false
+    @Published var importing = false
+}
+
+func alert(_ title: String, _ text: String) {
+    let a = NSAlert()
+    a.alertStyle = .warning
+    a.messageText = title
+    a.informativeText = text
+    a.runModal()
+}
+
+/// AppDelegate opens documents from the Finder and ends the app with its window.
+final class AppDelegate: NSObject, NSApplicationDelegate {
+    @MainActor static var engine: Engine?
+
+    func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { true }
+
+    @MainActor func application(_ application: NSApplication, open urls: [URL]) {
+        for u in urls {
+            NSLog("Galaxy: open \(u.path)")
+            if let err = AppDelegate.engine?.open(u) { alert(L("Datei kann nicht geöffnet werden", "Cannot open the file"), err) }
+        }
+    }
+}

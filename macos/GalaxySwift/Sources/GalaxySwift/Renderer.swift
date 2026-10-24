@@ -1,0 +1,434 @@
+import AppKit
+import CGalaxy
+import MetalKit
+import simd
+
+/// Uniforms must match the struct in the shader source (five float4).
+struct Uniforms {
+    var view: SIMD4<Float>
+    var target: SIMD4<Float>
+    var cam: SIMD4<Float>
+    var eye: SIMD4<Float>
+    var misc: SIMD4<Float>
+}
+
+/// Camera is the projection of view.Camera, for the statistics and the holes on the CPU.
+struct Camera {
+    var tx, ty, tz, yaw, pitch, distance, focal, w, h: Double
+
+    init(_ i: GalaxyFrameInfo, w: Double, h: Double) {
+        tx = i.camX; ty = i.camY; tz = i.camZ; yaw = i.yaw; pitch = i.pitch; distance = i.distance
+        self.w = w; self.h = h
+        focal = h / (2 * tan(max(i.fov, 0.1) / 2))
+    }
+
+    func project(_ x: Double, _ y: Double, _ z: Double) -> (Double, Double, Double)? {
+        let px = x - tx, py = y - ty, pz = z - tz
+        let sy = sin(yaw), cy = cos(yaw), sp = sin(pitch), cp = cos(pitch)
+        let x1 = cy * px - sy * py, y1 = sy * px + cy * py
+        let fwd = cp * y1 - sp * pz, up = sp * y1 + cp * pz
+        let depth = distance + fwd
+        if depth < 0.05 { return nil }
+        let f = focal / depth
+        return (w / 2 + f * x1, h / 2 - f * up, depth)
+    }
+
+    var position: SIMD3<Double> {
+        let sy = sin(yaw), cy = cos(yaw), sp = sin(pitch), cp = cos(pitch)
+        let fwd = SIMD3<Double>(cp * sy, cp * cy, -sp)
+        return SIMD3(tx, ty, tz) - fwd * distance
+    }
+}
+
+@MainActor
+final class Renderer: NSObject, MTKViewDelegate {
+    let device: MTLDevice
+    let queue: MTLCommandQueue
+    let engine: Engine
+    private var sprite, trail, compose, lens, copy, blur, final, hole: MTLRenderPipelineState!
+    private var stars, trailA, trailB, scene, lensed, small, blurA, blurB, sky: MTLTexture?
+    private var bodies: [MTLBuffer] = []
+    private var capacity = 0
+    private var current = -1, filled = 0
+    private var info = GalaxyFrameInfo()
+    private let inFlight = DispatchSemaphore(value: 3)
+    private var exposure = 0.0, emNorm = 0.0
+    private var holes: [SIMD4<Float>] = []
+    private var lensHoles: [SIMD4<Float>] = []
+    private var lastDraw = CFAbsoluteTimeGetCurrent(), fps = 60.0
+    private var lastRefresh = 0.0
+    private var size = CGSize.zero
+    private var scale = 1.0
+    var exportURL: URL?
+    var shot: (url: URL, after: Double, start: Double)?
+
+    init?(engine: Engine) {
+        guard let d = MTLCreateSystemDefaultDevice(), let q = d.makeCommandQueue() else { return nil }
+        device = d
+        queue = q
+        self.engine = engine
+        super.init()
+        do {
+            let lib = try d.makeLibrary(source: shaderSource, options: nil)
+            func pipe(_ v: String, _ f: String, _ format: MTLPixelFormat, blend: (MTLBlendFactor, MTLBlendFactor)? = nil) throws -> MTLRenderPipelineState {
+                let p = MTLRenderPipelineDescriptor()
+                p.vertexFunction = lib.makeFunction(name: v)
+                p.fragmentFunction = lib.makeFunction(name: f)
+                p.colorAttachments[0].pixelFormat = format
+                if let (src, dst) = blend {
+                    p.colorAttachments[0].isBlendingEnabled = true
+                    p.colorAttachments[0].sourceRGBBlendFactor = src
+                    p.colorAttachments[0].sourceAlphaBlendFactor = src
+                    p.colorAttachments[0].destinationRGBBlendFactor = dst
+                    p.colorAttachments[0].destinationAlphaBlendFactor = dst
+                }
+                return try d.makeRenderPipelineState(descriptor: p)
+            }
+            let hdr = MTLPixelFormat.rgba16Float
+            sprite = try pipe("spriteVertex", "spriteFragment", hdr, blend: (.one, .one))
+            trail = try pipe("screenVertex", "trailFragment", hdr)
+            compose = try pipe("screenVertex", "composeFragment", hdr)
+            lens = try pipe("screenVertex", "lensFragment", hdr)
+            copy = try pipe("screenVertex", "copyFragment", hdr)
+            blur = try pipe("screenVertex", "blurFragment", hdr)
+            final = try pipe("screenVertex", "finalFragment", .bgra8Unorm)
+            hole = try pipe("holeVertex", "holeFragment", .bgra8Unorm, blend: (.one, .oneMinusSourceAlpha))
+        } catch {
+            NSLog("Galaxy: shaders: \(error)")
+            return nil
+        }
+    }
+
+    func mtkView(_ view: MTKView, drawableSizeWillChange size: CGSize) {}
+
+    private func texture(_ w: Int, _ h: Int, _ format: MTLPixelFormat = .rgba16Float) -> MTLTexture {
+        let d = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: format, width: max(1, w), height: max(1, h), mipmapped: false)
+        d.usage = [.renderTarget, .shaderRead]
+        d.storageMode = .private
+        return device.makeTexture(descriptor: d)!
+    }
+
+    private func resize(_ s: CGSize) {
+        guard s != size else { return }
+        size = s
+        let w = Int(s.width), h = Int(s.height)
+        stars = texture(w, h); trailA = texture(w, h); trailB = texture(w, h)
+        scene = texture(w, h); lensed = texture(w, h)
+        // The bloom works at a quarter of the window resolution at every render scale.
+        let div = max(1, Int((4 * scale).rounded()))
+        small = texture(w / div, h / div); blurA = texture(w / div, h / div); blurB = texture(w / div, h / div)
+        sky = makeSky(w, h)
+    }
+
+    /// makeSky is the static background with faint stars (render/post.go: starfield).
+    private func makeSky(_ w: Int, _ h: Int) -> MTLTexture {
+        var pix = [UInt8](repeating: 0, count: w * h * 4)
+        for i in stride(from: 0, to: pix.count, by: 4) { pix[i] = 2; pix[i + 1] = 2; pix[i + 2] = 8; pix[i + 3] = 255 }
+        var rng = SystemRandomNumberGenerator()
+        let n = Int(Double(w * h) * 1500 / 1_000_000 / (scale * scale))
+        for _ in 0..<n {
+            let v = UInt8.random(in: 20..<90, using: &rng), tint = UInt8.random(in: 0..<25, using: &rng)
+            let i = (Int.random(in: 0..<h, using: &rng) * w + Int.random(in: 0..<w, using: &rng)) * 4
+            pix[i] = v - tint / 2; pix[i + 1] = v - tint / 3; pix[i + 2] = v
+        }
+        let d = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: .rgba8Unorm, width: w, height: h, mipmapped: false)
+        d.usage = .shaderRead
+        let t = device.makeTexture(descriptor: d)!
+        t.replace(region: MTLRegionMake2D(0, 0, w, h), mipmapLevel: 0, withBytes: pix, bytesPerRow: w * 4)
+        return t
+    }
+
+    private func ensureBuffers(_ n: Int) {
+        guard n > capacity else { return }
+        capacity = max(n + n / 4, 10_000)
+        bodies = (0..<3).map { _ in
+            device.makeBuffer(length: capacity * Engine.floatsPerBody * 4, options: .storageModeShared)!
+        }
+        current = -1
+    }
+
+    func draw(in view: MTKView) {
+        let now = CFAbsoluteTimeGetCurrent()
+        let dt = now - lastDraw
+        lastDraw = now
+        if dt > 0 { fps += 0.1 * (1 / dt - fps) }
+
+        let device = Double(view.window?.backingScaleFactor ?? 2)
+        let thermal = Int32(ProcessInfo.processInfo.thermalState.rawValue)
+        galaxy_tick(fps, device, thermal, ProcessInfo.processInfo.isLowPowerModeEnabled ? 1 : 0)
+        if galaxy_fullscreen_requested() != 0 { view.window?.toggleFullScreen(nil) }
+        scale = galaxy_render_scale()
+        let want = CGSize(width: (view.bounds.width * scale).rounded(), height: (view.bounds.height * scale).rounded())
+        if view.drawableSize != want { view.drawableSize = want }
+        resize(want)
+        galaxy_viewport(Double(want.width), Double(want.height))
+        if now - lastRefresh > 0.25 {
+            lastRefresh = now
+            engine.refresh()
+        }
+
+        inFlight.wait()
+        var st = GalaxyState()
+        galaxy_state(&st)
+        ensureBuffers(Int(max(st.bodies, 1000)))
+        let next = (current + 1) % 3
+        let ptr = bodies[next].contents().bindMemory(to: Float.self, capacity: capacity * Engine.floatsPerBody)
+        if galaxy_frame(ptr, Int32(capacity), current < 0 ? 1 : 0, &info) != 0 {
+            current = next
+            filled = Int(info.bodies)
+            measure(ptr)
+        } else {
+            projectHoles() // the camera may have moved
+        }
+        guard current >= 0, let pass = view.currentRenderPassDescriptor, let drawable = view.currentDrawable,
+              let cmd = queue.makeCommandBuffer() else {
+            inFlight.signal()
+            return
+        }
+        cmd.addCompletedHandler { [inFlight] _ in inFlight.signal() }
+        render(cmd, pass: pass, fx: Int(st.fx))
+        if let url = shotDue(now), let w = view.window {
+            snapshotWindow(w, url.deletingPathExtension().appendingPathExtension("window.png"))
+        }
+        if let url = exportURL ?? shotDue(now) {
+            exportURL = nil
+            export(cmd, url: url, fx: Int(st.fx))
+        }
+        cmd.present(drawable)
+        cmd.commit()
+    }
+
+    private func uniforms(_ fx: Int) -> Uniforms {
+        let cam = Camera(info, w: Double(size.width), h: Double(size.height))
+        let eye = cam.position
+        return Uniforms(
+            view: SIMD4(Float(size.width), Float(size.height), Float(cam.focal), Float(scale)),
+            target: SIMD4(Float(info.camX), Float(info.camY), Float(info.camZ), Float(info.yaw)),
+            cam: SIMD4(Float(info.pitch), Float(info.distance), Float(info.meanStarMass), Float(info.c)),
+            eye: SIMD4(Float(eye.x), Float(eye.y), Float(eye.z), Float(exposure)),
+            misc: SIMD4(Float(fx), Float(info.youngAge), Float(emNorm), 0))
+    }
+
+    private func screenPass(_ cmd: MTLCommandBuffer, _ target: MTLTexture, _ p: MTLRenderPipelineState, load: MTLLoadAction = .dontCare,
+                            _ setup: (MTLRenderCommandEncoder) -> Void) {
+        let d = MTLRenderPassDescriptor()
+        d.colorAttachments[0].texture = target
+        d.colorAttachments[0].loadAction = load
+        d.colorAttachments[0].clearColor = MTLClearColor(red: 0, green: 0, blue: 0, alpha: 0)
+        d.colorAttachments[0].storeAction = .store
+        let e = cmd.makeRenderCommandEncoder(descriptor: d)!
+        e.setRenderPipelineState(p)
+        setup(e)
+        e.drawPrimitives(type: .triangleStrip, vertexStart: 0, vertexCount: 4)
+        e.endEncoding()
+    }
+
+    private func render(_ cmd: MTLCommandBuffer, pass: MTLRenderPassDescriptor, fx: Int) {
+        var u = uniforms(fx)
+        // Stars and emission, additive, into the HDR image.
+        let d = MTLRenderPassDescriptor()
+        d.colorAttachments[0].texture = stars
+        d.colorAttachments[0].loadAction = .clear
+        d.colorAttachments[0].clearColor = MTLClearColor(red: 0, green: 0, blue: 0, alpha: 0)
+        d.colorAttachments[0].storeAction = .store
+        let e = cmd.makeRenderCommandEncoder(descriptor: d)!
+        e.setRenderPipelineState(sprite)
+        e.setVertexBuffer(bodies[current], offset: 0, index: 0)
+        e.setVertexBytes(&u, length: MemoryLayout<Uniforms>.stride, index: 1)
+        if filled > 0 {
+            e.drawPrimitives(type: .triangleStrip, vertexStart: 0, vertexCount: 4, instanceCount: filled)
+        }
+        e.endEncoding()
+
+        var starImage = stars!
+        if fx & Engine.trails != 0 {
+            screenPass(cmd, trailB!, trail) { e in
+                e.setFragmentTexture(stars, index: 0)
+                e.setFragmentTexture(trailA, index: 1)
+            }
+            swap(&trailA, &trailB)
+            starImage = trailA!
+        }
+        screenPass(cmd, scene!, compose) { e in
+            e.setFragmentTexture(starImage, index: 0)
+            e.setFragmentTexture(sky, index: 1)
+        }
+        var out = scene!
+        if fx & Engine.lens != 0, !lensHoles.isEmpty {
+            var l = [SIMD4<Float>](repeating: .zero, count: 17)
+            for (i, h) in lensHoles.prefix(16).enumerated() { l[i] = h }
+            l[16] = SIMD4(Float(min(16, lensHoles.count)), Float(size.width), Float(size.height), 0)
+            screenPass(cmd, lensed!, lens) { e in
+                e.setFragmentTexture(scene, index: 0)
+                e.setFragmentBytes(&l, length: 17 * 16, index: 0)
+            }
+            out = lensed!
+        }
+        var strength: Float = 0
+        if fx & Engine.glow != 0 {
+            screenPass(cmd, small!, copy) { e in e.setFragmentTexture(out, index: 0) }
+            var h = SIMD2<Float>(1, 0), v = SIMD2<Float>(0, 1)
+            screenPass(cmd, blurA!, blur) { e in
+                e.setFragmentTexture(small, index: 0)
+                e.setFragmentBytes(&h, length: 8, index: 0)
+            }
+            screenPass(cmd, blurB!, blur) { e in
+                e.setFragmentTexture(blurA, index: 0)
+                e.setFragmentBytes(&v, length: 8, index: 0)
+            }
+            strength = 0.9
+        }
+        finalPass(cmd, target: pass.colorAttachments[0].texture!, scene: out, strength: strength, uniforms: u)
+    }
+
+    private func finalPass(_ cmd: MTLCommandBuffer, target: MTLTexture, scene out: MTLTexture, strength: Float, uniforms: Uniforms) {
+        var s = strength, u = uniforms
+        let d = MTLRenderPassDescriptor()
+        d.colorAttachments[0].texture = target
+        d.colorAttachments[0].loadAction = .dontCare
+        d.colorAttachments[0].storeAction = .store
+        let e = cmd.makeRenderCommandEncoder(descriptor: d)!
+        e.setRenderPipelineState(final)
+        e.setFragmentTexture(out, index: 0)
+        e.setFragmentTexture(blurB, index: 1)
+        e.setFragmentBytes(&s, length: 4, index: 0)
+        e.drawPrimitives(type: .triangleStrip, vertexStart: 0, vertexCount: 4)
+        if !holes.isEmpty {
+            e.setRenderPipelineState(hole)
+            e.setVertexBytes(holes, length: holes.count * 16, index: 0)
+            e.setVertexBytes(&u, length: MemoryLayout<Uniforms>.stride, index: 1)
+            e.drawPrimitives(type: .triangleStrip, vertexStart: 0, vertexCount: 4, instanceCount: holes.count)
+        }
+        e.endEncoding()
+    }
+
+    // ---- statistics on the CPU (render/stars.go: auto exposure, emission normalization) ----
+
+    private static let gridW = 96, gridH = 60
+    private static let spriteMean = 0.165 // mean of the sprite falloff over its quad
+
+    /// measure adapts exposure and emission normalization to the new snapshot and collects holes.
+    private func measure(_ p: UnsafeMutablePointer<Float>) {
+        let cam = Camera(info, w: Double(size.width), h: Double(size.height))
+        let gw = Renderer.gridW, gh = Renderer.gridH
+        var light = [Float](repeating: 0, count: gw * gh), em = light
+        let cw = cam.w / Double(gw), ch = cam.h / Double(gh)
+        let mean = max(info.meanStarMass, 1e-12)
+        let k = Engine.floatsPerBody
+        for i in 0..<filled {
+            let b = p + i * k
+            let kind = Int(b[7] + 0.5)
+            if kind != 0 && kind != 3 { continue }
+            guard let (sx, sy, depth) = cam.project(Double(b[0]), Double(b[1]), Double(b[2])) else { continue }
+            let cx = Int(sx / cw), cy = Int(sy / ch)
+            guard cx >= 0, cy >= 0, cx < gw, cy < gh else { continue }
+            if kind == 0 {
+                let rel = Double(b[3]) / mean
+                let size = min(28 * scale, max(3.5 * scale, 0.05 * cbrt(rel) * cam.focal / depth))
+                light[cy * gw + cx] += Float(min(1, 0.55 + 0.2 * rel) * Renderer.spriteMean * size * size)
+            } else if b[9] > 0.2 {
+                let size = min(120 * scale, max(3 * scale, 3 * Double(b[10]) * cam.focal / depth))
+                let ion = Double(b[9])
+                let bright = ion * ion * Double(b[3]) * Double(b[11]) / (size * size)
+                em[cy * gw + cx] += Float(bright * Renderer.spriteMean * size * size)
+            }
+        }
+        let area = Float(cw * ch)
+        if let p90 = percentile(light, area, 0.9) {
+            let target = max(1e-4, min(1, 0.9 / p90))
+            exposure = exposure == 0 ? target : exposure + 0.35 * (target - exposure)
+        }
+        if let p50 = percentile(em, area, 0.5) {
+            let target = 0.25 / p50
+            emNorm = emNorm == 0 ? target : emNorm + 0.35 * (target - emNorm)
+        }
+        projectHoles()
+    }
+
+    private func percentile(_ cells: [Float], _ area: Float, _ q: Double) -> Double? {
+        let lit = cells.filter { $0 > 0 }.map { $0 / area }.sorted()
+        guard !lit.isEmpty else { return nil }
+        return Double(lit[Int(q * Double(lit.count - 1))])
+    }
+
+    /// projectHoles finds the black holes of the current snapshot on screen.
+    private func projectHoles() {
+        holes.removeAll(keepingCapacity: true)
+        lensHoles.removeAll(keepingCapacity: true)
+        guard current >= 0 else { return }
+        let cam = Camera(info, w: Double(size.width), h: Double(size.height))
+        let p = bodies[current].contents().bindMemory(to: Float.self, capacity: capacity * Engine.floatsPerBody)
+        for i in 0..<filled {
+            let b = p + i * Engine.floatsPerBody
+            guard Int(b[7] + 0.5) == 1, let (sx, sy, depth) = cam.project(Double(b[0]), Double(b[1]), Double(b[2])) else { continue }
+            let m = Double(b[3])
+            var r = info.c > 0 ? 2 * m / (info.c * info.c) : 0
+            if r == 0 { r = 0.06 * sqrt(m) }
+            let px = r * cam.focal / depth
+            let drawn = max(3 * scale, px)
+            holes.append(SIMD4(Float(sx), Float(sy), Float(drawn), drawn > 3 * scale ? 1 : 0))
+            let e = 5 * px // Einstein radius on screen: 5 horizon radii (render/post.go: lensFactor)
+            lensHoles.append(SIMD4(Float(sx), Float(sy), Float(e * e), 0))
+        }
+    }
+
+    // ---- image export and screenshot mode ----
+
+    private func shotDue(_ now: Double) -> URL? {
+        guard let s = shot, now - s.start >= s.after else { return nil }
+        return s.url
+    }
+
+    private func export(_ cmd: MTLCommandBuffer, url: URL, fx: Int) {
+        let w = Int(size.width), h = Int(size.height)
+        let d = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: .bgra8Unorm, width: w, height: h, mipmapped: false)
+        d.usage = [.renderTarget, .shaderRead]
+        d.storageMode = .managed
+        guard let t = device.makeTexture(descriptor: d) else { return }
+        finalPass(cmd, target: t, scene: (fx & Engine.lens != 0 && !lensHoles.isEmpty) ? lensed! : scene!,
+                  strength: fx & Engine.glow != 0 ? 0.9 : 0, uniforms: uniforms(fx))
+        let blit = cmd.makeBlitCommandEncoder()!
+        blit.synchronize(resource: t)
+        blit.endEncoding()
+        let isShot = shot?.url == url
+        let line = shotLine(url)
+        cmd.addCompletedHandler { _ in
+            var pix = [UInt8](repeating: 0, count: w * h * 4)
+            t.getBytes(&pix, bytesPerRow: w * 4, from: MTLRegionMake2D(0, 0, w, h), mipmapLevel: 0)
+            writePNG(pix, w, h, url)
+            if isShot {
+                print(line)
+                exit(0)
+            }
+        }
+    }
+
+    private func shotLine(_ url: URL) -> String {
+        var s = GalaxyState()
+        galaxy_state(&s)
+        return String(format: "shot %@: bodies=%d fps=%.1f steps_per_s=%.1f substeps=%d gas_substeps=%d t=%.2f scale=%g theta=%.2f variant=swiftui",
+                      url.path, s.bodies, fps, s.sps, s.substeps, s.hydroSubsteps, s.time, s.renderScale, s.theta)
+    }
+}
+
+/// writePNG saves BGRA pixels.
+func writePNG(_ bgra: [UInt8], _ w: Int, _ h: Int, _ url: URL) {
+    var rgba = bgra
+    for i in stride(from: 0, to: rgba.count, by: 4) {
+        rgba.swapAt(i, i + 2)
+        rgba[i + 3] = 255
+    }
+    guard let rep = NSBitmapImageRep(bitmapDataPlanes: nil, pixelsWide: w, pixelsHigh: h, bitsPerSample: 8,
+                                     samplesPerPixel: 4, hasAlpha: true, isPlanar: false, colorSpaceName: .deviceRGB,
+                                     bytesPerRow: w * 4, bitsPerPixel: 32) else { return }
+    rgba.withUnsafeBytes { src in rep.bitmapData!.update(from: src.baseAddress!.assumingMemoryBound(to: UInt8.self), count: rgba.count) }
+    try? rep.representation(using: .png, properties: [:])?.write(to: url)
+}
+
+/// snapshotWindow saves the window's controls (the Metal layer stays empty in this kind of
+/// snapshot), for checks of the SwiftUI layout without screen access.
+@MainActor func snapshotWindow(_ w: NSWindow, _ url: URL) {
+    guard let v = w.contentView, let rep = v.bitmapImageRepForCachingDisplay(in: v.bounds) else { return }
+    v.cacheDisplay(in: v.bounds, to: rep)
+    try? rep.representation(using: .png, properties: [:])?.write(to: url)
+}

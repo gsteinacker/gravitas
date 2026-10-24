@@ -52,6 +52,7 @@ func galaxy_init(preset, stars C.int, lang *C.char) {
 		eng.Close()
 	}
 	eng = engine.New(int(preset), int(stars))
+	eng.ToggleFullscreen = func() { fullscreen = true }
 }
 
 //export galaxy_tick
@@ -259,3 +260,27 @@ func galaxy_topic_index() C.int { return C.int(eng.TopicIdx) }
 
 //export galaxy_free
 func galaxy_free(s *C.char) { C.free(unsafe.Pointer(s)) }
+
+// galaxy_key runs the action bound to a typed character (same bindings as the Ebitengine app);
+// it returns 0 if the character is not bound.
+//
+//export galaxy_key
+func galaxy_key(r C.int) C.int {
+	a, ok := app.ActionForChar(rune(r))
+	if !ok {
+		return 0
+	}
+	eng.Do(a)
+	return 1
+}
+
+// galaxy_fullscreen_requested reports and clears a pending full screen toggle (key f).
+//
+//export galaxy_fullscreen_requested
+func galaxy_fullscreen_requested() C.int {
+	r := fullscreen
+	fullscreen = false
+	return b(r)
+}
+
+var fullscreen bool

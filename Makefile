@@ -100,3 +100,21 @@ lib-test: lib
 	cc -o bin/lib/smoke cmd/libgalaxy/testdata/smoke.c -Ibin/lib bin/lib/libgalaxy.a \
 		-framework Metal -framework Foundation -framework CoreFoundation -lresolv
 	HOME=$$(mktemp -d) ./bin/lib/smoke
+
+SWIFT_APP := bin/Galaxy SwiftUI.app
+
+app-swift: lib
+	cd macos/GalaxySwift && swift build -c release
+	rm -rf "$(SWIFT_APP)"
+	mkdir -p "$(SWIFT_APP)/Contents/MacOS" "$(SWIFT_APP)/Contents/Resources/de.lproj" "$(SWIFT_APP)/Contents/Resources/en.lproj"
+	cp macos/GalaxySwift/.build/release/GalaxySwift "$(SWIFT_APP)/Contents/MacOS/Galaxy"
+	sed -e 's/@VERSION@/$(VERSION)/g' -e 's/@BUILD@/$(BUILD)/g' -e 's/@BUNDLE_ID@/$(BUNDLE_ID)/g' \
+		packaging/macos/Info.plist.tmpl > "$(SWIFT_APP)/Contents/Info.plist"
+	/usr/libexec/PlistBuddy -c "Set :CFBundleIdentifier $(BUNDLE_ID).swiftui" -c "Set :CFBundleName 'Galaxy SwiftUI'" \
+		-c "Set :CFBundleDisplayName 'Galaxy SwiftUI'" -c "Set :LSMinimumSystemVersion 14.0" \
+		-c "Set :CFBundleDocumentTypes:0:LSHandlerRank Alternate" "$(SWIFT_APP)/Contents/Info.plist"
+	plutil -lint "$(SWIFT_APP)/Contents/Info.plist"
+	cp packaging/macos/Galaxy.icns "$(SWIFT_APP)/Contents/Resources/"
+	touch "$(SWIFT_APP)/Contents/Resources/de.lproj/InfoPlist.strings" "$(SWIFT_APP)/Contents/Resources/en.lproj/InfoPlist.strings"
+	codesign --force --sign "$(SIGN_ID)" $(if $(filter -,$(SIGN_ID)),--timestamp=none,--options runtime --timestamp) "$(SWIFT_APP)"
+	@echo "$(SWIFT_APP) $(VERSION) ($$(lipo -archs "$(SWIFT_APP)/Contents/MacOS/Galaxy"))"
