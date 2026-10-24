@@ -11,6 +11,7 @@ import (
 	"github.com/hajimehoshi/ebiten/v2/vector"
 
 	"galaxy/internal/sim"
+	"galaxy/internal/view"
 )
 
 // spriteSize is small on purpose: stars are drawn at 3.5–28 px without mipmaps.
@@ -103,7 +104,7 @@ func (sr *StarRenderer) Holes() []Hole { return sr.bhs }
 // DrawStars renders all stars of sn as seen by cam into dst and collects the black holes.
 // With doppler set, star colors and brightness follow the relativistic frequency shift. With dust
 // set (after DrawDust), stars and emission are attenuated by the dust in front of them (dust.go).
-func (sr *StarRenderer) DrawStars(dst *ebiten.Image, cam *Camera, sn *sim.Snapshot, fx Effects) {
+func (sr *StarRenderer) DrawStars(dst *ebiten.Image, cam *view.Camera, sn *sim.Snapshot, fx view.Effects) {
 	doppler := fx.Doppler
 	n := sn.Len()
 	var starMass float64
@@ -137,7 +138,7 @@ func (sr *StarRenderer) DrawStars(dst *ebiten.Image, cam *Camera, sn *sim.Snapsh
 	doppler = doppler && sn.C > 0
 
 	sr.bhs = sr.bhs[:0]
-	focal := cam.focal()
+	focal := cam.Focal()
 	for _, h := range sr.world {
 		sx, sy, depth, ok := cam.Project(h.x, h.y, h.z)
 		if !ok {
@@ -153,13 +154,13 @@ func (sr *StarRenderer) DrawStars(dst *ebiten.Image, cam *Camera, sn *sim.Snapsh
 	}
 	// Dark matter and the gas map are a haze whose opacity follows from their projected density
 	// in this frame (hazeAlpha).
-	view := cam.View()
+	vw := cam.View()
 	var darkAlpha, gasAlpha float32
 	if fx.Dark {
-		darkAlpha = sr.hazeAlpha(sn, sim.DarkMatter, &view, focal, cam)
+		darkAlpha = sr.hazeAlpha(sn, sim.DarkMatter, &vw, focal, cam)
 	}
 	if fx.Gas {
-		gasAlpha = sr.hazeAlpha(sn, sim.Gas, &view, focal, cam)
+		gasAlpha = sr.hazeAlpha(sn, sim.Gas, &vw, focal, cam)
 	}
 	// Every body owns 4 vertex slots, so the quads can be built in parallel without coordination;
 	// holes and culled stars get an empty quad.
@@ -179,18 +180,18 @@ func (sr *StarRenderer) DrawStars(dst *ebiten.Image, cam *Camera, sn *sim.Snapsh
 		for i := lo; i < hi; i++ {
 			q := sr.verts[4*i : 4*i+4 : 4*i+4]
 			if sn.Kind[i] == sim.DarkMatter && fx.Dark {
-				sr.darkQuad(q, &view, float64(sn.X[i]), float64(sn.Y[i]), float64(sn.Z[i]), focal, darkAlpha, darkColor, cam)
+				sr.darkQuad(q, &vw, float64(sn.X[i]), float64(sn.Y[i]), float64(sn.Z[i]), focal, darkAlpha, darkColor, cam)
 				continue
 			}
 			if sn.Kind[i] == sim.Gas && fx.Gas {
 				// False-colour gas map: neutral gas blue, partly ionized green, ionized red.
 				ion := sn.GasIon[i]
 				tint := [3]float32{0.25 + 0.75*ion, 0.45 + 0.5*(1-2*abs32(ion-0.5)), 1 - 0.8*ion}
-				sr.darkQuad(q, &view, float64(sn.X[i]), float64(sn.Y[i]), float64(sn.Z[i]), focal, gasAlpha, tint, cam)
+				sr.darkQuad(q, &vw, float64(sn.X[i]), float64(sn.Y[i]), float64(sn.Z[i]), focal, gasAlpha, tint, cam)
 				continue
 			}
 			if sn.Kind[i] == sim.Gas && sn.GasIon[i] > minEmissionIon {
-				sr.emissionQuad(q, dusty, i, &view, sn, focal, cam)
+				sr.emissionQuad(q, dusty, i, &vw, sn, focal, cam)
 				continue
 			}
 			if sn.Kind[i] != sim.Star {
@@ -198,7 +199,7 @@ func (sr *StarRenderer) DrawStars(dst *ebiten.Image, cam *Camera, sn *sim.Snapsh
 				continue
 			}
 			x, y, z := float64(sn.X[i]), float64(sn.Y[i]), float64(sn.Z[i])
-			sx, sy, depth, ok := view.Project(x, y, z)
+			sx, sy, depth, ok := vw.Project(x, y, z)
 			if !ok {
 				clear(q)
 				continue
@@ -317,8 +318,8 @@ const (
 
 var emissionColor = [3]float32{1.0, 0.16, 0.22} // Hα 656 nm (with a little Hβ)
 
-func (sr *StarRenderer) emissionQuad(q []ebiten.Vertex, dusty bool, i int, view *View, sn *sim.Snapshot, focal float64, cam *Camera) {
-	sx, sy, depth, ok := view.Project(float64(sn.X[i]), float64(sn.Y[i]), float64(sn.Z[i]))
+func (sr *StarRenderer) emissionQuad(q []ebiten.Vertex, dusty bool, i int, vw *view.View, sn *sim.Snapshot, focal float64, cam *view.Camera) {
+	sx, sy, depth, ok := vw.Project(float64(sn.X[i]), float64(sn.Y[i]), float64(sn.Z[i]))
 	size := math.Max(3, math.Min(120, 3*float64(sn.GasH[i])*focal/depth))
 	if !ok || sx < -size || sy < -size || sx > cam.W+size || sy > cam.H+size {
 		clear(q)
@@ -393,14 +394,14 @@ const (
 )
 
 // hazeAlpha returns the per-sprite opacity of the bodies of kind k for this frame.
-func (sr *StarRenderer) hazeAlpha(sn *sim.Snapshot, k sim.Kind, view *View, focal float64, cam *Camera) float32 {
+func (sr *StarRenderer) hazeAlpha(sn *sim.Snapshot, k sim.Kind, vw *view.View, focal float64, cam *view.Camera) float32 {
 	var grid [exposureGridW * exposureGridH]float32
 	cw, ch := cam.W/exposureGridW, cam.H/exposureGridH
 	for i := range sn.Len() {
 		if sn.Kind[i] != k {
 			continue
 		}
-		sx, sy, depth, ok := view.Project(float64(sn.X[i]), float64(sn.Y[i]), float64(sn.Z[i]))
+		sx, sy, depth, ok := vw.Project(float64(sn.X[i]), float64(sn.Y[i]), float64(sn.Z[i]))
 		if !ok {
 			continue
 		}
@@ -424,8 +425,8 @@ func (sr *StarRenderer) hazeAlpha(sn *sim.Snapshot, k sim.Kind, view *View, foca
 	return min(1, hazeTarget/p)
 }
 
-func (sr *StarRenderer) darkQuad(q []ebiten.Vertex, view *View, x, y, z, focal float64, alpha float32, tint [3]float32, cam *Camera) {
-	sx, sy, depth, ok := view.Project(x, y, z)
+func (sr *StarRenderer) darkQuad(q []ebiten.Vertex, vw *view.View, x, y, z, focal float64, alpha float32, tint [3]float32, cam *view.Camera) {
+	sx, sy, depth, ok := vw.Project(x, y, z)
 	size := hazeSize(focal, depth)
 	if !ok || sx < -size || sy < -size || sx > cam.W+size || sy > cam.H+size {
 		clear(q)
@@ -481,9 +482,9 @@ const (
 )
 
 // DrawDust must run before DrawStars.
-func (sr *StarRenderer) DrawDust(dst *ebiten.Image, cam *Camera, sn *sim.Snapshot) {
+func (sr *StarRenderer) DrawDust(dst *ebiten.Image, cam *view.Camera, sn *sim.Snapshot) {
 	n := sn.Len()
-	view, focal := cam.View(), cam.focal()
+	vw, focal := cam.View(), cam.Focal()
 	kappa := sr.DustOpacity
 	if kappa == 0 {
 		kappa = sr.dustNorm
@@ -498,7 +499,7 @@ func (sr *StarRenderer) DrawDust(dst *ebiten.Image, cam *Camera, sn *sim.Snapsho
 		if sn.Kind[i] != sim.Gas {
 			continue
 		}
-		sx, sy, depth, ok := view.Project(float64(sn.X[i]), float64(sn.Y[i]), float64(sn.Z[i]))
+		sx, sy, depth, ok := vw.Project(float64(sn.X[i]), float64(sn.Y[i]), float64(sn.Z[i]))
 		if !ok {
 			continue
 		}

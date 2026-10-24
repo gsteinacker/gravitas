@@ -1,5 +1,6 @@
-// Package render projects the 3D simulation onto the screen.
-package render
+// Package view holds the graphics-free parts of rendering: the camera and the effect selection,
+// shared by every front end.
+package view
 
 import (
 	"math"
@@ -22,7 +23,8 @@ func NewCamera() Camera {
 	return Camera{Pitch: 0.9, Distance: 10, FOV: 0.9}
 }
 
-func (c *Camera) focal() float64 { return c.H / (2 * math.Tan(c.FOV/2)) }
+// Focal is the focal length in pixels.
+func (c *Camera) Focal() float64 { return c.H / (2 * math.Tan(c.FOV/2)) }
 
 // Project maps a world position to screen coordinates. depth is the distance from the camera
 // along the view axis; ok is false for points behind the near plane. For many points use View.
@@ -40,7 +42,7 @@ type View struct {
 }
 
 func (c *Camera) View() View {
-	v := View{tx: c.Target.X, ty: c.Target.Y, tz: c.Target.Z, distance: c.Distance, focal: c.focal(), cx: c.W / 2, cy: c.H / 2}
+	v := View{tx: c.Target.X, ty: c.Target.Y, tz: c.Target.Z, distance: c.Distance, focal: c.Focal(), cx: c.W / 2, cy: c.H / 2}
 	v.sinYaw, v.cosYaw = math.Sincos(c.Yaw)
 	v.sinPitch, v.cosPitch = math.Sincos(c.Pitch)
 	return v
@@ -76,7 +78,7 @@ func (c *Camera) Position() vec.Vec3 {
 // Unproject maps a screen position to the world point in the focal plane, the plane through
 // Target perpendicular to the view direction.
 func (c *Camera) Unproject(sx, sy float64) vec.Vec3 {
-	f := c.Distance / c.focal()
+	f := c.Distance / c.Focal()
 	x1, up := (sx-c.W/2)*f, -(sy-c.H/2)*f
 	sy1, cy1 := math.Sincos(c.Yaw)
 	sp, cp := math.Sincos(c.Pitch)

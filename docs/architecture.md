@@ -13,13 +13,19 @@ internal/sim/bh/     Barnes-Hut-Octree, parallel
 internal/sim/        … inkl. relativity.go (u = γv) und accrete.go (Horizont, Verschmelzung).
                      Kein eigenes Paket: Drift und Kick sind Hot Loops und gehören zum Integrator.
 internal/scene/      Anfangsbedingungen: Plummer-Kugel, Scheibengalaxie, Kollision, Presets
-internal/render/     Kamera, Punkt-Batching, Shader (Kage)
-internal/ui/         Eingabe, Werkzeuge (BH platzieren, Zeit steuern), HUD
+internal/view/       Kamera und Effektauswahl, grafikfrei (von allen Oberflächen genutzt)
+internal/render/     Punkt-Batching, Shader (Kage)
+internal/app/        Aktionen und Controller: Zustand der Bedienung, Szenen, Speichern, Lernmodus.
+                     Ohne Ebitengine, damit Tasten, natives Menü, Inspektor und andere Oberflächen dieselben
+                     Wege nutzen (T-042).
+internal/ui/         Ebitengine-Oberfläche: übersetzt Tasten und Maus in Aktionen, zeichnet HUD und Panels
 tools/plan/          Projektplanungs-CLI (Backlog in planning/)
 ```
 
-Abhängigkeiten zeigen nur nach unten: `cmd → ui → render, scene → sim → vec`.
-**`sim` kennt Ebitengine nicht.** Die Physik ist headless test- und benchmarkbar.
+Abhängigkeiten zeigen nur nach unten: `cmd → ui → app, render → view, scene → sim → vec`.
+**`sim`, `app` und `view` kennen Ebitengine nicht.** Aktionen aus anderen Goroutinen (z. B. dem
+Main-Thread nativer Menüs) gehen über `Controller.Post` und laufen in `Game.Update`; Lesen geht über den
+veröffentlichten `Controller.State()`. Die Physik ist headless test- und benchmarkbar.
 
 ## GPU (ADR-0004)
 

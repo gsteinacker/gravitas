@@ -3,23 +3,18 @@ package ui
 import (
 	"bytes"
 	"image/color"
-	"slices"
 	"strconv"
 	"strings"
 
 	"github.com/hajimehoshi/ebiten/v2"
-	"github.com/hajimehoshi/ebiten/v2/inpututil"
 	"github.com/hajimehoshi/ebiten/v2/text/v2"
 	"github.com/hajimehoshi/ebiten/v2/vector"
 	"golang.org/x/image/font/gofont/gobold"
 	"golang.org/x/image/font/gofont/goregular"
-
-	"galaxy/internal/learn"
 )
 
 // Learning mode (T-039): e opens a panel with the scene introduction and explanations of the
-// concepts, ←/→ switch the topic, ↑/↓ the audience. Toggling a feature shows a one-line hint and
-// focuses its topic.
+// concepts, ←/→ switch the topic, ↑/↓ the audience. The state lives in app.Controller.
 
 var (
 	regularSource = mustFace(goregular.TTF)
@@ -35,90 +30,6 @@ func mustFace(ttf []byte) *text.GoTextFaceSource {
 		panic(err) // embedded font
 	}
 	return s
-}
-
-// introTopic is the pseudo topic for the scene introduction (first entry of the list).
-const introTopic = ""
-
-// topicList is the scene introduction, the scene's topics, then all others.
-func topicList(sceneTopics []string) []string {
-	list := append([]string{introTopic}, sceneTopics...)
-	for _, id := range learn.IDs() {
-		if !slices.Contains(list, id) {
-			list = append(list, id)
-		}
-	}
-	return list
-}
-
-// hintFor maps typed characters to the topic they touch.
-var hintFor = map[rune]string{
-	'x': "dark-matter", 'X': "dark-matter", 'v': "dark-matter", 'V': "dark-matter",
-	'o': "gas", 'O': "gas", 'u': "dust", 'U': "dust",
-	'<': "speed-of-light", '>': "speed-of-light", 'p': "retarded-gravity", 'P': "retarded-gravity",
-	'd': "doppler", 'D': "doppler", 'l': "lensing", 'L': "lensing",
-}
-
-// hint shows the one-line hint of a topic and makes it the one e opens.
-func (g *Game) hint(id string) {
-	t := learn.Get(id)
-	if t == nil {
-		return
-	}
-	g.focus(id)
-	g.notify(t.Short + "   (e: mehr)")
-}
-
-func (g *Game) focus(id string) {
-	if k := slices.Index(g.topics, id); k >= 0 {
-		g.topicIdx = k
-	}
-}
-
-// OpenExplanation opens the panel for an audience ("school", "lay", "physics") and topic ("" for
-// the scene introduction); used by the -explain flag and for screenshots.
-func (g *Game) OpenExplanation(level, topic string) {
-	for l := learn.School; l <= learn.Physics; l++ {
-		if l.Key() == level {
-			g.level = l
-		}
-	}
-	g.focus(topic)
-	g.explain = true
-}
-
-// handleExplainKeys handles the panel navigation; it reports whether the panel is open.
-func (g *Game) handleExplainKeys() bool {
-	if !g.explain {
-		return false
-	}
-	switch {
-	case inpututil.IsKeyJustPressed(ebiten.KeyArrowRight):
-		g.topicIdx = (g.topicIdx + 1) % len(g.topics)
-	case inpututil.IsKeyJustPressed(ebiten.KeyArrowLeft):
-		g.topicIdx = (g.topicIdx + len(g.topics) - 1) % len(g.topics)
-	case inpututil.IsKeyJustPressed(ebiten.KeyArrowDown):
-		g.level = g.level.Next()
-	case inpututil.IsKeyJustPressed(ebiten.KeyArrowUp):
-		g.level = g.level.Prev()
-	case inpututil.IsKeyJustPressed(ebiten.KeyEscape):
-		g.explain = false
-	}
-	return true
-}
-
-// currentExplanation returns title and text of the focused entry.
-func (g *Game) currentExplanation() (title, body string) {
-	id := g.topics[g.topicIdx]
-	if id == introTopic {
-		return g.scene.Name, g.scene.Intro[g.level.Key()]
-	}
-	t := learn.Get(id)
-	body = t.Text(g.level)
-	if t.Keys != "" {
-		body += "\n\nTasten: " + t.Keys
-	}
-	return t.Title, body
 }
 
 var (
@@ -137,10 +48,10 @@ func (g *Game) drawExplanation(screen *ebiten.Image) {
 	vector.FillRect(screen, float32(x0), float32(y0), float32(w), float32(h), panelColor, false)
 	pad := 22.0
 	x, y := x0+pad, y0+pad
-	title, body := g.currentExplanation()
+	title, body := g.Explanation()
 	drawText(screen, title, titleFace, x, y, color.White)
 	y += 34
-	drawText(screen, "Zielgruppe: "+g.level.Name()+"   ("+strconv.Itoa(g.topicIdx+1)+"/"+strconv.Itoa(len(g.topics))+")", smallFace, x, y, accentColor)
+	drawText(screen, "Zielgruppe: "+g.Level.Name()+"   ("+strconv.Itoa(g.TopicIdx+1)+"/"+strconv.Itoa(len(g.Topics))+")", smallFace, x, y, accentColor)
 	y += 30
 	for _, line := range wrap(body, bodyFace, w-2*pad) {
 		if y > y0+h-60 {

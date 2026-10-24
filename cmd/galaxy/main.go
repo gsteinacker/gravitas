@@ -12,13 +12,13 @@ import (
 
 	"github.com/hajimehoshi/ebiten/v2"
 
-	"galaxy/internal/render"
 	"galaxy/internal/scene"
 	"galaxy/internal/sim"
 	"galaxy/internal/sim/bh"
 	"galaxy/internal/sim/direct"
 	"galaxy/internal/sph"
 	"galaxy/internal/ui"
+	"galaxy/internal/view"
 )
 
 func main() {
@@ -106,7 +106,7 @@ func main() {
 		}
 	}
 	if *effects != "" {
-		fx, err := render.ParseEffects(*effects)
+		fx, err := view.ParseEffects(*effects)
 		if err != nil {
 			log.Fatal(err)
 		}

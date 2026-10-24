@@ -49,7 +49,7 @@ Spielstände (F5/F9, `-load`) sind dagegen **exakte Abzüge** eines laufenden Zu
 
 ## Spielstände
 
-`F5` schreibt `saves/galaxy-<Zeit>.galaxy` (gob + gzip, Format-Version 3; 1 und 2 bleiben lesbar): alle Körper in float64 samt Gasgrößen
+`F5` schreibt `~/Library/Application Support/Galaxy/saves/galaxy-<Zeit>.galaxy` (`os.UserConfigDir`) (gob + gzip, Format-Version 3; 1 und 2 bleiben lesbar): alle Körper in float64 samt Gasgrößen
 (u, h, Ionisation, Leuchtkraft, Geburtszeit), die letzte Kraftauswertung, Parameter, Zeit,
 Akkretions-Buchhaltung, Zahl entstandener Sterne, Kamera und die Szenen-Metadaten. `F9` lädt den neuesten,
 `-load datei.galaxy` startet damit; `go run ./tools/evolve -preset 9 -t 0.5 -o x.galaxy` rechnet eine Szene headless vor. Ein geladener Stand rechnet bitidentisch weiter (Test). Nicht gespeichert

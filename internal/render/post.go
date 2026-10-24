@@ -1,54 +1,15 @@
 package render
 
 import (
-	"fmt"
 	"image"
 	"image/color"
 	"math/rand/v2"
-	"strings"
 
 	"github.com/hajimehoshi/ebiten/v2"
 
 	"galaxy/internal/sim"
+	"galaxy/internal/view"
 )
-
-// Effects selects the optional render passes (M4).
-type Effects struct {
-	Glow    bool // bloom (T-016)
-	Doppler bool // relativistic color shift (T-017)
-	Lensing bool // gravitational lens around black holes (T-018)
-	Trails  bool // fading star trails (T-019)
-	Dark    bool // draw dark matter as a faint violet haze
-	Gas     bool // draw gas as a faint glow
-	Dust    bool // dust in the gas absorbs and reddens the light behind it
-}
-
-// ParseEffects reads a comma-separated list such as "glow,lens,doppler,trails".
-func ParseEffects(list string) (Effects, error) {
-	var fx Effects
-	for _, name := range strings.Split(list, ",") {
-		switch strings.TrimSpace(name) {
-		case "":
-		case "glow":
-			fx.Glow = true
-		case "doppler":
-			fx.Doppler = true
-		case "lens":
-			fx.Lensing = true
-		case "trails":
-			fx.Trails = true
-		case "dark":
-			fx.Dark = true
-		case "gas":
-			fx.Gas = true
-		case "dust":
-			fx.Dust = true
-		default:
-			return fx, fmt.Errorf("unknown effect %q (want glow, doppler, lens, trails, dark, gas, dust)", name)
-		}
-	}
-	return fx, nil
-}
 
 const (
 	// lensFactor: the Einstein radius of a hole on screen, in horizon radii. Visual choice; the
@@ -138,8 +99,8 @@ type Pipeline struct {
 	// Cache key of the star image: redrawing 1M stars is the most expensive part of a frame, and
 	// the simulation publishes far fewer snapshots than the display shows frames (T-030).
 	drawnVersion uint64
-	drawnView    View
-	drawnFx      Effects
+	drawnView    view.View
+	drawnFx      view.Effects
 	drawnValid   bool
 }
 
@@ -220,19 +181,19 @@ func starfield(w, h int) *ebiten.Image {
 }
 
 // Draw renders sn as seen by cam onto screen.
-func (p *Pipeline) Draw(screen *ebiten.Image, cam *Camera, sn *sim.Snapshot, fx Effects) {
+func (p *Pipeline) Draw(screen *ebiten.Image, cam *view.Camera, sn *sim.Snapshot, fx view.Effects) {
 	w, h := screen.Bounds().Dx(), screen.Bounds().Dy()
 	p.resize(w, h)
 
-	starFx := Effects{Doppler: fx.Doppler, Dark: fx.Dark, Gas: fx.Gas, Dust: fx.Dust} // the options that change the star image
-	if view := cam.View(); !p.drawnValid || sn.Version != p.drawnVersion || view != p.drawnView || starFx != p.drawnFx || p.Stars.Adapting() {
+	starFx := view.Effects{Doppler: fx.Doppler, Dark: fx.Dark, Gas: fx.Gas, Dust: fx.Dust} // the options that change the star image
+	if vw := cam.View(); !p.drawnValid || sn.Version != p.drawnVersion || vw != p.drawnView || starFx != p.drawnFx || p.Stars.Adapting() {
 		p.stars.Clear()
 		p.dustImg.Clear()
 		if fx.Dust {
 			p.Stars.DrawDust(p.dustImg, cam, sn) // first: stars are attenuated through the dust map
 		}
 		p.Stars.DrawStars(p.stars, cam, sn, starFx)
-		p.drawnValid, p.drawnVersion, p.drawnView, p.drawnFx = true, sn.Version, view, starFx
+		p.drawnValid, p.drawnVersion, p.drawnView, p.drawnFx = true, sn.Version, vw, starFx
 	}
 	stars := p.stars
 	if fx.Trails {

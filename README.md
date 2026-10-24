@@ -7,7 +7,7 @@ Go + Ebitengine.
 make run                       # Start (50.000 Sterne, Spiralgalaxie)
 go run ./cmd/galaxy -n 50000 -c 2.5        # kleines c: das zentrale Loch frisst die Galaxie
 go run ./cmd/galaxy -preset 5               # Lokale Gruppe in echten Abständen (x/v: Dunkle Materie)
-go run ./cmd/galaxy -scene meine.json        # eigene Szene (docs/scenes.md), -load saves/….galaxy
+go run ./cmd/galaxy -scene meine.json        # eigene Szene (docs/scenes.md), -load ~/Library/Application\ Support/Galaxy/saves/….galaxy
 go run ./cmd/galaxy -preset 4 -c 3         # Doppel-Loch mit Linseneffekt
 go run ./cmd/galaxy -preset 2 -fx glow,doppler,trails   # Kollision mit Bahnspuren
 go run ./cmd/galaxy -n 100000 -preset 2   # Barnes-Hut (Default), -solver direct für Referenz
@@ -25,7 +25,7 @@ make check                     # fmt, vet, tests, Backlog-Validierung
 | `Leertaste` `.` `+` `-` `r` | Pause, Einzelschritt, Tempo, Neustart |
 | `e` | **Lernmodus**: Einführung zur Szene und Erklärungen (←/→ Thema, ↑/↓ Zielgruppe: Schüler, Interessierte, Physik) |
 | `x` `v` | Dunkle Materie: Gravitation an/aus, sichtbar machen |
-| `F5` `F9` | Spielstand speichern / neuesten laden (`saves/`) |
+| `F5` `F9` | Spielstand speichern / neuesten laden (`~/Library/Application Support/Galaxy/saves`) |
 | `o` `u` | Gaskarte (Falschfarben) / Staubabsorption |
 | `p` | Gravitation der Löcher: instantan / retardiert / retardiert + v (Ausbreitung mit c) |
 | `g` `t` `l` `d` | Effekte: Glow, Spuren, Gravitationslinse, Doppler-Farben |
