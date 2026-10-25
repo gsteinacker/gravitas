@@ -343,7 +343,12 @@ fragment float4 finalFragment(Screen in [[stage_in]], texture2d<float> scene [[t
     if (bloomStrength > 0) { // without glow the bloom image is not drawn: never read it (0 · NaN = NaN)
         c += bloomStrength * bloom.sample(linearSampler, in.uv).rgb;
     }
-    c = 1 - exp(-1.6 * c);
+    // Hue-preserving: the brightest channel is mapped and the others are scaled with it, so bright
+    // Hα stays deep red instead of turning pink-white (T-041). A little per-channel mapping keeps
+    // the cores of galaxies white.
+    float m = max(max(c.r, c.g), c.b);
+    float3 hue = m > 1e-5 ? c * ((1 - exp(-1.6 * m)) / m) : c * 1.6;
+    c = mix(hue, 1 - exp(-1.6 * c), 0.25);
     return float4(c, 1);
 }
 
