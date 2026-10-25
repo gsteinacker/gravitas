@@ -1,5 +1,6 @@
 import CGalaxy
 import Foundation
+import Observation
 import SwiftUI
 
 /// Picks the German or English text, like i18n.T in the Go core.
@@ -9,17 +10,18 @@ func L(_ de: String, _ en: String) -> String {
 
 /// Engine wraps the Go core. All calls happen on the main thread.
 @MainActor
-final class Engine: ObservableObject {
+@Observable
+final class Engine {
     static let floatsPerBody = 12
 
-    @Published private(set) var state = GalaxyState()
-    @Published private(set) var sceneName = ""
-    @Published private(set) var sceneInfo = ""
-    @Published private(set) var message = ""
-    @Published private(set) var topics: [String] = []
-    @Published private(set) var topicIndex = 0
-    @Published private(set) var explanationTitle = ""
-    @Published private(set) var explanationBody = ""
+    private(set) var state = GalaxyState()
+    private(set) var sceneName = ""
+    private(set) var sceneInfo = ""
+    private(set) var message = ""
+    private(set) var topics: [String] = []
+    private(set) var topicIndex = 0
+    private(set) var explanationTitle = ""
+    private(set) var explanationBody = ""
     let presets: [String]
     let hardware: String
 

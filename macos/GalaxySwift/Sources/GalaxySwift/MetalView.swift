@@ -1,6 +1,6 @@
 import AppKit
 import CGalaxy
-import MetalKit
+@preconcurrency import MetalKit
 import SwiftUI
 
 /// SimulationView is the MTKView with mouse and keyboard handling (game keys as in the Go app).

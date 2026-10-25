@@ -1,6 +1,7 @@
 import AppKit
 import CGalaxy
-import MetalKit
+@preconcurrency import Metal
+@preconcurrency import MetalKit
 import simd
 
 /// Uniforms must match the struct in the shader source (five float4).
@@ -58,7 +59,7 @@ final class Renderer: NSObject, MTKViewDelegate {
         self.engine = engine
         super.init()
         do {
-            let lib = try d.makeLibrary(source: shaderSource, options: nil)
+            let lib = try d.makeLibrary(URL: Renderer.shaderLibrary())
             func pipe(_ v: String, _ f: String, _ format: MTLPixelFormat, blend: (MTLBlendFactor, MTLBlendFactor)? = nil) throws -> MTLRenderPipelineState {
                 let p = MTLRenderPipelineDescriptor()
                 p.vertexFunction = lib.makeFunction(name: v)
@@ -86,6 +87,14 @@ final class Renderer: NSObject, MTKViewDelegate {
             NSLog("Galaxy: shaders: \(error)")
             return nil
         }
+    }
+
+    /// shaderLibrary is Galaxy.metallib in the app bundle, or next to the executable during
+    /// development (make app-swift puts it there).
+    static func shaderLibrary() -> URL {
+        if let u = Bundle.main.url(forResource: "Galaxy", withExtension: "metallib") { return u }
+        return URL(fileURLWithPath: CommandLine.arguments[0]).resolvingSymlinksInPath()
+            .deletingLastPathComponent().appendingPathComponent("Galaxy.metallib")
     }
 
     func mtkView(_ view: MTKView, drawableSizeWillChange size: CGSize) {}

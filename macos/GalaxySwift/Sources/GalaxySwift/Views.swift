@@ -8,7 +8,7 @@ extension UTType {
 }
 
 struct ContentView: View {
-    @ObservedObject var engine: Engine
+    var engine: Engine
     let renderer: Renderer
     @Binding var showInspector: Bool
     @Binding var showLearning: Bool
@@ -51,7 +51,7 @@ extension LabeledContent where Label == Text, Content == Text {
 }
 
 struct InspectorView: View {
-    @ObservedObject var engine: Engine
+    var engine: Engine
 
     private var s: GalaxyState { engine.state }
 
@@ -89,7 +89,7 @@ struct InspectorView: View {
                 Toggle(L("Dunkle Materie wirkt", "Dark matter gravity"),
                        isOn: Binding(get: { s.darkOff == 0 }, set: { engine.set("darkOff", $0 ? 0 : 1) }))
                     .disabled(s.darkBodies == 0)
-                LabeledContent(L("Baum θ", "Tree θ")) {
+                LabeledContent(L("Genauigkeit", "Accuracy")) {
                     Slider(value: Binding(get: { s.thetaUser }, set: { engine.set("theta", $0) }), in: 0.5...1.0)
                     Text(String(format: "θ %.2f%@", s.theta, s.theta > s.thetaUser + 1e-9 ? "*" : ""))
                         .monospacedDigit().frame(width: 52, alignment: .trailing)
@@ -126,12 +126,12 @@ struct InspectorView: View {
 
     private var driftText: String {
         if s.driftQuality == 0 || s.drift.isNaN { return L("wird gemessen …", "measuring…") }
-        return String(format: s.driftQuality == 1 ? "~%+.0e" : "%+.1e", s.drift)
+        return String(format: s.driftQuality == 1 ? "≈ %+.0e" : "%+.1e", s.drift)
     }
 }
 
 struct LearningSidebar: View {
-    @ObservedObject var engine: Engine
+    var engine: Engine
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -161,7 +161,7 @@ struct LearningSidebar: View {
 }
 
 struct SettingsView: View {
-    @ObservedObject var engine: Engine
+    var engine: Engine
     @AppStorage("profile") private var profile = ""
 
     var body: some View {

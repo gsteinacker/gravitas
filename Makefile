@@ -1,6 +1,6 @@
 GO ?= go
 
-.PHONY: check fmt vet test race bench run build shot plan next app dmg notarize icon lib lib-test app-swift
+.PHONY: check fmt vet test race bench run build shot plan next app dmg notarize icon lib lib-test metallib swift app-swift
 
 check: fmt vet test
 	$(GO) run ./tools/plan check
@@ -89,25 +89,43 @@ icon: build
 	$(GO) run ./tools/icon -in bin/icon-src.png -out bin/Galaxy.iconset -size 0.82
 	iconutil -c icns bin/Galaxy.iconset -o packaging/macos/Galaxy.icns
 
-# ---- SwiftUI variant (branch swiftui-app, T-049/T-050) ------------------------------------------
-LIBFLAGS := CGO_ENABLED=1 CGO_CFLAGS="-mmacosx-version-min=13.0" CGO_LDFLAGS="-mmacosx-version-min=13.0"
+# ---- SwiftUI app (T-049 ff.) -------------------------------------------------------------------
+# lib        bin/lib/libgalaxy.a, universal (arm64 + x86_64), and its header
+# app-swift  "bin/Galaxy SwiftUI.app", universal, shaders precompiled (needs Xcode)
+LIBFLAGS := CGO_ENABLED=1 GOOS=darwin CGO_CFLAGS="-mmacosx-version-min=14.0" CGO_LDFLAGS="-mmacosx-version-min=14.0"
+SWIFT_PKG := macos/GalaxySwift
+SWIFT_BIN := bin/swift/GalaxySwift
 
 lib:
 	mkdir -p bin/lib
-	$(LIBFLAGS) $(GO) build -buildmode=c-archive -trimpath -o bin/lib/libgalaxy.a ./cmd/libgalaxy
+	$(LIBFLAGS) GOARCH=arm64 CC="clang -arch arm64" $(GO) build -buildmode=c-archive -trimpath -o bin/lib/arm64/libgalaxy.a ./cmd/libgalaxy
+	$(LIBFLAGS) GOARCH=amd64 CC="clang -arch x86_64" $(GO) build -buildmode=c-archive -trimpath -o bin/lib/amd64/libgalaxy.a ./cmd/libgalaxy
+	lipo -create -output bin/lib/libgalaxy.a bin/lib/arm64/libgalaxy.a bin/lib/amd64/libgalaxy.a
+	cp bin/lib/arm64/libgalaxy.h bin/lib/libgalaxy.h
 
 lib-test: lib
 	cc -o bin/lib/smoke cmd/libgalaxy/testdata/smoke.c -Ibin/lib bin/lib/libgalaxy.a \
 		-framework Metal -framework Foundation -framework CoreFoundation -lresolv
 	HOME=$$(mktemp -d) ./bin/lib/smoke
 
+metallib:
+	mkdir -p bin/metal
+	xcrun -sdk macosx metal -std=metal3.0 -mmacosx-version-min=14.0 -c $(SWIFT_PKG)/Shaders/Galaxy.metal -o bin/metal/Galaxy.air
+	xcrun -sdk macosx metallib bin/metal/Galaxy.air -o bin/metal/Galaxy.metallib
+
+swift: lib metallib
+	cd $(SWIFT_PKG) && swift build -c release --arch arm64 --arch x86_64
+	mkdir -p bin/swift
+	cp "$$(cd $(SWIFT_PKG) && swift build -c release --arch arm64 --arch x86_64 --show-bin-path)/GalaxySwift" $(SWIFT_BIN)
+	cp bin/metal/Galaxy.metallib bin/swift/
+
 SWIFT_APP := bin/Galaxy SwiftUI.app
 
-app-swift: lib
-	cd macos/GalaxySwift && swift build -c release
+app-swift: swift
 	rm -rf "$(SWIFT_APP)"
 	mkdir -p "$(SWIFT_APP)/Contents/MacOS" "$(SWIFT_APP)/Contents/Resources/de.lproj" "$(SWIFT_APP)/Contents/Resources/en.lproj"
-	cp macos/GalaxySwift/.build/release/GalaxySwift "$(SWIFT_APP)/Contents/MacOS/Galaxy"
+	cp $(SWIFT_BIN) "$(SWIFT_APP)/Contents/MacOS/Galaxy"
+	cp bin/metal/Galaxy.metallib "$(SWIFT_APP)/Contents/Resources/"
 	sed -e 's/@VERSION@/$(VERSION)/g' -e 's/@BUILD@/$(BUILD)/g' -e 's/@BUNDLE_ID@/$(BUNDLE_ID)/g' \
 		packaging/macos/Info.plist.tmpl > "$(SWIFT_APP)/Contents/Info.plist"
 	/usr/libexec/PlistBuddy -c "Set :CFBundleIdentifier $(BUNDLE_ID).swiftui" -c "Set :CFBundleName 'Galaxy SwiftUI'" \

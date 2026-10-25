@@ -1,8 +1,7 @@
-// Metal shaders, compiled at start from source (the Command Line Tools have no offline metal
-// compiler). They port internal/render: projection (view.Camera), star colors, Doppler shift,
-// Hα emission, trails, gravitational lens, bloom and the black holes. Rendering is in float16
-// (HDR) and tone mapped at the end instead of clipping in 8 bits.
-let shaderSource = """
+// Metal shaders of the SwiftUI app, compiled to Galaxy.metallib by `make app` (xcrun metal). They
+// port internal/render: projection (view.Camera), star colors, Doppler shift, Hα emission, trails,
+// gravitational lens, bloom and the black holes. Rendering is in float16 (HDR) and tone mapped at
+// the end instead of clipping in 8 bits.
 #include <metal_stdlib>
 using namespace metal;
 
@@ -226,4 +225,3 @@ fragment float4 holeFragment(HoleOut in [[stage_in]]) {
     }
     return c;
 }
-"""

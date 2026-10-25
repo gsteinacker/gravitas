@@ -29,14 +29,16 @@ struct Arguments {
 @main
 struct GalaxyApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) var delegate
-    @StateObject private var engine: Engine
+    @State private var engine: Engine
     private let renderer: Renderer
-    @StateObject private var ui = UIState()
+    @State private var showInspector = true
+    @State private var showLearning = false
+    @State private var importing = false
 
     init() {
         let args = Arguments()
         let e = Engine(preset: args.preset - 1, stars: args.stars)
-        _engine = StateObject(wrappedValue: e)
+        _engine = State(initialValue: e)
         guard let r = Renderer(engine: e) else { fatalError("Metal is not available") }
         if let shot = args.shot {
             r.shot = (URL(fileURLWithPath: shot), args.shotAfter, CFAbsoluteTimeGetCurrent())
@@ -48,9 +50,9 @@ struct GalaxyApp: App {
 
     var body: some Scene {
         WindowGroup("Galaxy") {
-            ContentView(engine: engine, renderer: renderer, showInspector: $ui.showInspector, showLearning: $ui.showLearning)
+            ContentView(engine: engine, renderer: renderer, showInspector: $showInspector, showLearning: $showLearning)
                 .frame(minWidth: 900, minHeight: 600)
-                .fileImporter(isPresented: $ui.importing, allowedContentTypes: [.galaxyState, .json]) { result in
+                .fileImporter(isPresented: $importing, allowedContentTypes: [.galaxyState, .json]) { result in
                     guard case let .success(url) = result else { return }
                     let access = url.startAccessingSecurityScopedResource()
                     defer { if access { url.stopAccessingSecurityScopedResource() } }
@@ -71,7 +73,7 @@ struct GalaxyApp: App {
                         .keyboardShortcut(i < 9 ? KeyEquivalent(Character("\(i + 1)")) : "0", modifiers: [])
                 }
             }
-            Button(L("Öffnen …", "Open…")) { ui.importing = true }.keyboardShortcut("o")
+            Button(L("Öffnen …", "Open…")) { importing = true }.keyboardShortcut("o")
             Divider()
             Button(L("Stand sichern …", "Save State…")) { save(type: .galaxyState, ext: "galaxy") { engine.save($0) } }
                 .keyboardShortcut("s")
@@ -117,8 +119,8 @@ struct GalaxyApp: App {
             Toggle(L("Gravitationslinse", "Lensing"), isOn: engine.fxBinding(Engine.lens)).keyboardShortcut("l", modifiers: [])
             Toggle(L("Doppler-Farben", "Doppler Colors"), isOn: engine.fxBinding(Engine.doppler)).keyboardShortcut("d", modifiers: [])
             Divider()
-            Toggle(L("Inspektor", "Inspector"), isOn: $ui.showInspector).keyboardShortcut("i", modifiers: [.command, .option])
-            Toggle(L("Lernmodus", "Learning Mode"), isOn: $ui.showLearning).keyboardShortcut("e", modifiers: [])
+            Toggle(L("Inspektor", "Inspector"), isOn: $showInspector).keyboardShortcut("i", modifiers: [.command, .option])
+            Toggle(L("Lernmodus", "Learning Mode"), isOn: $showLearning).keyboardShortcut("e", modifiers: [])
             Button(L("Ansicht zentrieren", "Center View")) { engine.action("center") }.keyboardShortcut("c", modifiers: [])
         }
     }
@@ -134,15 +136,6 @@ struct GalaxyApp: App {
             done(u)
         }
     }
-}
-
-/// UIState holds the window state. A class instead of @State: the SwiftUI macros need Xcode, the
-/// Command Line Tools only have the property wrappers.
-@MainActor
-final class UIState: ObservableObject {
-    @Published var showInspector = true
-    @Published var showLearning = false
-    @Published var importing = false
 }
 
 func alert(_ title: String, _ text: String) {
