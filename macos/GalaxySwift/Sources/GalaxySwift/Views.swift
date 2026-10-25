@@ -112,12 +112,23 @@ struct InspectorView: View {
                 Picker("", selection: Binding(get: { Int(s.tool) }, set: { engine.set("tool", Double($0)) })) {
                     Text(L("Schwarzes Loch", "Black hole")).tag(0)
                     Text(L("Sternhaufen", "Star cluster")).tag(1)
+                    Text(L("Gaswolke", "Gas cloud")).tag(2)
                 }
                 .pickerStyle(.segmented)
                 .labelsHidden()
-                LabeledContent(L("Masse", "Mass")) {
-                    Slider(value: Binding(get: { log10(s.mass) }, set: { engine.set("mass", pow(10, $0)) }), in: -2...log10(20))
-                    Text(String(format: "%.2f", s.mass)).monospacedDigit().frame(width: 52, alignment: .trailing)
+                SliderRow(title: L("Masse", "Mass"), value: Binding(get: { log10(s.mass) }, set: { engine.set("mass", pow(10, $0)) }),
+                          range: -2...log10(20), text: engine.massText(s.mass))
+                if s.tool == 2 {
+                    SliderRow(title: L("Temperatur", "Temperature"),
+                              help: L("Temperatur des Gases: kalt (10–100 K) kollabiert, heiß (10⁴ K) bleibt aufgebläht",
+                                      "gas temperature: cold (10–100 K) collapses, hot (10⁴ K) stays puffed up"),
+                              value: Binding(get: { log10(s.cloudK) }, set: { engine.set("cloudK", pow(10, $0)) }), range: 1...4,
+                              text: String(format: "%.0f K", s.cloudK))
+                    SliderRow(title: L("Turbulenz", "Turbulence"),
+                              help: L("Wirbelbewegung als Anteil von √(GM/R): unter ~0,6 gebunden (Kollaps, Sternentstehung), darüber zerstreut sie sich",
+                                      "turbulent motion as a fraction of √(GM/R): below ~0.6 bound (collapse, star formation), above it disperses"),
+                              value: Binding(get: { s.cloudTurb }, set: { engine.set("cloudTurb", $0) }), range: 0...2,
+                              text: String(format: L("%.2f × virial", "%.2f × virial"), s.cloudTurb))
                 }
             }
             Section(L("Darstellung", "View")) {
@@ -148,6 +159,23 @@ struct InspectorView: View {
 
 /// LaunchSection plans the start of a placed object (T-064): plane, height, direction and speed
 /// relative to the galaxy, with the circular and escape speed at the position as references.
+/// SliderRow is a slider with a fixed label column, so labels do not wrap in the narrow inspector.
+struct SliderRow: View {
+    let title: String
+    var help = ""
+    @Binding var value: Double
+    let range: ClosedRange<Double>
+    let text: String
+
+    var body: some View {
+        HStack(spacing: 8) {
+            Text(title).frame(width: 64, alignment: .leading).help(help)
+            Slider(value: $value, in: range)
+            Text(verbatim: text).monospacedDigit().lineLimit(1).minimumScaleFactor(0.7).frame(width: 84, alignment: .trailing)
+        }
+    }
+}
+
 struct LaunchSection: View {
     var engine: Engine
 
@@ -310,7 +338,7 @@ struct KeyOverview: View {
         (L("↩  ⎋", "↩  ⎋"), L("starten / verwerfen", "launch / discard")),
         (L("Doppelklick", "Double click"), L("sofort platzieren", "place at once")),
         (L("⌥ + Ziehen", "⌥ + drag"), L("Richtung und Tempo ziehen und starten", "drag direction and speed, then launch")),
-        ("b  k  ⇥", L("Werkzeug: Loch / Sternhaufen / wechseln", "tool: hole / cluster / switch")),
+        ("b  k  w  ⇥", L("Werkzeug: Loch / Sternhaufen / Gaswolke / wechseln", "tool: hole / cluster / gas cloud / switch")),
         ("m  n", L("Masse + / −", "mass + / −")),
         (L("Ziehen", "Drag"), L("drehen", "rotate")),
         (L("⇧ / rechts ziehen", "⇧ / right drag"), L("verschieben", "pan")),
@@ -360,9 +388,9 @@ struct StatusOverlay: View {
         VStack(alignment: .leading, spacing: 3) {
             Text(verbatim: engine.sceneName + (s.paused != 0 ? L("   [PAUSE]", "   [PAUSED]") : "")).bold()
             if !engine.sceneInfo.isEmpty { Text(verbatim: engine.sceneInfo) }
-            Text(verbatim: String(format: L("%@ Körper (Schwarze Löcher: %d) · Dunkle Materie %d · Gas %d",
-                                            "%@ bodies (black holes: %d) · dark matter %d · gas %d"),
-                                  groupDigits(Int(s.bodies)), s.blackHoles, s.darkBodies, s.gasBodies))
+            Text(verbatim: String(format: L("%@ Körper (Schwarze Löcher: %d) · Dunkle Materie %d · Gas %d · neue Sterne %d",
+                                            "%@ bodies (black holes: %d) · dark matter %d · gas %d · new stars %d"),
+                                  groupDigits(Int(s.bodies)), s.blackHoles, s.darkBodies, s.gasBodies, s.starsFormed))
             Text(verbatim: String(format: L("%.0f Schritte/s · %.0f FPS · Teilschritte %d, Gas %d · θ %.2f · Auflösung %g×",
                                             "%.0f steps/s · %.0f FPS · substeps %d, gas %d · θ %.2f · resolution %g×"),
                                   s.sps, s.fps, s.substeps, max(1, s.hydroSubsteps), s.theta, s.renderScale))

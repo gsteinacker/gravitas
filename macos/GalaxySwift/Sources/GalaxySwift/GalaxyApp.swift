@@ -92,6 +92,7 @@ struct GalaxyApp: App {
             Picker(L("Werkzeug", "Tool"), selection: Binding(get: { Int(engine.state.tool) }, set: { engine.set("tool", Double($0)) })) {
                 Text(L("Schwarzes Loch", "Black Hole")).tag(0)
                 Text(L("Sternhaufen", "Star Cluster")).tag(1)
+                Text(L("Gaswolke", "Gas Cloud")).tag(2)
             }
             .pickerStyle(.inline)
             Divider()

@@ -19,9 +19,10 @@ typedef struct {
 
 typedef struct {
 	int paused, speed, gravity, darkOff, darkBodies, gasBodies, blackHoles, bodies, stars;
-	int tool, level, explain, scene, driftQuality, substeps, hydroSubsteps, gpu, showHUD, showHelp;
+	int tool, level, explain, scene, driftQuality, substeps, hydroSubsteps, gpu, showHUD, showHelp, starsFormed;
 	int fx; // bits: 1 glow, 2 doppler, 4 lens, 8 trails, 16 dark, 32 gas, 64 dust
 	double c, mass, theta, thetaUser, sps, fps, time, yearsPer, drift, renderScale;
+	double cloudK, cloudTurb; // next gas cloud: temperature (K), turbulence (fraction of √(GM/R))
 } GalaxyState;
 
 typedef struct {
@@ -41,7 +42,7 @@ typedef struct {
 	int active, plane, hasUnits, binary, holeAttractor;
 	double height, azimuth, elevation, speed; // length and velocity units, radians
 	double circular, escape, radius, impact;  // references at the position
-	double kmPerS, pcPerUnit;                 // physical units of the scene (if hasUnits)
+	double kmPerS, pcPerUnit, msunPerUnit;    // physical units of the scene (if hasUnits)
 } GalaxyLaunch;
 
 typedef struct {
@@ -165,10 +166,11 @@ func galaxy_state(out *C.GalaxyState) {
 		bodies: C.int(s.Sim.Bodies), stars: C.int(s.Stars), tool: C.int(s.Tool), level: C.int(s.Level),
 		explain: b(s.Explain), scene: C.int(s.Scene), driftQuality: C.int(s.DriftQuality),
 		substeps: C.int(s.Sim.Substeps), hydroSubsteps: C.int(s.Sim.HydroSubsteps), gpu: b(s.GPU),
-		showHUD: b(s.ShowHUD), showHelp: b(s.ShowHelp), fx: fxBits(s.FX),
+		showHUD: b(s.ShowHUD), showHelp: b(s.ShowHelp), starsFormed: C.int(s.Sim.StarsFormed), fx: fxBits(s.FX),
 		c: C.double(s.C), mass: C.double(s.Mass), theta: C.double(s.Theta), thetaUser: C.double(s.ThetaUser),
 		sps: C.double(s.StepsPerSec), fps: C.double(s.FPS), time: C.double(s.Sim.Time),
 		yearsPer: C.double(s.YearsPer), drift: C.double(s.Drift), renderScale: C.double(s.RenderScale),
+		cloudK: C.double(s.CloudK), cloudTurb: C.double(s.CloudTurb),
 	}
 }
 
@@ -176,7 +178,7 @@ func galaxy_state(out *C.GalaxyState) {
 var actions = map[string]app.Action{
 	"pause": app.ActionTogglePause, "step": app.ActionStep, "faster": app.ActionFaster, "slower": app.ActionSlower,
 	"lightFaster": app.ActionLightFaster, "lightSlower": app.ActionLightSlower, "cycleGravity": app.ActionCycleGravity,
-	"darkMatter": app.ActionToggleDarkMatter, "toolHole": app.ActionToolBlackHole, "toolCluster": app.ActionToolCluster,
+	"darkMatter": app.ActionToggleDarkMatter, "toolHole": app.ActionToolBlackHole, "toolCluster": app.ActionToolCluster, "toolCloud": app.ActionToolGasCloud,
 	"massUp": app.ActionMassUp, "massDown": app.ActionMassDown, "glow": app.ActionToggleGlow,
 	"trails": app.ActionToggleTrails, "lens": app.ActionToggleLens, "doppler": app.ActionToggleDoppler,
 	"dark": app.ActionToggleDark, "gas": app.ActionToggleGas, "dust": app.ActionToggleDust,
@@ -220,7 +222,11 @@ func galaxy_set(name *C.char, v C.double) {
 	case "gravity":
 		eng.SetGravity(sim.GravityMode(max(0, min(2, int(x)))))
 	case "tool":
-		eng.Tool = app.Tool(max(0, min(1, int(x))))
+		eng.Tool = app.Tool(max(0, min(2, int(x))))
+	case "cloudK":
+		eng.SetCloud(x, eng.CloudTurb)
+	case "cloudTurb":
+		eng.SetCloud(eng.CloudK, x)
 	case "darkOff":
 		eng.SetDarkMatterOff(x != 0)
 	case "fx":
@@ -435,10 +441,12 @@ func galaxy_launch_cancel() { eng.CancelLaunch() }
 func galaxy_launch(out *C.GalaxyLaunch) {
 	l := eng.LaunchPlan()
 	v, pc, ok := eng.Scene.Units()
+	msun, _ := eng.Scene.MassUnit()
 	*out = C.GalaxyLaunch{active: b(l.Active), plane: C.int(l.Plane), hasUnits: b(ok), binary: b(l.Binary), holeAttractor: b(l.HoleMass > 0),
 		height: C.double(l.Height), azimuth: C.double(l.Azimuth), elevation: C.double(l.Elevation),
 		speed: C.double(l.Speed), circular: C.double(l.Circular), escape: C.double(l.Escape),
-		radius: C.double(l.Radius), impact: C.double(l.Impact), kmPerS: C.double(v), pcPerUnit: C.double(pc)}
+		radius: C.double(l.Radius), impact: C.double(l.Impact), kmPerS: C.double(v), pcPerUnit: C.double(pc),
+		msunPerUnit: C.double(msun)}
 }
 
 // galaxy_gizmo writes the lines (x0, y0, x1, y1, color) and markers (x, y, kind) of the launch pad

@@ -133,6 +133,16 @@ final class Engine {
         launch.hasUnits != 0 ? Engine.num(v * launch.kmPerS) + " km/s" : Engine.num(v)
     }
 
+    /// massText shows a mass in solar masses if the scene has units, e.g. "1,0·10¹⁰ M☉".
+    func massText(_ m: Double) -> String {
+        guard launch.hasUnits != 0, launch.msunPerUnit > 0 else { return Engine.num(m) }
+        let msun = m * launch.msunPerUnit
+        let e = Int(floor(log10(msun)))
+        let superscripts: [Character] = ["⁰", "¹", "²", "³", "⁴", "⁵", "⁶", "⁷", "⁸", "⁹"]
+        let exp = String(String(abs(e)).map { superscripts[Int(String($0))!] })
+        return String(format: "%.1f·10%@ M☉", msun / pow(10, Double(e)), (e < 0 ? "⁻" : "") + exp)
+    }
+
     /// lengthText shows a length in the unit that suits the scale of the scene: AU, pc, kpc or Mpc.
     func lengthText(_ l: Double) -> String {
         guard launch.hasUnits != 0 else { return Engine.num(l) }

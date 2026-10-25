@@ -389,9 +389,10 @@ final class Renderer: NSObject, MTKViewDelegate {
             (NSColor(red: 1, green: 0.35, blue: 0.25, alpha: 0.9), 2, [2, 3]),      // slingshot band
         ]
         // Marker styles in the order of the engine's Marker kinds: fill, stroke, radius (points).
-        let ghostFill = engine.state.tool == 0 ? NSColor.black : NSColor(white: 1, alpha: 0.75)
+        let ghostFill: NSColor = [NSColor.black, NSColor(white: 1, alpha: 0.75),
+                                  NSColor(red: 0.35, green: 0.55, blue: 1, alpha: 0.6)][min(2, max(0, Int(engine.state.tool)))]
         let markers: [(NSColor?, NSColor?, CGFloat)] = [
-            (ghostFill.withAlphaComponent(0.85), orange, 9),       // ghost
+            (ghostFill.withAlphaComponent(0.85), orange, engine.state.tool == 2 ? 14 : 9), // ghost
             (yellow, nil, 6), (nil, yellow, 5),                    // prograde, retrograde
             (cyan, nil, 6), (nil, cyan, 5),                        // out, in
             (magenta, nil, 6), (nil, magenta, 5),                  // up, down
@@ -450,6 +451,7 @@ final class Renderer: NSObject, MTKViewDelegate {
             l.frame = view.bounds
             l.path = paths[i]
         }
+        gizmoLayers[lines.count].fillColor = markers[0].0?.cgColor // the ghost follows the tool
         CATransaction.commit()
         if anchors != pad.anchors { pad.anchors = anchors }
     }

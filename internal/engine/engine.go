@@ -172,11 +172,14 @@ func (e *Engine) SetProfile(id string) {
 func (e *Engine) Tick(fps, deviceScale float64, thermal int, lowPower bool) {
 	e.Drain()
 	e.FPS = fps
-	if fx, fy, preset, ok := e.opts.pendingLaunch(); ok && e.Cam.W > 0 && !e.launchDone {
+	if fx, fy, preset, launch, ok := e.opts.pendingLaunch(); ok && e.Cam.W > 0 && !e.launchDone {
 		e.launchDone = true // -launch: once the view has a size
 		e.BeginLaunch(fx*e.Cam.W, fy*e.Cam.H)
 		if preset >= 0 {
 			e.LaunchPreset(preset)
+		}
+		if launch {
+			e.GoLaunch()
 		}
 	}
 	if o := e.opts; o.Scale > 0 && (!o.Screenshot() || !o.Adapt) {

@@ -23,6 +23,7 @@ const (
 	ActionToggleDarkMatter
 	ActionToolBlackHole
 	ActionToolCluster
+	ActionToolGasCloud
 	ActionNextTool
 	ActionMassUp
 	ActionMassDown
@@ -69,8 +70,9 @@ var charActions = map[rune]Action{
 	'm': ActionMassUp, 'M': ActionMassUp, ']': ActionMassUp,
 	'n': ActionMassDown, 'N': ActionMassDown, '[': ActionMassDown,
 	'b': ActionToolBlackHole, 'B': ActionToolBlackHole,
-	'k': ActionToolCluster, 'K': ActionToolCluster, '\t': ActionNextTool,
-	'<': ActionLightSlower, '>': ActionLightFaster,
+	'k': ActionToolCluster, 'K': ActionToolCluster, 'w': ActionToolGasCloud, 'W': ActionToolGasCloud,
+	'\t': ActionNextTool,
+	'<':  ActionLightSlower, '>': ActionLightFaster,
 	'g': ActionToggleGlow, 'G': ActionToggleGlow,
 	't': ActionToggleTrails, 'T': ActionToggleTrails,
 	'l': ActionToggleLens, 'L': ActionToggleLens,

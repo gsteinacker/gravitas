@@ -28,14 +28,34 @@ type Tool int
 const (
 	ToolBlackHole Tool = iota
 	ToolCluster
+	ToolGasCloud
+	toolCount
 )
 
 func (t Tool) String() string {
-	if t == ToolCluster {
+	switch t {
+	case ToolCluster:
 		return "star cluster"
+	case ToolGasCloud:
+		return "gas cloud"
 	}
 	return "black hole"
 }
+
+// Gas clouds (T-063): temperature and turbulence of the next placed cloud. The turbulence is the
+// velocity dispersion per component as a fraction of the virial speed √(GM/R): below about 0.6 the
+// cloud is bound and collapses (Jeans), above it disperses.
+const (
+	CloudTempMin, CloudTempMax = 10.0, 1e4
+	CloudTurbMax               = 2.0
+)
+
+// cloudRadius is the Plummer scale radius of a gas cloud of the given mass: larger than a star
+// cluster of the same mass.
+func cloudRadius(mass float64) float64 { return 1.5 * clusterRadius(mass) }
+
+// cloudParticles is the number of gas particles of a placed cloud for a scene of n bodies.
+func cloudParticles(n int) int { return max(400, n/40) }
 
 // Mass bounds and factor of the next placed object.
 const (
@@ -65,16 +85,19 @@ var DefaultEffects = view.Effects{Glow: true, Doppler: true, Lensing: true, Dust
 // be called from one goroutine (the front end's update loop); other goroutines hand work over
 // with Post and read the published State.
 type Controller struct {
-	Runner   *sim.Runner
-	Scene    *scene.Spec
-	N        int // stars of a built scene
-	Cam      view.Camera
-	FX       view.Effects
-	Speed    int // index into SpeedLevels
-	Mass     float64
-	Tool     Tool
-	ShowHUD  bool
-	ShowHelp bool
+	Runner *sim.Runner
+	Scene  *scene.Spec
+	N      int // stars of a built scene
+	Cam    view.Camera
+	FX     view.Effects
+	Speed  int // index into SpeedLevels
+	Mass   float64
+	Tool   Tool
+	// CloudK and CloudTurb are the temperature (K) and turbulence (fraction of the virial speed)
+	// of the next gas cloud.
+	CloudK, CloudTurb float64
+	ShowHUD           bool
+	ShowHelp          bool
 	// FPS is the frame rate measured by the front end.
 	FPS float64
 	// Theta and GPU mirror the Barnes-Hut solver settings (set by main, changed by SetTheta/SetGPU).
@@ -129,7 +152,7 @@ type SimState struct {
 // New creates the controller for a runner that already simulates sp, built for n bodies.
 func New(runner *sim.Runner, n int, sp *scene.Spec) *Controller {
 	c := &Controller{
-		Runner: runner, N: n, Speed: len(SpeedLevels) - 1, Mass: 0.5,
+		Runner: runner, N: n, Speed: len(SpeedLevels) - 1, Mass: 0.5, CloudK: 100, CloudTurb: 0.3,
 		ShowHUD: true, ShowHelp: true, SaveDir: DefaultSaveDir(),
 	}
 	c.applyScene(sp)
@@ -204,8 +227,10 @@ func (c *Controller) Do(a Action) {
 		c.Tool = ToolBlackHole
 	case ActionToolCluster:
 		c.Tool = ToolCluster
+	case ActionToolGasCloud:
+		c.Tool = ToolGasCloud
 	case ActionNextTool:
-		c.Tool = (c.Tool + 1) % 2
+		c.Tool = (c.Tool + 1) % toolCount
 	case ActionMassUp:
 		c.SetMass(c.Mass * massStep)
 	case ActionMassDown:
@@ -388,7 +413,7 @@ func (c *Controller) PlaceAt(pos, vel vec.Vec3) {
 	if c.hinted == nil {
 		c.hinted = map[string]bool{}
 	}
-	if topic := map[Tool]string{ToolBlackHole: "black-holes", ToolCluster: "gravity"}[c.Tool]; !c.hinted[topic] {
+	if topic := map[Tool]string{ToolBlackHole: "black-holes", ToolCluster: "gravity", ToolGasCloud: "gas-clouds"}[c.Tool]; !c.hinted[topic] {
 		c.hinted[topic] = true // once per run, placing is frequent
 		c.hint(topic)
 	}
@@ -396,6 +421,10 @@ func (c *Controller) PlaceAt(pos, vel vec.Vec3) {
 		c.Runner.Do(func(m *sim.Simulation) {
 			m.AddBody(sim.Body{Pos: pos, Vel: sim.ProperVelocity(vel, m.Params.C), Mass: mass, Kind: sim.BlackHole})
 		})
+		return
+	}
+	if c.Tool == ToolGasCloud {
+		c.placeCloud(pos, vel)
 		return
 	}
 	// Build the cluster here, so the simulation goroutine only appends.
@@ -456,4 +485,30 @@ func FormatYears(y float64) string {
 	default:
 		return fmt.Sprintf("%.3g yr", y)
 	}
+}
+
+// placeCloud adds a gas cloud of the current mass at pos with velocity vel: Plummer profile,
+// temperature CloudK, turbulence CloudTurb · √(M/R) and 30 % density fluctuations. Built here, so
+// the simulation goroutine only appends.
+func (c *Controller) placeCloud(pos, vel vec.Vec3) {
+	c.placements++
+	n, mass := cloudParticles(c.N), c.Mass
+	r := cloudRadius(mass)
+	u := c.Scene.SpecificEnergy(c.CloudK)
+	turb := c.CloudTurb * math.Sqrt(mass/r)
+	s := sim.NewState(n)
+	scene.AddGasClump(s, n, mass, r, pos, vel, u, turb, 0.3, 2000+c.placements)
+	c.Runner.Do(func(m *sim.Simulation) {
+		for i := range s.Len() {
+			b := s.Body(i)
+			b.Vel = sim.ProperVelocity(b.Vel, m.Params.C)
+			m.AddBody(b)
+		}
+	})
+}
+
+// SetCloud sets temperature (K) and turbulence (fraction of the virial speed) of the next cloud.
+func (c *Controller) SetCloud(kelvin, turb float64) {
+	c.CloudK = math.Max(CloudTempMin, math.Min(CloudTempMax, kelvin))
+	c.CloudTurb = math.Max(0, math.Min(CloudTurbMax, turb))
 }

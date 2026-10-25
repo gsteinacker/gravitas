@@ -189,6 +189,33 @@ func (sp *Spec) Units() (kmPerS, pcPerUnit float64, ok bool) {
 	return sp.KmPerS, sp.KmPerS * sp.YearsPer * pcPerKmSYr, true
 }
 
+// SpecificEnergy converts a gas temperature in K into specific internal energy in simulation units
+// (0 for scenes without velocityUnit).
+func (sp *Spec) SpecificEnergy(kelvin float64) float64 { return sp.specificEnergy(kelvin) }
+
+// MassUnit is the mass unit of the scene in solar masses, M = v² L / G; ok is false without units.
+func (sp *Spec) MassUnit() (msun float64, ok bool) {
+	v, l, ok := sp.Units()
+	if !ok {
+		return 0, false
+	}
+	const g = 4.30091e-3 // pc (km/s)² / M☉
+	return v * v * l / g, true
+}
+
+// AddGasClump adds a gas cloud of n particles with a Plummer profile of the given mass and scale
+// radius at pos moving with vel: specific internal energy u, turbulent velocity dispersion
+// turbulence (simulation units per component) and density fluctuations of relative amplitude
+// perturb (as the scene component "gasclump").
+func AddGasClump(s *sim.State, n int, mass, scale float64, pos, vel vec.Vec3, u, turbulence, perturb float64, seed uint64) {
+	c := Component{
+		Type: "gasclump", Mass: mass, Scale: scale, Seed: seed, Perturb: perturb,
+		Position: [3]float64{pos.X, pos.Y, pos.Z}, Velocity: [3]float64{vel.X, vel.Y, vel.Z},
+		Size: [3]float64{4 * scale, 4 * scale, 4 * scale},
+	}
+	addGasCloud(s, c, n, u, turbulence)
+}
+
 // specificEnergy converts a gas temperature in K into specific internal energy in simulation
 // units: u = 3 k T / (2 μ m_p), μ = 0.6 for ionized (T ≥ 8000 K) and 1.27 for neutral gas.
 func (sp *Spec) specificEnergy(kelvin float64) float64 {

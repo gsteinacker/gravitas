@@ -313,3 +313,51 @@ func TestFormatYears(t *testing.T) {
 		}
 	}
 }
+
+func TestPlaceGasCloud(t *testing.T) {
+	sp := scene.Presets[0].Spec // spiral galaxy, with physical units
+	c := newTestController(t, sp, 4000)
+	waitSim(t, c, "first snapshot", func(sn *sim.Snapshot) bool { return sn.Len() > 0 })
+	before := c.Sim().Gas
+	c.Tool, c.Mass = ToolGasCloud, 0.2
+	c.SetCloud(100, 0.3)
+	pos, vel := vec.Vec3{X: 3, Y: 1}, vec.Vec3{Y: 0.4}
+	c.PlaceAt(pos, vel)
+	n := cloudParticles(4000)
+	waitSim(t, c, "cloud", func(sn *sim.Snapshot) bool {
+		var gas int
+		var m, cx, cy, vy float64
+		for i, k := range sn.Kind {
+			if k != sim.Gas {
+				continue
+			}
+			if d := math.Hypot(float64(sn.X[i])-pos.X, float64(sn.Y[i])-pos.Y); d > 10*cloudRadius(0.2) {
+				continue // gas of the galaxy
+			}
+			gas++
+			w := float64(sn.Mass[i])
+			m += w
+			cx += w * float64(sn.X[i])
+			cy += w * float64(sn.Y[i])
+			vy += w * float64(sn.VY[i])
+		}
+		if gas < n {
+			return false
+		}
+		if math.Abs(m-0.2) > 0.02 || math.Abs(cx/m-pos.X) > 0.1 || math.Abs(cy/m-pos.Y) > 0.1 || math.Abs(vy/m-vel.Y) > 0.05 {
+			t.Errorf("cloud mass %.3f, center (%.2f, %.2f), vy %.3f", m, cx/m, cy/m, vy/m)
+		}
+		return true
+	})
+	if got := c.Sim().Gas - before; got < n {
+		t.Errorf("%d gas particles added, want %d", got, n)
+	}
+	// Temperature: 100 K in the spiral's units is a small but positive specific energy.
+	if u := sp.SpecificEnergy(100); u <= 0 {
+		t.Errorf("u(100 K) = %v", u)
+	}
+	c.SetCloud(1, 5)
+	if c.CloudK != CloudTempMin || c.CloudTurb != CloudTurbMax {
+		t.Errorf("cloud settings not clamped: %v K, %v", c.CloudK, c.CloudTurb)
+	}
+}
