@@ -435,3 +435,51 @@ func Builtin() ([]*Spec, error) {
 
 //go:embed scenes/*.json
 var builtinFS embed.FS
+
+// templateGalaxy is the galaxy every placed galaxy is modeled on: the Milky Way-like disk of the
+// built-in spiral galaxy scene (disk, bulge, gas, Hernquist halo, central hole).
+func templateGalaxy() (Component, *Spec) {
+	for _, p := range Presets {
+		for _, c := range p.Spec.Components {
+			if c.Type == "galaxy" && p.Spec.Name == "Spiral galaxy" {
+				return c, p.Spec
+			}
+		}
+	}
+	panic("scene: no template galaxy") // built-in scenes, covered by tests
+}
+
+// TemplateGalaxyMsun is the total mass of the template galaxy in solar masses.
+func TemplateGalaxyMsun() float64 {
+	c, t := templateGalaxy()
+	mu, _ := t.MassUnit()
+	return c.Mass * mu
+}
+
+// AddTemplateGalaxy adds n bodies of a galaxy like the template with total mass msun (solar
+// masses), built in the units of scene sp at the origin at rest, with its disk in the xy plane
+// spinning around +z. Sizes scale with M^(1/3) (same mean density). It returns false for scenes
+// without physical units.
+func (sp *Spec) AddTemplateGalaxy(s *sim.State, n int, msun float64, seed uint64) bool {
+	c, t := templateGalaxy()
+	tMass, _ := t.MassUnit()
+	_, tLen, _ := t.Units()
+	mUnit, okM := sp.MassUnit()
+	_, lUnit, okL := sp.Units()
+	if !okM || !okL {
+		return false
+	}
+	m := msun / (c.Mass * tMass)     // mass factor
+	l := math.Cbrt(m) * tLen / lUnit // length factor: template units → scene units
+	c.Mass = msun / mUnit
+	c.HoleMass *= m * tMass / mUnit
+	for _, f := range []*float64{&c.DiskScale, &c.DiskMin, &c.DiskMax, &c.Thickness, &c.HaloScale, &c.HaloMax,
+		&c.BulgeScale, &c.GasScale, &c.GasMax} {
+		*f *= l
+	}
+	c.Position, c.Velocity, c.Inclination, c.Orientation, c.Seed = [3]float64{}, [3]float64{}, 0, 0, seed
+	p := sp.Params
+	p.Softening = math.Max(p.Softening, 0.02*c.DiskScale)
+	addGalaxy(s, c, n, p, sp.specificEnergy(c.GasK))
+	return true
+}

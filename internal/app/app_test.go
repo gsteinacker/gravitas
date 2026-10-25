@@ -319,7 +319,7 @@ func TestPlaceGasCloud(t *testing.T) {
 	c := newTestController(t, sp, 4000)
 	waitSim(t, c, "first snapshot", func(sn *sim.Snapshot) bool { return sn.Len() > 0 })
 	before := c.Sim().Gas
-	c.Tool, c.Mass = ToolGasCloud, 0.2
+	c.Tool, c.Mass = ToolGasCloud, 0.001 // 2·10⁷ M☉: R ≈ 90 pc
 	c.SetCloud(100, 0.3)
 	pos, vel := vec.Vec3{X: 3, Y: 1}, vec.Vec3{Y: 0.4}
 	c.PlaceAt(pos, vel)
@@ -331,7 +331,7 @@ func TestPlaceGasCloud(t *testing.T) {
 			if k != sim.Gas {
 				continue
 			}
-			if d := math.Hypot(float64(sn.X[i])-pos.X, float64(sn.Y[i])-pos.Y); d > 10*cloudRadius(0.2) {
+			if d := math.Hypot(float64(sn.X[i])-pos.X, float64(sn.Y[i])-pos.Y); d > 10*c.cloudRadius(0.001) {
 				continue // gas of the galaxy
 			}
 			gas++
@@ -344,7 +344,7 @@ func TestPlaceGasCloud(t *testing.T) {
 		if gas < n {
 			return false
 		}
-		if math.Abs(m-0.2) > 0.02 || math.Abs(cx/m-pos.X) > 0.1 || math.Abs(cy/m-pos.Y) > 0.1 || math.Abs(vy/m-vel.Y) > 0.05 {
+		if math.Abs(m-0.001) > 1e-4 || math.Abs(cx/m-pos.X) > 0.1 || math.Abs(cy/m-pos.Y) > 0.1 || math.Abs(vy/m-vel.Y) > 0.05 {
 			t.Errorf("cloud mass %.3f, center (%.2f, %.2f), vy %.3f", m, cx/m, cy/m, vy/m)
 		}
 		return true
@@ -360,4 +360,104 @@ func TestPlaceGasCloud(t *testing.T) {
 	if c.CloudK != CloudTempMin || c.CloudTurb != CloudTurbMax {
 		t.Errorf("cloud settings not clamped: %v K, %v", c.CloudK, c.CloudTurb)
 	}
+}
+
+func TestRealisticDefaultsPerScene(t *testing.T) {
+	byName := map[string]*scene.Spec{}
+	for _, p := range scene.Presets {
+		byName[p.Name] = p.Spec
+	}
+	c := newTestController(t, byName["Spiral galaxy"], 500)
+	mu, _, _ := c.units()
+	for tool, want := range map[Tool]float64{ToolBlackHole: 4e6, ToolCluster: 1e5, ToolGasCloud: 1e6, ToolGalaxy: 2e10} {
+		c.SetTool(tool)
+		if got := c.Mass * mu; math.Abs(got/want-1) > 1e-6 {
+			t.Errorf("%v: %.3g Msun, want %.3g", tool, got, want)
+		}
+	}
+	// Each tool keeps its mass.
+	c.SetTool(ToolCluster)
+	c.SetMass(c.Mass * 3)
+	c.SetTool(ToolBlackHole)
+	c.SetTool(ToolCluster)
+	if got := c.Mass * mu; math.Abs(got/3e5-1) > 1e-6 {
+		t.Errorf("cluster mass not kept: %.3g", got)
+	}
+	// Radii: a globular cluster of 1e5 Msun has 3 pc, a cloud of 1e6 Msun 20 pc.
+	_, pc, _ := c.units()
+	if r := c.clusterRadius(1e5/mu) * pc; math.Abs(r-3) > 1e-9 {
+		t.Errorf("cluster radius %v pc", r)
+	}
+	if r := c.cloudRadius(1e6/mu) * pc; math.Abs(r-20) > 1e-9 {
+		t.Errorf("cloud radius %v pc", r)
+	}
+	// Parsec scenes: stellar hole, no galaxies.
+	h := newTestController(t, byName["Horsehead Nebula"], 500)
+	hmu, _, _ := h.units()
+	if got := h.Mass * hmu; math.Abs(got/10-1) > 1e-6 {
+		t.Errorf("Horsehead hole %.3g Msun, want 10", got)
+	}
+	h.SetTool(ToolGalaxy)
+	if h.Tool == ToolGalaxy {
+		t.Error("a galaxy must not fit into the Horsehead scene")
+	}
+}
+
+func TestCloudForecast(t *testing.T) {
+	var hh *scene.Spec
+	for _, p := range scene.Presets {
+		if p.Name == "Horsehead Nebula" {
+			hh = p.Spec
+		}
+	}
+	c := newTestController(t, hh, 500)
+	c.SetTool(ToolGasCloud)
+	c.SetMass(1e4 / 100) // 10⁴ M☉ (mass unit 100 M☉)
+	c.SetCloud(20, 0.2)
+	cold, _ := c.CloudForecast()
+	c.SetCloud(20, 1.2)
+	turbulent, _ := c.CloudForecast()
+	c.SetCloud(1e4, 0.2)
+	hot, _ := c.CloudForecast()
+	if !(cold < 1 && turbulent > 2 && hot > cold) {
+		t.Errorf("α: cold %.2f, turbulent %.2f, hot %.2f", cold, turbulent, hot)
+	}
+}
+
+func TestPlaceGalaxySpinsInThePlane(t *testing.T) {
+	var lg *scene.Spec
+	for _, p := range scene.Presets {
+		if p.Name == "Local Group" {
+			lg = p.Spec
+		}
+	}
+	c := newTestController(t, lg, 2000)
+	waitSim(t, c, "first snapshot", func(sn *sim.Snapshot) bool { return sn.Len() > 0 })
+	before := c.Sim().Bodies
+	c.SetTool(ToolGalaxy)
+	c.PlaceNormal, c.PlaceRadial = vec.Vec3{X: 1}, vec.Vec3{Y: 1} // disk in the yz plane, spin around +x
+	pos := vec.Vec3{Z: 20}
+	c.PlaceAt(pos, vec.Vec3{})
+	n := galaxyParticles(2000)
+	waitSim(t, c, "galaxy", func(sn *sim.Snapshot) bool {
+		if sn.Len() < before+n {
+			return false
+		}
+		var lx, ly, lz float64
+		for i := before; i < sn.Len(); i++ {
+			if sn.Kind[i] == sim.DarkMatter {
+				continue // the halo has random orbits: only the disk spins
+			}
+			x, y, z := float64(sn.X[i])-pos.X, float64(sn.Y[i])-pos.Y, float64(sn.Z[i])-pos.Z
+			vx, vy, vz := float64(sn.VX[i]), float64(sn.VY[i]), float64(sn.VZ[i])
+			m := float64(sn.Mass[i])
+			lx += m * (y*vz - z*vy)
+			ly += m * (z*vx - x*vz)
+			lz += m * (x*vy - y*vx)
+		}
+		if lx <= 0 || math.Abs(ly) > 0.2*lx || math.Abs(lz) > 0.2*lx {
+			t.Errorf("angular momentum (%.3g, %.3g, %.3g), want along +x", lx, ly, lz)
+		}
+		return true
+	})
 }

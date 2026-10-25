@@ -29,6 +29,7 @@ const (
 	ToolBlackHole Tool = iota
 	ToolCluster
 	ToolGasCloud
+	ToolGalaxy
 	toolCount
 )
 
@@ -38,6 +39,8 @@ func (t Tool) String() string {
 		return "star cluster"
 	case ToolGasCloud:
 		return "gas cloud"
+	case ToolGalaxy:
+		return "galaxy"
 	}
 	return "black hole"
 }
@@ -50,16 +53,65 @@ const (
 	CloudTurbMax               = 2.0
 )
 
-// cloudRadius is the Plummer scale radius of a gas cloud of the given mass: larger than a star
-// cluster of the same mass.
-func cloudRadius(mass float64) float64 { return 1.5 * clusterRadius(mass) }
+// cloudRadius is the Plummer scale radius of a gas cloud of the given mass (simulation units):
+// Larson's relation R ≈ 20 pc · (M/10⁶ M☉)^½ in scenes with units, else 1.5 times a cluster.
+func (c *Controller) cloudRadius(mass float64) float64 {
+	if mu, pc, ok := c.units(); ok {
+		return 20 * math.Sqrt(mass*mu/1e6) / pc
+	}
+	return 1.5 * clusterRadius(mass)
+}
+
+// clusterRadius is the Plummer scale radius of a star cluster of the given mass: r ≈ 3 pc ·
+// (M/10⁵ M☉)^⅓ (globular clusters) in scenes with units, else a scene-free rule.
+func (c *Controller) clusterRadius(mass float64) float64 {
+	if mu, pc, ok := c.units(); ok {
+		return 3 * math.Cbrt(mass*mu/1e5) / pc
+	}
+	return clusterRadius(mass)
+}
+
+// units returns solar masses and parsec per simulation unit of the scene.
+func (c *Controller) units() (msun, pc float64, ok bool) {
+	if c.Scene == nil {
+		return 0, 0, false
+	}
+	msun, okM := c.Scene.MassUnit()
+	_, pc, okL := c.Scene.Units()
+	return msun, pc, okM && okL
+}
+
+// GalaxyScale reports whether the scene is large enough for placing galaxies (length unit ≥ 100 pc).
+func (c *Controller) GalaxyScale() bool {
+	_, pc, ok := c.units()
+	return ok && pc >= 100
+}
+
+// defaultMasses are realistic starting masses per tool for the scale of the scene (simulation
+// units): in galaxy scenes a Sgr A*-like hole, a globular cluster, a giant molecular cloud and an
+// LMC-sized galaxy; in parsec scenes a stellar black hole, an open cluster and a small cloud.
+func (c *Controller) defaultMasses() [toolCount]float64 {
+	mu, pc, ok := c.units()
+	if !ok {
+		return [toolCount]float64{0.5, 0.5, 0.5, 5}
+	}
+	msun := [toolCount]float64{10, 1e3, 1e3, 2e10}
+	if pc >= 100 {
+		msun = [toolCount]float64{4e6, 1e5, 1e6, 2e10}
+	}
+	var m [toolCount]float64
+	for i, v := range msun {
+		m[i] = math.Max(MassMin, math.Min(MassMax, v/mu))
+	}
+	return m
+}
 
 // cloudParticles is the number of gas particles of a placed cloud for a scene of n bodies.
 func cloudParticles(n int) int { return max(400, n/40) }
 
 // Mass bounds and factor of the next placed object.
 const (
-	MassMin  = 0.01
+	MassMin  = 1e-12 // a solar mass in galaxy units is ~5·10⁻¹¹
 	MassMax  = 20.0
 	massStep = 1.5
 )
@@ -85,14 +137,20 @@ var DefaultEffects = view.Effects{Glow: true, Doppler: true, Lensing: true, Dust
 // be called from one goroutine (the front end's update loop); other goroutines hand work over
 // with Post and read the published State.
 type Controller struct {
-	Runner *sim.Runner
-	Scene  *scene.Spec
-	N      int // stars of a built scene
-	Cam    view.Camera
-	FX     view.Effects
-	Speed  int // index into SpeedLevels
-	Mass   float64
-	Tool   Tool
+	Runner   *sim.Runner
+	Scene    *scene.Spec
+	N        int // stars of a built scene
+	Cam      view.Camera
+	FX       view.Effects
+	Speed    int // index into SpeedLevels
+	Mass     float64
+	Tool     Tool
+	toolMass [toolCount]float64 // the mass each tool remembers
+	// GalaxyTilt is the angle (degrees) between a placed galaxy's disk and the launch plane:
+	// 0 spins with the host, 180 against it.
+	GalaxyTilt float64
+	// PlaceNormal and PlaceRadial orient placed galaxies (set by the launch planner); zero: z, x.
+	PlaceNormal, PlaceRadial vec.Vec3
 	// CloudK and CloudTurb are the temperature (K) and turbulence (fraction of the virial speed)
 	// of the next gas cloud.
 	CloudK, CloudTurb float64
@@ -224,13 +282,19 @@ func (c *Controller) Do(a Action) {
 		c.sim.DarkMatterOff = off
 		c.Runner.Do(func(m *sim.Simulation) { m.SetDarkMatterOff(off) })
 	case ActionToolBlackHole:
-		c.Tool = ToolBlackHole
+		c.SetTool(ToolBlackHole)
 	case ActionToolCluster:
-		c.Tool = ToolCluster
+		c.SetTool(ToolCluster)
 	case ActionToolGasCloud:
-		c.Tool = ToolGasCloud
+		c.SetTool(ToolGasCloud)
+	case ActionToolGalaxy:
+		c.SetTool(ToolGalaxy)
 	case ActionNextTool:
-		c.Tool = (c.Tool + 1) % toolCount
+		next := (c.Tool + 1) % toolCount
+		if next == ToolGalaxy && !c.GalaxyScale() {
+			next = 0
+		}
+		c.SetTool(next)
 	case ActionMassUp:
 		c.SetMass(c.Mass * massStep)
 	case ActionMassDown:
@@ -290,8 +354,25 @@ func (c *Controller) Do(a Action) {
 // SpeedLimit is the selected step rate, 0 = unlimited.
 func (c *Controller) SpeedLimit() int { return SpeedLevels[c.Speed] }
 
-// SetMass sets the mass of the next placed object, clamped to [MassMin, MassMax].
-func (c *Controller) SetMass(m float64) { c.Mass = math.Max(MassMin, math.Min(MassMax, m)) }
+// SetMass sets the mass of the next placed object, clamped to [MassMin, MassMax]; the tool keeps it.
+func (c *Controller) SetMass(m float64) {
+	c.Mass = math.Max(MassMin, math.Min(MassMax, m))
+	c.toolMass[c.Tool] = c.Mass
+}
+
+// SetTool chooses the tool; each tool keeps its own mass.
+func (c *Controller) SetTool(t Tool) {
+	t = Tool(max(0, min(int(toolCount)-1, int(t))))
+	if t == ToolGalaxy && !c.GalaxyScale() && c.Scene != nil {
+		c.Notify(i18n.T("Galaxien passen nur in Szenen im Galaxienmaßstab", "galaxies only fit into scenes at galaxy scale"))
+		return
+	}
+	c.toolMass[c.Tool] = c.Mass
+	c.Tool = t
+	if m := c.toolMass[t]; m > 0 {
+		c.Mass = m
+	}
+}
 
 // SetGravity changes how the gravity of black holes propagates.
 func (c *Controller) SetGravity(g sim.GravityMode) {
@@ -381,6 +462,11 @@ func (c *Controller) LoadScene(sp *scene.Spec) {
 // applyScene takes over the camera, effects and texts of a scene.
 func (c *Controller) applyScene(sp *scene.Spec) {
 	c.Scene = sp
+	c.toolMass = c.defaultMasses()
+	if c.Tool == ToolGalaxy && !c.GalaxyScale() {
+		c.Tool = ToolBlackHole
+	}
+	c.Mass = c.toolMass[c.Tool]
 	c.Topics, c.TopicIdx = topicList(sp.Topics), 0
 	if len(sp.Intro) > 0 {
 		c.Notify(sp.Name + i18n.T(": e öffnet eine Einführung", ": e opens an introduction"))
@@ -413,7 +499,7 @@ func (c *Controller) PlaceAt(pos, vel vec.Vec3) {
 	if c.hinted == nil {
 		c.hinted = map[string]bool{}
 	}
-	if topic := map[Tool]string{ToolBlackHole: "black-holes", ToolCluster: "gravity", ToolGasCloud: "gas-clouds"}[c.Tool]; !c.hinted[topic] {
+	if topic := map[Tool]string{ToolBlackHole: "black-holes", ToolCluster: "gravity", ToolGasCloud: "gas-clouds", ToolGalaxy: "tides"}[c.Tool]; !c.hinted[topic] {
 		c.hinted[topic] = true // once per run, placing is frequent
 		c.hint(topic)
 	}
@@ -427,11 +513,15 @@ func (c *Controller) PlaceAt(pos, vel vec.Vec3) {
 		c.placeCloud(pos, vel)
 		return
 	}
+	if c.Tool == ToolGalaxy {
+		c.placeGalaxy(pos, vel)
+		return
+	}
 	// Build the cluster here, so the simulation goroutine only appends.
 	c.placements++
 	n := clusterStars(c.N)
 	s := sim.NewState(n)
-	scene.AddPlummer(s, n, mass, clusterRadius(mass), pos, vel, 1000+c.placements)
+	scene.AddPlummer(s, n, mass, c.clusterRadius(mass), pos, vel, 1000+c.placements)
 	c.Runner.Do(func(m *sim.Simulation) {
 		for i := range s.Len() {
 			b := s.Body(i)
@@ -493,7 +583,7 @@ func FormatYears(y float64) string {
 func (c *Controller) placeCloud(pos, vel vec.Vec3) {
 	c.placements++
 	n, mass := cloudParticles(c.N), c.Mass
-	r := cloudRadius(mass)
+	r := c.cloudRadius(mass)
 	u := c.Scene.SpecificEnergy(c.CloudK)
 	turb := c.CloudTurb * math.Sqrt(mass/r)
 	s := sim.NewState(n)
@@ -511,4 +601,54 @@ func (c *Controller) placeCloud(pos, vel vec.Vec3) {
 func (c *Controller) SetCloud(kelvin, turb float64) {
 	c.CloudK = math.Max(CloudTempMin, math.Min(CloudTempMax, kelvin))
 	c.CloudTurb = math.Max(0, math.Min(CloudTurbMax, turb))
+}
+
+// galaxyParticles is the number of bodies of a placed galaxy for a scene of n bodies.
+func galaxyParticles(n int) int { return max(2000, n/4) }
+
+// placeGalaxy adds a galaxy like the template (scene.AddTemplateGalaxy) of the current mass at pos
+// with velocity vel, its disk in the launch plane tilted by GalaxyTilt around the radial axis.
+func (c *Controller) placeGalaxy(pos, vel vec.Vec3) {
+	mu, _, ok := c.units()
+	if !ok {
+		return
+	}
+	c.placements++
+	s := sim.NewState(0)
+	if !c.Scene.AddTemplateGalaxy(s, galaxyParticles(c.N), c.Mass*mu, 3000+c.placements) {
+		return
+	}
+	n, r := c.PlaceNormal, c.PlaceRadial
+	if n.Len() == 0 {
+		n, r = vec.Vec3{Z: 1}, vec.Vec3{X: 1}
+	}
+	// The disk normal: n tilted by GalaxyTilt around r; then the frame (r, n'×r, n') maps x, y, z,
+	// so the template's spin around +z becomes a spin around n'.
+	tilt := c.GalaxyTilt * math.Pi / 180
+	t := n.Cross(r)
+	nz := n.Scale(math.Cos(tilt)).Sub(t.Scale(math.Sin(tilt)))
+	ny := nz.Cross(r)
+	rot := func(v vec.Vec3) vec.Vec3 { return r.Scale(v.X).Add(ny.Scale(v.Y)).Add(nz.Scale(v.Z)) }
+	c.Runner.Do(func(m *sim.Simulation) {
+		for i := range s.Len() {
+			b := s.Body(i)
+			b.Pos = rot(b.Pos).Add(pos)
+			b.Vel = sim.ProperVelocity(rot(b.Vel).Add(vel), m.Params.C)
+			m.AddBody(b)
+		}
+	})
+}
+
+// CloudForecast is the virial parameter α = 5 (σ² + c_s²) R / (G M) of the next gas cloud with
+// its turbulence and temperature (at least the scene's floor temperature, returned as kelvin):
+// below ~1 the cloud collapses, above ~2 it disperses.
+func (c *Controller) CloudForecast() (alpha, kelvin float64) {
+	kelvin = c.CloudK
+	u := 0.0
+	if c.Scene != nil {
+		kelvin = math.Max(kelvin, c.Scene.GasFloorK)
+		u = c.Scene.SpecificEnergy(kelvin)
+	}
+	r := c.cloudRadius(c.Mass)
+	return 5*c.CloudTurb*c.CloudTurb + 10.0/3*u*r/c.Mass, kelvin
 }
