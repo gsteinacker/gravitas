@@ -48,6 +48,10 @@ const (
 	hazeTarget         = 0.5
 	minHolePixels      = 3
 	spriteMean         = 0.10972 // mean of the glow sprite over its 16×16 quad (render.spriteMean)
+	// kernelMean is the mean of the gas kernel (1 − d²)³ over its quad, π/16 (Galaxy.metal KERNEL_MEAN).
+	kernelMean = math.Pi / 16
+	// gasMapRef² is the drawn column of a gas body of mean star mass in pixels² of the gas map.
+	gasMapRef = 10
 )
 
 // looker keeps the smoothed normalizations and the cache key between frames.
@@ -148,16 +152,19 @@ func (e *Engine) Prepare(bodies, attn []float32, info FrameInfo, w, h, ps float6
 				l.light[cell] += float32(w * alpha * spriteMean * size * size)
 			}
 			if fx.Gas {
-				s := hazeSize(depth)
-				l.gasGr[cell] += float32(spriteMean * s * s / (cw * ch))
+				// Column density per pixel at the center: a kernel of diameter 2h, or the cell if
+				// the body is smaller than it (T-069).
+				s := math.Max(2*float64(b[10])*focal/depth, 4*ps)
+				ref := gasMapRef * ps
+				l.gasGr[cell] += float32(float64(b[3]) / mean * ref * ref / math.Max(cw*ch, kernelMean*s*s))
 			}
 			if ion := float64(b[9]); ion > minEmissionIon {
-				size := math.Max(3*ps, math.Min(120*ps, 3*float64(b[10])*focal/depth))
+				size := math.Max(3*ps, 3*float64(b[10])*focal/depth)
 				brightness := ion * ion * float64(b[3]) * float64(b[11]) / (size * size)
 				if fx.Dust {
 					brightness *= float64(l.attn[4*i]) // Hα is red
 				}
-				l.emLight[cell] += float32(brightness * spriteMean * size * size)
+				l.emLight[cell] += float32(brightness * kernelMean * size * size)
 			}
 		case sim.DarkMatter:
 			if fx.Dark {

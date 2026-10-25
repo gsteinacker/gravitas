@@ -21,7 +21,7 @@ import (
 
 const (
 	dustBaseW, dustBaseH = 320, 200 // finest level
-	dustLevels           = 5        // cells 1, 2, 4, 8, 16 times the finest
+	dustLevels           = 7        // cells 1, 2, 4, …, 64 times the finest, so close clouds stay smooth
 )
 
 // Extinction relative to V per channel (roughly Cardelli et al. 1989 for R, V, B).
@@ -151,7 +151,7 @@ func (l *looker) buildDust(bodies []float32, n int, vw *view.View, w, h, focal, 
 		if !ok {
 			continue
 		}
-		size := math.Max(2*ps, math.Min(80*ps, 2*float64(b[10])*focal/depth))
+		size := math.Max(2*ps, 2*float64(b[10])*focal/depth) // the kernel of the dust image (T-069)
 		if sx < -size || sy < -size || sx > w+size || sy > h+size {
 			continue
 		}

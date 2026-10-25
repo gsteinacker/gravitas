@@ -20,8 +20,12 @@ struct Body { float4 pos; float4 vel; float4 gas; }; // xyz mass | v kind | age 
 struct Sprite {
     float4 position [[position]];
     float2 uv;
-    float4 color; // premultiplied, additive
+    float4 color;  // premultiplied, additive
+    float gas;     // 1: smooth SPH-like kernel (gas), 0: star glow
 };
+
+// KERNEL_MEAN is the mean of the gas kernel (1 − d²)³ over its quad: π/16 (engine.kernelMean).
+constant float KERNEL_MEAN = 0.19635;
 
 constant float2 corners[4] = { float2(-1, -1), float2(1, -1), float2(-1, 1), float2(1, 1) };
 
@@ -73,6 +77,16 @@ Sprite makeSprite(float3 s, float radius, float4 color, uint vid, constant Unifo
     o.position = float4(p.x / u.view.x * 2 - 1, 1 - p.y / u.view.y * 2, 0, 1);
     o.uv = c;
     o.color = color;
+    o.gas = 0;
+    return o;
+}
+
+// gasSprite is a gas body as a smooth kernel of diameter size. Larger than gasCap (engine.gasCap)
+// it is drawn at that size: callers compute the surface brightness from the true size, so a huge
+// cloud close to the camera stays as bright per pixel and only its far edge is cut.
+Sprite gasSprite(float3 s, float size, float4 color, uint vid, constant Uniforms &u) {
+    Sprite o = makeSprite(s, min(size, 1.5 * max(u.view.x, u.view.y)) / 2, color, vid, u);
+    o.gas = 1;
     return o;
 }
 
@@ -81,6 +95,7 @@ Sprite culled() {
     o.position = float4(2, 2, 2, 1); // outside the clip volume
     o.uv = 0;
     o.color = 0;
+    o.gas = 0;
     return o;
 }
 
@@ -200,20 +215,21 @@ vertex Sprite spriteVertex(uint vid [[vertex_id]], uint iid [[instance_id]],
     }
     if (sub != 0) return culled();
     if (kind == 3 && (fx & 32) != 0) {
-        // Gas map in false colors (neutral blue, partly ionized green, ionized red); opacity from
-        // the projected density (Go core).
-        float size = clamp(0.12 * focal / s.z, 6 * ps, 48 * ps);
+        // Gas map in false colors (neutral blue, partly ionized green, ionized red): column density
+        // of a kernel of diameter 2h, normalized by the Go core (engine.gasMapSize).
+        float size = max(2 * b.gas.z * focal / s.z, 4 * ps);
         float ion = b.gas.y;
         float3 tint = float3(0.25 + 0.75 * ion, 0.45 + 0.5 * (1 - 2 * fabs(ion - 0.5)), 1 - 0.8 * ion);
-        return makeSprite(s, size / 2, float4(tint * u.haze.y, 0), vid, u);
+        float a = u.haze.y * rel * 100 * ps * ps / (KERNEL_MEAN * size * size);
+        return gasSprite(s, size, float4(tint * a, 0), vid, u);
     }
     if (kind == 3 && b.gas.y > 0.2) { // photoionized gas: Hα emission
-        float size = clamp(3 * b.gas.z * focal / s.z, 3 * ps, 120 * ps);
+        float size = max(3 * b.gas.z * focal / s.z, 3 * ps);
         float ion = b.gas.y;
         float brightness = ion * ion * b.pos.w * b.gas.w / (size * size);
         if (dusty) brightness *= attn[bi].r; // Hα is red
         float a = 1 - exp(-u.misc.z * brightness);
-        return makeSprite(s, size / 2, float4(float3(1.0, 0.16, 0.22) * a, 0), vid, u);
+        return gasSprite(s, size, float4(float3(1.0, 0.16, 0.22) * a, 0), vid, u);
     }
     return culled();
 }
@@ -227,11 +243,11 @@ vertex Sprite dustVertex(uint vid [[vertex_id]], uint iid [[instance_id]],
     float3 s = project(b.pos.xyz, u);
     if (s.z < 0.05) return culled();
     float focal = u.view.z, ps = u.view.w;
-    float size = clamp(2 * b.gas.z * focal / s.z, 2 * ps, 80 * ps);
+    float size = max(2 * b.gas.z * focal / s.z, 2 * ps);
     float k = focal / s.z;
     float tauArea = u.misc.w * b.pos.w * (1 - b.gas.y) * k * k;
-    float a = min(1.0, tauArea / (0.10972 * size * size) / 2.5);
-    return makeSprite(s, size / 2, float4(a), vid, u);
+    float a = min(1.0, tauArea / (KERNEL_MEAN * size * size) / 2.5);
+    return gasSprite(s, size, float4(a), vid, u);
 }
 
 // fogVertex draws dark matter as projected density into a quarter-resolution image with large,
@@ -252,7 +268,8 @@ vertex Sprite fogVertex(uint vid [[vertex_id]], uint iid [[instance_id]],
 fragment float4 spriteFragment(Sprite in [[stage_in]]) {
     float d2 = dot(in.uv, in.uv);
     if (d2 >= 1) discard_fragment();
-    float a = min(1.0, exp(-d2 * 12) + 0.25 * exp(-d2 * 3));
+    float k = 1 - d2;
+    float a = in.gas > 0.5 ? k * k * k : min(1.0, exp(-d2 * 12) + 0.25 * exp(-d2 * 3));
     return in.color * a;
 }
 
