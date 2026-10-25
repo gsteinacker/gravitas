@@ -35,6 +35,7 @@ typedef struct {
 	float darkAlpha, gasAlpha;
 	int holes; // number written to the hole array (at most its capacity)
 	int worldHoles; // number written to the world hole array: x, y, z, r_s each
+	float popRadius, sfDensity, sfLight; // particles as stellar populations (engine.Population)
 } GalaxyLook;
 
 typedef struct {
@@ -399,7 +400,8 @@ func galaxy_prepare(buf *C.float, attnBuf *C.float, capacity C.int, w, h, ps C.d
 		copy(wd[4*i:4*i+4], look.World[i][:])
 	}
 	*out = C.GalaxyLook{worldHoles: C.int(nw), exposure: C.double(look.Exposure), emNorm: C.double(look.EmNorm), dustKappa: C.double(look.DustKappa),
-		darkAlpha: C.float(look.DarkAlpha), gasAlpha: C.float(look.GasAlpha), holes: C.int(n)}
+		darkAlpha: C.float(look.DarkAlpha), gasAlpha: C.float(look.GasAlpha), holes: C.int(n),
+		popRadius: C.float(look.Pop.Radius), sfDensity: C.float(look.Pop.SFDensity), sfLight: C.float(look.Pop.SFLight)}
 }
 
 //export galaxy_settings

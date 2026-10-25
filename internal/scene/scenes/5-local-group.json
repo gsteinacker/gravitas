@@ -10,7 +10,8 @@
     "tides",
     "units",
     "gravity",
-    "bulge"
+    "bulge",
+    "populations"
   ],
   "info": "real distances and velocities, 1 unit = 100 kpc, real c, Hernquist dark matter halos (invisible)",
   "yearsPerUnit": 470000000.0,

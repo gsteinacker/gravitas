@@ -13,6 +13,7 @@ import (
 	"galaxy/internal/scene"
 	"galaxy/internal/sim"
 	"galaxy/internal/sim/bh"
+	"galaxy/internal/vec"
 	"galaxy/internal/view"
 )
 
@@ -37,6 +38,8 @@ type Options struct {
 	Launch    string  // plan a launch at "x,y[,preset[,go]]" (fractions of the view; preset as LaunchPreset; go 1 launches)
 	Tool      string  // hole, cluster, cloud or galaxy
 	Mass      float64 // mass of the placed object (simulation units), 0 = default
+	Zoom      float64 // start zoomed in by this factor (0 or 1: scene view)
+	Target    string  // start with the camera on "x,y,z" (world units)
 	Shot      string  // save a screenshot after ShotAfter seconds and quit
 	ShotAfter float64
 }
@@ -68,6 +71,8 @@ func ParseOptions(args []string) (*Options, error) {
 	fs.StringVar(&o.Launch, "launch", "", "plan a launch at x,y (fractions of the view) with preset 0 rest, 1 circular, 2 escape, 3 center, 4 binary; ,1 launches")
 	fs.StringVar(&o.Tool, "tool", "", "tool for placing: hole, cluster, cloud or galaxy")
 	fs.Float64Var(&o.Mass, "mass", 0, "mass of placed objects (simulation units)")
+	fs.Float64Var(&o.Zoom, "zoom", 0, "start zoomed in by this factor")
+	fs.StringVar(&o.Target, "target", "", "start with the camera on x,y,z (world units)")
 	fs.StringVar(&o.Shot, "shot", "", "save a screenshot to this PNG file after -shot-after seconds and quit")
 	fs.Float64Var(&o.ShotAfter, "shot-after", 4, "seconds before the screenshot is taken")
 	var known []string
@@ -137,6 +142,16 @@ func (o *Options) apply(e *Engine) error {
 		e.OpenExplanation(level, topic)
 	}
 	e.ShowHUD, e.ShowHelp = o.HUD, o.Help
+	if o.Zoom > 0 {
+		e.Cam.Zoom(1 / o.Zoom)
+	}
+	if o.Target != "" {
+		var x, y, z float64
+		if n, _ := fmt.Sscanf(o.Target, "%g,%g,%g", &x, &y, &z); n < 2 {
+			return fmt.Errorf("-target %q: want x,y[,z]", o.Target)
+		}
+		e.Cam.Target = vec.Vec3{X: x, Y: y, Z: z}
+	}
 	switch o.Tool {
 	case "":
 	case "hole":

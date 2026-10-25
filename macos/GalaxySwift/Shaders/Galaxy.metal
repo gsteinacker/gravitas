@@ -12,6 +12,7 @@ struct Uniforms {
     float4 eye;    // camera position xyz, exposure
     float4 misc;   // effect bits, young age, emission normalization, dust opacity κ
     float4 haze;   // dark matter alpha, gas map alpha, number of world holes, unused
+    float4 pop;    // population radius (0: particles are stars), star formation density, its light, unused
 };
 
 struct Body { float4 pos; float4 vel; float4 gas; }; // xyz mass | v kind | age ion h rho
@@ -83,10 +84,81 @@ Sprite culled() {
     return o;
 }
 
+// Every body draws POPULATION sprites (Renderer.populationSprites). In galaxy scenes a star particle
+// is a whole stellar population (engine.Population): a core, a soft glow of its unresolved stars
+// as large as the population (from afar the glows merge into the diffuse light of the disk) and
+// MEMBERS single stars scattered within it, which resolve when zoomed in. The sprites share the
+// light of the particle, so the exposure of the Go core is unchanged.
+constant uint POPULATION = 8;
+constant uint MEMBERS = POPULATION - 2;
+
+uint hash(uint x) {
+    x ^= x >> 16; x *= 0x7feb352du;
+    x ^= x >> 15; x *= 0x846ca68bu;
+    x ^= x >> 16;
+    return x;
+}
+
+float unit(uint h) { return float(h & 0xffffffu) / 16777216.0; }
+
+// shade applies Doppler shift, beaming, gravitational redshift and the dust in front.
+float4 shade(Body b, float3 col, float alpha, int fx, uint bi, const device float4 *attn,
+             const device float4 *holes, constant Uniforms &u) {
+    if ((fx & 2) != 0 && u.cam.w > 0) {
+        float3 n = normalize(u.eye.xyz - b.pos.xyz);
+        float grav = 1;
+        for (int h = 0; h < int(u.haze.z); h++) {
+            grav *= gravShift(length(b.pos.xyz - holes[h].xyz), holes[h].w);
+        }
+        float4 sc = shiftColor(col, frequencyShift(b.vel.xyz, n, u.cam.w, grav));
+        col = sc.xyz;
+        alpha *= sc.w;
+    }
+    if ((fx & 64) != 0) { // dust in front (computed in the Go core): reddened and dimmed
+        float4 t = attn[bi];
+        col *= t.rgb;
+        alpha *= t.g;
+    }
+    return float4(col, alpha);
+}
+
+// population returns sprite sub of a population at screen position s whose whole light is that of
+// one sprite of the given size with color and alpha c; core is the share of the central sprite,
+// tint colors the glow.
+Sprite population(Body b, float3 s, float4 c, float3 tint, float size, float core, uint sub, uint vid,
+                  constant Uniforms &u) {
+    float light = c.w * u.eye.w * size * size;
+    float r = u.pop.x, ps = u.view.w;
+    if (sub == 0) {
+        if (r > 0) core *= 1 - smoothstep(4 * ps, 12 * ps, size);
+        if (core <= 0) return culled();
+        return makeSprite(s, size / 2, float4(c.rgb * core * c.w * u.eye.w, 0), vid, u);
+    }
+    if (r <= 0) return culled();
+    float share = (1 - core) / 2; // glow and members
+    // A population larger than a few pixels is resolved: its core goes to the members.
+    float members = share + core * smoothstep(4 * ps, 12 * ps, size);
+    if (sub == 1) {
+        // Constant surface brightness: beyond the cap the outer glow is dropped, the members carry it.
+        float g = max(size, 5 * r * u.view.z / s.z); // Plummer softening: most of the mass within 2.5 ε
+        float a = share * light / (g * g);
+        return makeSprite(s, min(g, 240 * ps) / 2, float4(c.rgb * tint * a, 0), vid, u);
+    }
+    uint h = hash(as_type<uint>(b.pos.w) * POPULATION + sub);
+    float3 o = float3(unit(h) + unit(hash(h + 1)), unit(hash(h + 2)) + unit(hash(h + 3)),
+                      unit(hash(h + 4)) + unit(hash(h + 5))) - 1;
+    float3 m = project(b.pos.xyz + 1.5 * r * o, u);
+    if (m.z < 0.05) return culled();
+    float w = 4 * pow(unit(hash(h + 6)), 3.0); // a few bright giants, many faint stars (mean 1)
+    float ms = clamp(size, 3 * ps, 3.5 * ps); // at least 3 pixels: no twinkling between pixels
+    return makeSprite(m, ms / 2, float4(c.rgb * members * w / MEMBERS * light / (ms * ms), 0), vid, u);
+}
+
 vertex Sprite spriteVertex(uint vid [[vertex_id]], uint iid [[instance_id]],
                            const device Body *bodies [[buffer(0)]], constant Uniforms &u [[buffer(1)]],
                            const device float4 *attn [[buffer(2)]], const device float4 *holes [[buffer(3)]]) {
-    Body b = bodies[iid];
+    uint bi = iid / POPULATION, sub = iid % POPULATION;
+    Body b = bodies[bi];
     bool dusty = (int(u.misc.x) & 64) != 0;
     int kind = int(b.vel.w + 0.5);
     int fx = int(u.misc.x);
@@ -94,35 +166,39 @@ vertex Sprite spriteVertex(uint vid [[vertex_id]], uint iid [[instance_id]],
     float3 s = project(b.pos.xyz, u);
     if (s.z < 0.05) return culled();
     float focal = u.view.z;
+    float rel = b.pos.w / max(u.cam.z, 1e-12);
+    float size = clamp(0.05 * pow(rel, 1.0 / 3.0) * focal / s.z, 3.5 * ps, 28 * ps);
+    float alpha = min(1.0, 0.55 + 0.2 * rel);
     if (kind == 0) { // star
-        float rel = b.pos.w / max(u.cam.z, 1e-12);
-        float size = clamp(0.05 * pow(rel, 1.0 / 3.0) * focal / s.z, 3.5 * ps, 28 * ps);
-        float3 col = starColor(rel);
-        float alpha = min(1.0, 0.55 + 0.2 * rel);
+        // A population's color is that of its age, not of its particle mass: old ones are yellowish white.
+        float3 col = starColor(u.pop.x > 0 ? clamp(rel, 0.35, 1.0) : rel);
+        float3 tint = 1;
         float age = b.gas.x;
-        if (age >= 0 && age < u.misc.y) { // young stars from gas: hot, blue, bright
+        if (age >= 0 && age < u.misc.y) { // young stars from gas: hot, blue, bright (engine.youngBoost)
             float f = 1 - age / u.misc.y;
             col = mix(col, float3(0.6, 0.78, 1.0), f);
-            alpha *= 1 + 1.5 * f;
-            size *= 1 + 0.5 * f;
+            tint = mix(float3(1), float3(1.0, 0.45, 0.65) / col, 0.5 * f * f); // still in its H II region
+            alpha *= 1 + 3 * f;
+            size *= 1 + 0.6 * f;
         }
-        if ((fx & 2) != 0 && u.cam.w > 0) {
-            float3 n = normalize(u.eye.xyz - b.pos.xyz);
-            float grav = 1;
-            for (int h = 0; h < int(u.haze.z); h++) {
-                grav *= gravShift(length(b.pos.xyz - holes[h].xyz), holes[h].w);
-            }
-            float4 sc = shiftColor(col, frequencyShift(b.vel.xyz, n, u.cam.w, grav));
-            col = sc.xyz;
-            alpha *= sc.w;
-        }
-        if (dusty) { // dust in front (computed in the Go core): reddened and dimmed
-            float4 t = attn[iid];
-            col *= t.rgb;
-            alpha *= t.g;
-        }
-        return makeSprite(s, size / 2, float4(col * alpha * u.eye.w, 0), vid, u);
+        float4 c = shade(b, col, alpha, fx, bi, attn, holes, u);
+        return population(b, s, c, tint, size, u.pop.x > 0 ? 0.4 : 1.0, sub, vid, u);
     }
+    if (kind == 3 && sub == 1) {
+        // Star-forming gas shines with the young stars it forms below the resolution
+        // (engine.Population.starFormingLight): a soft bluish veil as large as the gas particle
+        // (smoothing length h), with constant surface brightness, no points.
+        float rho = b.gas.w, ion = b.gas.y;
+        if (u.pop.z <= 0 || rho <= u.pop.y || ion >= 0.5) return culled();
+        float w = min(20.0, u.pop.z * sqrt(rho)) * smoothstep(u.pop.y, 2 * u.pop.y, rho);
+        float3 col = mix(float3(0.45, 0.65, 1.0), float3(1.0, 0.45, 0.65), 0.15);
+        float4 c = shade(b, col, alpha * w, fx & ~64, bi, attn, holes, u);
+        if (dusty) c.w *= attn[bi].b; // young stars are blue
+        float g = max(size, max(5 * u.pop.x, 2 * b.gas.z) * focal / s.z);
+        float a = c.w * u.eye.w * size * size / (g * g);
+        return makeSprite(s, min(g, 240 * ps) / 2, float4(c.rgb * a, 0), vid, u);
+    }
+    if (sub != 0) return culled();
     if (kind == 3 && (fx & 32) != 0) {
         // Gas map in false colors (neutral blue, partly ionized green, ionized red); opacity from
         // the projected density (Go core).
@@ -135,7 +211,7 @@ vertex Sprite spriteVertex(uint vid [[vertex_id]], uint iid [[instance_id]],
         float size = clamp(3 * b.gas.z * focal / s.z, 3 * ps, 120 * ps);
         float ion = b.gas.y;
         float brightness = ion * ion * b.pos.w * b.gas.w / (size * size);
-        if (dusty) brightness *= attn[iid].r; // Hα is red
+        if (dusty) brightness *= attn[bi].r; // Hα is red
         float a = 1 - exp(-u.misc.z * brightness);
         return makeSprite(s, size / 2, float4(float3(1.0, 0.16, 0.22) * a, 0), vid, u);
     }
@@ -233,8 +309,19 @@ fragment float4 lensFragment(Screen in [[stage_in]], texture2d<float> src [[text
     return src.sample(linearSampler, q / size);
 }
 
-fragment float4 copyFragment(Screen in [[stage_in]], texture2d<float> src [[texture(0)]]) {
-    return src.sample(linearSampler, in.uv);
+// downFragment averages the div×div source pixels of every target pixel (bilinear taps at the
+// corners of 2×2 blocks), so small stars do not flicker in and out of the bloom when they move.
+fragment float4 downFragment(Screen in [[stage_in]], texture2d<float> src [[texture(0)]], constant float &div [[buffer(0)]]) {
+    float2 texel = 1 / float2(src.get_width(), src.get_height());
+    int n = max(1, int(div / 2 + 0.5));
+    float4 c = 0;
+    for (int y = 0; y < n; y++) {
+        for (int x = 0; x < n; x++) {
+            float2 o = (float2(x, y) * 2 + 1 - float(n)) * texel;
+            c += src.sample(linearSampler, in.uv + o);
+        }
+    }
+    return c / float(n * n);
 }
 
 // blurFragment is one direction of the separable 9-tap Gaussian of the bloom.

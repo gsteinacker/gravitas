@@ -13,6 +13,7 @@ struct Uniforms {
     var eye: SIMD4<Float>
     var misc: SIMD4<Float>
     var haze: SIMD4<Float>
+    var pop: SIMD4<Float>
 }
 
 /// Camera is the projection of view.Camera, for the camera position used by the Doppler shift.
@@ -34,10 +35,12 @@ struct Camera {
 
 @MainActor
 final class Renderer: NSObject, MTKViewDelegate {
+    /// Sprites per body in the star pass: core, glow and member stars (POPULATION in Galaxy.metal).
+    static let populationSprites = 8
     let device: MTLDevice
     let queue: MTLCommandQueue
     let engine: Engine
-    private var sprite, dust, fog, trail, compose, lens, copy, blur, final, hole: MTLRenderPipelineState!
+    private var sprite, dust, fog, trail, compose, lens, down, blur, final, hole: MTLRenderPipelineState!
     private var stars, dustImage, fogA, fogB, trailA, trailB, scene, lensed, small, blurA, blurB, sky: MTLTexture?
     private var bodies: [MTLBuffer] = []
     private var attn: [MTLBuffer] = [] // dust transmission per body, one per frame in flight
@@ -91,7 +94,7 @@ final class Renderer: NSObject, MTKViewDelegate {
             trail = try pipe("screenVertex", "trailFragment", hdr)
             compose = try pipe("screenVertex", "composeFragment", hdr)
             lens = try pipe("screenVertex", "lensFragment", hdr)
-            copy = try pipe("screenVertex", "copyFragment", hdr)
+            down = try pipe("screenVertex", "downFragment", hdr)
             blur = try pipe("screenVertex", "blurFragment", hdr)
             final = try pipe("screenVertex", "finalFragment", .bgra8Unorm)
             hole = try pipe("holeVertex", "holeFragment", .bgra8Unorm, blend: (.one, .oneMinusSourceAlpha))
@@ -221,7 +224,8 @@ final class Renderer: NSObject, MTKViewDelegate {
             cam: SIMD4(Float(info.pitch), Float(info.distance), Float(info.meanStarMass), Float(info.c)),
             eye: SIMD4(Float(eye.x), Float(eye.y), Float(eye.z), Float(look.exposure)),
             misc: SIMD4(Float(fx), Float(info.youngAge), Float(look.emNorm), Float(look.dustKappa)),
-            haze: SIMD4(look.darkAlpha, look.gasAlpha, Float(look.worldHoles), 0))
+            haze: SIMD4(look.darkAlpha, look.gasAlpha, Float(look.worldHoles), 0),
+            pop: SIMD4(look.popRadius, look.sfDensity, look.sfLight, 0))
     }
 
     private func screenPass(_ cmd: MTLCommandBuffer, _ target: MTLTexture, _ p: MTLRenderPipelineState, load: MTLLoadAction = .dontCare,
@@ -266,8 +270,8 @@ final class Renderer: NSObject, MTKViewDelegate {
         e.setVertexBytes(&u, length: MemoryLayout<Uniforms>.stride, index: 1)
         e.setVertexBuffer(attn[slot], offset: 0, index: 2)
         e.setVertexBytes(worldHoles, length: 16 * 16, index: 3)
-        if filled > 0 {
-            e.drawPrimitives(type: .triangleStrip, vertexStart: 0, vertexCount: 4, instanceCount: filled)
+        if filled > 0 { // every body draws as a population of populationSprites (Galaxy.metal)
+            e.drawPrimitives(type: .triangleStrip, vertexStart: 0, vertexCount: 4, instanceCount: filled * Renderer.populationSprites)
         }
         e.endEncoding()
 
@@ -334,7 +338,11 @@ final class Renderer: NSObject, MTKViewDelegate {
         }
         var strength: Float = 0
         if fx & Engine.glow != 0 {
-            screenPass(cmd, small!, copy) { e in e.setFragmentTexture(out, index: 0) }
+            var div = Float(out.width) / Float(small!.width)
+            screenPass(cmd, small!, down) { e in
+                e.setFragmentTexture(out, index: 0)
+                e.setFragmentBytes(&div, length: 4, index: 0)
+            }
             var h = SIMD2<Float>(1, 0), v = SIMD2<Float>(0, 1)
             screenPass(cmd, blurA!, blur) { e in
                 e.setFragmentTexture(small, index: 0)

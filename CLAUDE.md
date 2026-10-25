@@ -20,6 +20,7 @@ App braucht Xcode.
 - Der Screenshot-Modus gibt eine Zeile `shot …: bodies= fps= steps_per_s= substeps= gas_substeps= t= profile= auto_stars= gpu=` aus. Damit lassen sich
   Messungen ohne Bildauswertung machen. Vorher prüfen, dass keine andere App läuft (`pgrep -fl Galaxy`).
 - Effekte für Screenshots über `-fx glow,lens,doppler,trails` wählen (Tasten gehen im Screenshot-Modus nicht).
+  Ausschnitt über `-zoom 6 -target x,y,z` (Weltkoordinaten), z. B. um die Auflösung in Einzelsterne zu prüfen.
 - Screenshots sind fest (50 000 Sterne, Faktor 1, ohne Einstellungen). `-adapt` misst wie die App (Kalibrierung,
   Regler), `-scale 2` rendert Retina, `-lang de|en` wählt die Sprache, `-hud`/`-help`/`-explain level:topic` zeigen
   Statuszeile, Tastenübersicht, Lernmodus, `-launch x,y[,preset]` plant einen Start (Anteile der Bildgröße).

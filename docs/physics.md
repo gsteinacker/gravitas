@@ -92,6 +92,16 @@ SPH-Gas mit Druck, Viskosität, Kühlung auf eine Untergrenze und Sternentstehun
 zusammenströmendem Gas. Junge Sterne werden blau gezeichnet (`o` zeigt das Gas selbst). Szenen 1, 2, 6, 7 haben
 15 % Gas in der Scheibe bei 10⁴ K.
 
+Schwelle in den Galaxienszenen: `sfDensity` = 0,002 Simulationseinheiten (≈ 0,1 cm⁻³, Springel & Hernquist 2003).
+Die geglättete Gasdichte der Scheibe liegt bei 0,005 (Median) bis 0,1 (99 %). Die frühere Schwelle 0,5
+(≈ 20 cm⁻³) erreichte sie nie, deshalb entstanden fast keine Sterne. Gemessen (T-070, 60k Teilchen) sind es jetzt
+rund 0,25 M☉/Jahr in Szene 1, in der Größenordnung der Milchstraße (1–2 M☉/Jahr).
+
+Darstellung als Sternpopulationen (T-070, `internal/engine/population.go`, Lernthema „populations“): Jedes
+Sternteilchen ist eine Population von 10⁵–10⁶ M☉. Es wird als Lichthof der Größe ε gezeichnet, dazu kommen
+Einzelsterne, die beim Hineinzoomen aufgelöst werden. Sternbildendes Gas leuchtet mit dem erwarteten Licht seiner
+jungen Sterne als bläulicher Schleier. Das ist reine Darstellung, die Dynamik bleibt unverändert.
+
 Zeitschritt: Gas verlangt Δt ≤ 0,3 h / v_sig (Courant, v_sig = c_i + c_j − 3 min(0, v_ij·r̂), Monaghan 1997).
 Ist der Szenen-Schritt länger, wird er in gleiche Teile zerlegt (höchstens 64, HUD „gas N“). Ohne das
 heizt sich Gas in Schocks bei Galaxienverschmelzungen explizit unbegrenzt auf und die Rechnung explodiert.

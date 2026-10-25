@@ -23,6 +23,8 @@ type Look struct {
 	// World are all black holes in world space with their Schwarzschild radius (0 without c), for
 	// the gravitational redshift of the stars around them.
 	World [][4]float32
+	// Pop draws star particles as stellar populations and star-forming gas (T-070).
+	Pop Population
 }
 
 // Hole is a black hole on screen, in render pixels.
@@ -90,6 +92,10 @@ func (e *Engine) Prepare(bodies, attn []float32, info FrameInfo, w, h, ps float6
 	l.look.Holes = l.look.Holes[:0]
 	l.look.World = l.look.World[:0]
 	mean := math.Max(info.MeanStarMass, 1e-12)
+	l.look.Pop = e.population(info.MeanStarMass)
+	starSprite := func(rel, depth float64) (alpha, size float64) {
+		return math.Min(1, 0.55+0.2*rel), math.Max(3.5*ps, math.Min(28*ps, 0.05*math.Cbrt(rel)*focal/depth))
+	}
 	l.look.DustKappa = 0
 	if fx.Dust {
 		l.look.DustKappa = l.buildDust(bodies, n, &vw, w, h, focal, ps, e.Scene.DustOpacity())
@@ -125,19 +131,22 @@ func (e *Engine) Prepare(bodies, attn []float32, info FrameInfo, w, h, ps float6
 		cell := cy*gridW + cx
 		switch kind {
 		case sim.Star:
-			rel := float64(b[3]) / mean
-			size := math.Max(3.5*ps, math.Min(28*ps, 0.05*math.Cbrt(rel)*focal/depth))
-			alpha := math.Min(1, 0.55+0.2*rel)
+			alpha, size := starSprite(float64(b[3])/mean, depth)
 			if fx.Dust {
 				alpha *= float64(l.attn[4*i+1]) // the exposure sees the attenuated light
 			}
-			if age := float64(b[8]); age >= 0 && age < info.YoungAge {
-				f := 1 - age/info.YoungAge
-				alpha *= 1 + 1.5*f
-				size *= 1 + 0.5*f
-			}
+			ya, ys := youngBoost(float64(b[8]), info.YoungAge)
+			alpha *= ya
+			size *= ys
 			l.light[cell] += float32(alpha * spriteMean * size * size)
 		case sim.Gas:
+			if w := l.look.Pop.starFormingLight(float64(b[11]), float64(b[9])); w > 0 {
+				alpha, size := starSprite(float64(b[3])/mean, depth)
+				if fx.Dust {
+					alpha *= float64(l.attn[4*i+2]) // young stars are blue
+				}
+				l.light[cell] += float32(w * alpha * spriteMean * size * size)
+			}
 			if fx.Gas {
 				s := hazeSize(depth)
 				l.gasGr[cell] += float32(spriteMean * s * s / (cw * ch))

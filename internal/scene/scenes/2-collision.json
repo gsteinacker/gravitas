@@ -10,7 +10,8 @@
     "dark-matter",
     "star-formation",
     "gas",
-    "gravity"
+    "gravity",
+    "populations"
   ],
   "info": "1 unit = 2.5 kpc, 2e10 Msun (185 km/s); Hernquist dark matter halos; c reduced to 10 (real ~1600)",
   "yearsPerUnit": 13200000.0,
@@ -20,7 +21,7 @@
     "c": 10,
     "gas": {
       "coolTime": 0.5,
-      "sfDensity": 0.5,
+      "sfDensity": 0.002,
       "sfEfficiency": 0.02,
       "youngAge": 5
     }
