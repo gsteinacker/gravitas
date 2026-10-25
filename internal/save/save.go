@@ -17,7 +17,7 @@ import (
 
 // Format is the version of the file layout. Versions 1 (no gas fields) and 2 (no radiation
 // fields) are still readable.
-const Format = 3
+const Format = 4
 
 // Extension of saved states.
 const Extension = ".galaxy"
@@ -47,6 +47,8 @@ type File struct {
 	U, Born          []float64   // since format 2: gas internal energy, birth time of stars from gas
 	Lum, Ion, H      []float64   // since format 3: ionizing luminosity, ionized fraction, smoothing length
 	Forces           *sim.Forces // since format 3: last force evaluation, for an exact continuation
+	SpinX, SpinY     []float64   // since format 4: angular momentum of black holes
+	SpinZ            []float64
 }
 
 // Capture copies the simulation. Call it on the simulation goroutine (sim.Runner.Do).
@@ -61,6 +63,7 @@ func Capture(m *sim.Simulation, sp *scene.Spec, cam Camera) *File {
 		U: slices.Clone(s.U), Born: slices.Clone(s.Born),
 		Lum: slices.Clone(s.Lum), Ion: slices.Clone(s.Ion), H: slices.Clone(s.H),
 		Forces: m.LastForces(),
+		SpinX:  slices.Clone(s.SpinX), SpinY: slices.Clone(s.SpinY), SpinZ: slices.Clone(s.SpinZ),
 	}
 }
 
@@ -78,6 +81,9 @@ func (f *File) State() *sim.State {
 		}
 		if i < len(f.Lum) {
 			b.Lum = f.Lum[i]
+		}
+		if i < len(f.SpinX) {
+			b.Spin = vec.Vec3{X: f.SpinX[i], Y: f.SpinY[i], Z: f.SpinZ[i]}
 		}
 		s.Add(b)
 		if i < len(f.Born) {

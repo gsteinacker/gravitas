@@ -373,7 +373,7 @@ final class Renderer: NSObject, MTKViewDelegate {
             e.setRenderPipelineState(hole)
             e.setVertexBytes(holes, length: holes.count * 16, index: 0)
             e.setVertexBytes(&u, length: MemoryLayout<Uniforms>.stride, index: 1)
-            e.drawPrimitives(type: .triangleStrip, vertexStart: 0, vertexCount: 4, instanceCount: holes.count)
+            e.drawPrimitives(type: .triangleStrip, vertexStart: 0, vertexCount: 4, instanceCount: holes.count / 2)
         }
         e.endEncoding()
     }
@@ -480,6 +480,7 @@ final class Renderer: NSObject, MTKViewDelegate {
         lensHoles.removeAll(keepingCapacity: true)
         for h in raw.prefix(Int(look.holes)) {
             holes.append(SIMD4(h.x, h.y, h.r, h.rings))
+            holes.append(SIMD4(h.spin, h.axisX, h.axisY, 0))
             let e = 5 * h.physR // Einstein radius on screen: 5 horizon radii
             lensHoles.append(SIMD4(h.x, h.y, e * e, 0))
         }

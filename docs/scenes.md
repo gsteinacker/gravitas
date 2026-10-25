@@ -36,7 +36,7 @@ Spielstände (F5/F9, `-load`) sind dagegen **exakte Abzüge** eines laufenden Zu
 |--------|--------|--------------|
 | `galaxy` | `mass`, `diskFraction`, `diskScale`, `diskMin`, `diskMax`, `thickness`, `dispersion` (oder `toomreQ` und `coldFraction`), `haloProfile` (`plummer`/`hernquist`), `haloScale`, `haloCut` (plummer), `haloMax` (hernquist), `darkFraction`, `gasFraction`, `gasTemperature` (K), `bulgeFraction`, `bulgeScale`, `holeMass`, `inclination`, `orientation`, `position`, `velocity`, `seed` | Exponentielle Scheibe auf Kreisbahnen (aus der eingeschlossenen Masse von Loch, Bulge, Scheibe und Halo), optional Halo aus Dunkler Materie (`darkFraction` der Teilchen) und Hernquist-Bulge alter Sterne (`bulgeFraction` der Sternmasse, Skala `bulgeScale`, isotrope Jeans-Geschwindigkeiten) |
 | `plummer` | `mass`, `scale`, `position`, `velocity`, `seed` | Sternhaufen im Virialgleichgewicht |
-| `hole` | `mass`, `position`, `velocity` | einzelnes Schwarzes Loch |
+| `hole` | `mass`, `position`, `velocity`, `spin` (a*, 0–0,998), `spinAxis` (Standard +z) | einzelnes Schwarzes Loch, mit `spin` rotierend (Kerr, nur mit c) |
 | `orbits` | `mass` (zentrales Loch), `aScale`, `orbits[]` (`a`, `e`, `i`, `node`, `peri`, `anomaly`), `starMass`, `background`, `backgroundA`, `backgroundMass`, `seed` | Kepler-Bahnen um ein Loch, z. B. aus Bahnelementen der Literatur |
 
 ## Eingebaute Szenen

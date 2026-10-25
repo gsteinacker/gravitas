@@ -24,8 +24,9 @@ type Body struct {
 	Pos, Vel vec.Vec3
 	Mass     float64
 	Kind     Kind
-	U        float64 // specific internal energy (gas)
-	Lum      float64 // ionizing luminosity (relative); > 0 makes the body a source
+	U        float64  // specific internal energy (gas)
+	Lum      float64  // ionizing luminosity (relative); > 0 makes the body a source
+	Spin     vec.Vec3 // angular momentum of a black hole (kerr.go), zero for other bodies
 }
 
 // State stores all bodies as struct-of-arrays. Slices always have equal length.
@@ -44,6 +45,8 @@ type State struct {
 	// Lum > 0 marks a source of ionizing radiation (relative strength); Ion is the ionized
 	// fraction of gas (ionize.go).
 	Lum, Ion []float64
+	// SpinX/Y/Z is the angular momentum J of a black hole (kerr.go), zero for other bodies.
+	SpinX, SpinY, SpinZ []float64
 
 	nextID uint64
 }
@@ -57,6 +60,7 @@ func NewState(n int) *State {
 		AccX: f(), AccY: f(), AccZ: f(),
 		Mass: f(), Kind: make([]Kind, 0, n), Alive: make([]bool, 0, n), ID: make([]uint64, 0, n),
 		U: f(), H: f(), Rho: f(), Born: f(), Lum: f(), Ion: f(),
+		SpinX: f(), SpinY: f(), SpinZ: f(),
 	}
 }
 
@@ -75,6 +79,7 @@ func (s *State) Add(b Body) int {
 	s.U, s.H, s.Rho = append(s.U, b.U), append(s.H, 0), append(s.Rho, 0)
 	s.Born = append(s.Born, math.Inf(-1))
 	s.Lum, s.Ion = append(s.Lum, b.Lum), append(s.Ion, 0)
+	s.SpinX, s.SpinY, s.SpinZ = append(s.SpinX, b.Spin.X), append(s.SpinY, b.Spin.Y), append(s.SpinZ, b.Spin.Z)
 	return s.Len() - 1
 }
 
@@ -87,6 +92,7 @@ func (s *State) Body(i int) Body {
 		Kind: s.Kind[i],
 		U:    s.U[i],
 		Lum:  s.Lum[i],
+		Spin: s.Spin(i),
 	}
 }
 
@@ -103,6 +109,7 @@ func (s *State) Compact() {
 		s.Mass[j], s.Kind[j], s.Alive[j], s.ID[j] = s.Mass[i], s.Kind[i], true, s.ID[i]
 		s.U[j], s.H[j], s.Rho[j], s.Born[j] = s.U[i], s.H[i], s.Rho[i], s.Born[i]
 		s.Lum[j], s.Ion[j] = s.Lum[i], s.Ion[i]
+		s.SpinX[j], s.SpinY[j], s.SpinZ[j] = s.SpinX[i], s.SpinY[i], s.SpinZ[i]
 		j++
 	}
 	s.PosX, s.PosY, s.PosZ = s.PosX[:j], s.PosY[:j], s.PosZ[:j]
@@ -111,4 +118,5 @@ func (s *State) Compact() {
 	s.Mass, s.Kind, s.Alive, s.ID = s.Mass[:j], s.Kind[:j], s.Alive[:j], s.ID[:j]
 	s.U, s.H, s.Rho, s.Born = s.U[:j], s.H[:j], s.Rho[:j], s.Born[:j]
 	s.Lum, s.Ion = s.Lum[:j], s.Ion[:j]
+	s.SpinX, s.SpinY, s.SpinZ = s.SpinX[:j], s.SpinY[:j], s.SpinZ[:j]
 }

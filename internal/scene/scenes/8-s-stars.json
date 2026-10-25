@@ -9,7 +9,8 @@
     "black-holes",
     "isco",
     "speed-of-light",
-    "units"
+    "units",
+    "kerr"
   ],
   "info": "orbits of the S-stars, 1 unit = 1000 AU, real c; press < to shrink c and watch the orbits precess",
   "yearsPerUnit": 2.43,

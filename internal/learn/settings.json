@@ -2,7 +2,10 @@
   {
     "id": "speed",
     "topic": "units",
-    "title": {"de": "Schritte pro Sekunde", "en": "Steps per second"},
+    "title": {
+      "de": "Schritte pro Sekunde",
+      "en": "Steps per second"
+    },
     "levels": {
       "school": {
         "de": "Die Simulation rechnet in kleinen Zeitschritten, wie ein Daumenkino. Hier stellst du ein, wie viele Bilder pro Sekunde gerechnet werden. Mehr Schritte bedeuten, dass die Zeit schneller vergeht. Genauer wird die Rechnung dadurch nicht.",
@@ -22,7 +25,10 @@
     "id": "c",
     "topic": "speed-of-light",
     "chart": "c",
-    "title": {"de": "Lichtgeschwindigkeit c", "en": "Speed of light c"},
+    "title": {
+      "de": "Lichtgeschwindigkeit c",
+      "en": "Speed of light c"
+    },
     "levels": {
       "school": {
         "de": "Nichts ist schneller als das Licht. In der App kannst du das Licht langsamer machen. Dann werden Schwarze Löcher größer, weil ihr „Rand ohne Wiederkehr“ von c abhängt. Sterne in ihrer Nähe kommen dann nicht über die Lichtgeschwindigkeit hinaus, und Farbverschiebungen werden stärker.",
@@ -42,7 +48,10 @@
     "id": "gravity",
     "topic": "retarded-gravity",
     "chart": "retarded",
-    "title": {"de": "Gravitation der Löcher", "en": "Black hole gravity"},
+    "title": {
+      "de": "Gravitation der Löcher",
+      "en": "Black hole gravity"
+    },
     "levels": {
       "school": {
         "de": "Auch die Schwerkraft breitet sich mit Lichtgeschwindigkeit aus. „sofort“ tut so, als käme sie ohne Verzögerung an. „retardiert“ lässt jeden Stern das Loch dort spüren, wo es war, als die Schwerkraft losgeschickt wurde.",
@@ -61,7 +70,10 @@
   {
     "id": "darkGravity",
     "topic": "dark-matter",
-    "title": {"de": "Dunkle Materie wirkt", "en": "Dark matter gravity"},
+    "title": {
+      "de": "Dunkle Materie wirkt",
+      "en": "Dark matter gravity"
+    },
     "levels": {
       "school": {
         "de": "Galaxien stecken in einer unsichtbaren Wolke aus Dunkler Materie. Sie hält die Sterne mit ihrer Schwerkraft zusammen. Schalte sie aus, und schau, wie die Galaxie auseinanderfliegt.",
@@ -81,7 +93,10 @@
     "id": "theta",
     "topic": "gravity",
     "chart": "theta",
-    "title": {"de": "Genauigkeit θ", "en": "Accuracy θ"},
+    "title": {
+      "de": "Genauigkeit θ",
+      "en": "Accuracy θ"
+    },
     "levels": {
       "school": {
         "de": "Jeder Stern zieht an jedem anderen. Bei 50 000 Sternen wären das über eine Milliarde Paare pro Schritt. Deshalb fasst die App weit entfernte Sterngruppen zu einem Punkt zusammen. θ bestimmt, wie großzügig sie das tut: kleiner heißt genauer, aber langsamer.",
@@ -100,7 +115,10 @@
   {
     "id": "tool",
     "topic": "orbital-speeds",
-    "title": {"de": "Werkzeug", "en": "Tool"},
+    "title": {
+      "de": "Werkzeug",
+      "en": "Tool"
+    },
     "levels": {
       "school": {
         "de": "Ein Klick in das Bild setzt ein neues Objekt ein: ein Schwarzes Loch, einen Sternhaufen, eine Gaswolke oder eine ganze Galaxie. Mit den Griffen stellst du ein, wohin und wie schnell es fliegt. Dann startest du es.",
@@ -120,7 +138,10 @@
     "id": "mass",
     "topic": "black-holes",
     "chart": "mass",
-    "title": {"de": "Masse", "en": "Mass"},
+    "title": {
+      "de": "Masse",
+      "en": "Mass"
+    },
     "levels": {
       "school": {
         "de": "Wie schwer das nächste Objekt wird. Ein schweres Schwarzes Loch kann eine Galaxie durcheinanderwirbeln, ein leichtes fällt kaum auf. Je schwerer ein Loch, desto größer ist sein schwarzer Rand.",
@@ -137,9 +158,34 @@
     }
   },
   {
+    "id": "holeSpin",
+    "topic": "kerr",
+    "title": {
+      "de": "Spin des Schwarzen Lochs",
+      "en": "Black hole spin"
+    },
+    "levels": {
+      "school": {
+        "de": "Echte Schwarze Löcher drehen sich, manche fast so schnell, wie es überhaupt geht. Ein schnell drehendes Loch ist kleiner, und Sterne, die mit der Drehung kreisen, können ihm viel näher kommen als Sterne, die gegen die Drehung kreisen.",
+        "en": "Real black holes spin, some almost as fast as possible. A fast-spinning hole is smaller, and stars orbiting with the spin can come much closer than stars orbiting against it."
+      },
+      "lay": {
+        "de": "Der Spin a* reicht von 0 (keine Drehung) bis 0,998. Mehr verhindert die Strahlung, die das Loch beim Wachsen schluckt. Mit wachsendem Spin schrumpft der Horizont auf bis zur Hälfte. Die innerste stabile Bahn rückt für mitlaufende Bahnen von 6 auf fast 1 r_g heran und weicht für gegenläufige bis 9 r_g zurück. Die Ringe um das Loch werden dadurch einseitig. Was das Loch schluckt, ändert seinen Spin mit.",
+        "en": "The spin a* ranges from 0 (no rotation) to 0.998; the radiation the hole swallows while growing prevents more. With growing spin the horizon shrinks to as little as half. The innermost stable orbit moves in from 6 to almost 1 r_g for orbits with the spin and out to 9 r_g against it, so the rings around the hole become lopsided. What the hole swallows changes its spin."
+      },
+      "physics": {
+        "de": "J = a* GM²/c entlang der Normalen der Startebene. r₊ = r_g(1 + √(1 − a*²)), ISCO und Photonenbahn nach Bardeen, Press & Teukolsky 1972. Akkretion und Verschmelzung addieren Spins und Bahndrehimpuls, a* ≤ 0,998 (Thorne 1974). Modellgrenze: Die Bahnen bleiben Paczyński-Wiita (Schwarzschild), Frame-Dragging fehlt (T-072).",
+        "en": "J = a* GM²/c along the launch plane normal. r₊ = r_g(1 + √(1 − a*²)), ISCO and photon orbit after Bardeen, Press & Teukolsky 1972. Accretion and mergers add spins and orbital angular momentum, a* ≤ 0.998 (Thorne 1974). Model limit: orbits stay Paczyński–Wiita (Schwarzschild); frame dragging is missing (T-072)."
+      }
+    }
+  },
+  {
     "id": "tilt",
     "topic": "tides",
-    "title": {"de": "Neigung der Galaxie", "en": "Galaxy tilt"},
+    "title": {
+      "de": "Neigung der Galaxie",
+      "en": "Galaxy tilt"
+    },
     "levels": {
       "school": {
         "de": "Wie schräg die neue Galaxie zur Bahn steht. Bei 0° dreht sie sich in dieselbe Richtung, in die sie fliegt. Dann reißen bei einer Begegnung lange Arme heraus. Bei 180° dreht sie andersherum und bleibt ruhiger.",
@@ -158,7 +204,10 @@
   {
     "id": "cloudTemp",
     "topic": "gas-clouds",
-    "title": {"de": "Temperatur der Wolke", "en": "Cloud temperature"},
+    "title": {
+      "de": "Temperatur der Wolke",
+      "en": "Cloud temperature"
+    },
     "levels": {
       "school": {
         "de": "Warmes Gas drückt nach außen, kaltes nicht. Eine kalte Wolke fällt durch ihre eigene Schwerkraft in sich zusammen, und es entstehen Sterne. Eine heiße bleibt aufgebläht.",
@@ -177,7 +226,10 @@
   {
     "id": "cloudTurb",
     "topic": "gas-clouds",
-    "title": {"de": "Turbulenz der Wolke", "en": "Cloud turbulence"},
+    "title": {
+      "de": "Turbulenz der Wolke",
+      "en": "Cloud turbulence"
+    },
     "levels": {
       "school": {
         "de": "Gas in Wolken wirbelt wild durcheinander. Viel Wirbeln hält die Wolke auseinander wie Wärme. Wenig Wirbeln lässt sie zusammenfallen.",
@@ -196,7 +248,10 @@
   {
     "id": "launch",
     "topic": "orbital-speeds",
-    "title": {"de": "Start planen", "en": "Planning a launch"},
+    "title": {
+      "de": "Start planen",
+      "en": "Planning a launch"
+    },
     "levels": {
       "school": {
         "de": "Bevor ein Objekt losfliegt, kannst du es verschieben, anheben und mit dem Pfeil zielen. Die Knöpfe setzen typische Geschwindigkeiten: in Ruhe, auf einer Kreisbahn, schnell genug zum Entkommen oder direkt zur Mitte.",
@@ -215,7 +270,10 @@
   {
     "id": "glow",
     "topic": "populations",
-    "title": {"de": "Leuchten", "en": "Glow"},
+    "title": {
+      "de": "Leuchten",
+      "en": "Glow"
+    },
     "levels": {
       "school": {
         "de": "Helle Sterne bekommen einen weichen Lichtschein, wie auf Fotos durch ein Teleskop.",
@@ -234,7 +292,10 @@
   {
     "id": "trails",
     "topic": "gravity",
-    "title": {"de": "Spuren", "en": "Trails"},
+    "title": {
+      "de": "Spuren",
+      "en": "Trails"
+    },
     "levels": {
       "school": {
         "de": "Sterne ziehen leuchtende Spuren hinter sich her. So siehst du ihre Bahnen.",
@@ -253,7 +314,10 @@
   {
     "id": "lens",
     "topic": "lensing",
-    "title": {"de": "Gravitationslinse", "en": "Gravitational lensing"},
+    "title": {
+      "de": "Gravitationslinse",
+      "en": "Gravitational lensing"
+    },
     "levels": {
       "school": {
         "de": "Schwarze Löcher verbiegen das Licht von Sternen dahinter. Um ein Loch herum siehst du die Sterne verzerrt, manchmal als Ring.",
@@ -272,7 +336,10 @@
   {
     "id": "doppler",
     "topic": "doppler",
-    "title": {"de": "Doppler-Farben", "en": "Doppler colors"},
+    "title": {
+      "de": "Doppler-Farben",
+      "en": "Doppler colors"
+    },
     "levels": {
       "school": {
         "de": "Sterne, die auf dich zufliegen, werden bläulicher. Sterne, die sich entfernen, werden rötlicher. Bei echter Lichtgeschwindigkeit sieht man das nur mit Messgeräten, hier mit langsamem Licht auch mit bloßem Auge.",
@@ -292,7 +359,10 @@
     "id": "dust",
     "topic": "dust",
     "chart": "dust",
-    "title": {"de": "Staub", "en": "Dust"},
+    "title": {
+      "de": "Staub",
+      "en": "Dust"
+    },
     "levels": {
       "school": {
         "de": "Zwischen den Sternen schwebt feiner Staub. Er verschluckt Licht und färbt Sterne dahinter rötlich, wie die Sonne beim Untergang. So entstehen die dunklen Bänder in Galaxien.",
@@ -311,7 +381,10 @@
   {
     "id": "gas",
     "topic": "gas",
-    "title": {"de": "Gas zeigen", "en": "Show gas"},
+    "title": {
+      "de": "Gas zeigen",
+      "en": "Show gas"
+    },
     "levels": {
       "school": {
         "de": "Färbt das Gas zwischen den Sternen ein: blau, wo es kalt und neutral ist, grün im Übergang, rot, wo junge Sterne es aufgeheizt haben.",
@@ -330,7 +403,10 @@
   {
     "id": "dark",
     "topic": "dark-matter",
-    "title": {"de": "Dunkle Materie zeigen", "en": "Show dark matter"},
+    "title": {
+      "de": "Dunkle Materie zeigen",
+      "en": "Show dark matter"
+    },
     "levels": {
       "school": {
         "de": "Macht die unsichtbare Dunkle Materie als violetten Nebel sichtbar. In Wirklichkeit kann man sie nicht sehen, nur ihre Schwerkraft spüren.",
@@ -349,7 +425,10 @@
   {
     "id": "level",
     "topic": "",
-    "title": {"de": "Zielgruppe des Lernmodus", "en": "Learning mode audience"},
+    "title": {
+      "de": "Zielgruppe des Lernmodus",
+      "en": "Learning mode audience"
+    },
     "levels": {
       "school": {
         "de": "Wähle, wie die Erklärungen geschrieben sind: einfach, mit Zusammenhängen oder mit Formeln.",
@@ -369,7 +448,10 @@
     "id": "profile",
     "topic": "",
     "chart": "profile",
-    "title": {"de": "Leistungsprofil", "en": "Performance profile"},
+    "title": {
+      "de": "Leistungsprofil",
+      "en": "Performance profile"
+    },
     "levels": {
       "school": {
         "de": "Bestimmt, wie viele Sterne die App für deinen Rechner auswählt. „Niedrig“ ist flüssig mit weniger Sternen, „Maximal“ hat viele Sterne, läuft aber langsamer.",
@@ -388,7 +470,10 @@
   {
     "id": "stars",
     "topic": "populations",
-    "title": {"de": "Sterne pro Szene", "en": "Stars per scene"},
+    "title": {
+      "de": "Sterne pro Szene",
+      "en": "Stars per scene"
+    },
     "levels": {
       "school": {
         "de": "Wie viele Punkte die Simulation berechnet. Mehr Punkte sehen voller aus, brauchen aber mehr Rechenzeit. Jeder Punkt steht für viele echte Sterne.",
@@ -407,7 +492,10 @@
   {
     "id": "gpu",
     "topic": "",
-    "title": {"de": "Grafikkarte (Metal)", "en": "GPU (Metal)"},
+    "title": {
+      "de": "Grafikkarte (Metal)",
+      "en": "GPU (Metal)"
+    },
     "levels": {
       "school": {
         "de": "Lässt die Grafikkarte beim Rechnen der Schwerkraft helfen. Meist ist das schneller.",

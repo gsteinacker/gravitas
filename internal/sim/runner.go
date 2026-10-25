@@ -1,6 +1,8 @@
 package sim
 
 import (
+	"galaxy/internal/vec"
+
 	"context"
 	"math"
 	"sync"
@@ -11,12 +13,13 @@ import (
 // Snapshot is a render-friendly copy of the state, published after every step.
 type Snapshot struct {
 	X, Y, Z, Mass  []float32
-	VX, VY, VZ     []float32 // coordinate velocities v = u/γ
-	Age            []float32 // stars born from gas: time since birth; -1 for initial stars
-	GasU, GasRho   []float32 // gas: specific internal energy and density (0 otherwise)
-	GasH           []float32 // gas: smoothing length
-	GasIon         []float32 // gas: ionized fraction
-	YoungAge       float64   // stars younger than this are drawn young
+	VX, VY, VZ     []float32  // coordinate velocities v = u/γ
+	Age            []float32  // stars born from gas: time since birth; -1 for initial stars
+	GasU, GasRho   []float32  // gas: specific internal energy and density (0 otherwise)
+	GasH           []float32  // gas: smoothing length
+	GasIon         []float32  // gas: ionized fraction
+	Spins          []HoleSpin // angular momentum of every black hole
+	YoungAge       float64    // stars younger than this are drawn young
 	StarsFormed    int
 	Kind           []Kind
 	Time           float64
@@ -31,6 +34,12 @@ type Snapshot struct {
 }
 
 func (sn *Snapshot) Len() int { return len(sn.Mass) }
+
+// HoleSpin is the angular momentum J of the black hole with body index Index.
+type HoleSpin struct {
+	Index int
+	J     vec.Vec3
+}
 
 func (sn *Snapshot) fill(m *Simulation) {
 	s := m.State
@@ -60,6 +69,12 @@ func (sn *Snapshot) fill(m *Simulation) {
 			sn.GasIon[i] = float32(s.Ion[i])
 		}
 	})
+	sn.Spins = sn.Spins[:0]
+	for i, k := range s.Kind {
+		if k == BlackHole {
+			sn.Spins = append(sn.Spins, HoleSpin{Index: i, J: s.Spin(i)})
+		}
+	}
 	sn.Time, sn.Steps, sn.C, sn.Substeps, sn.Gravity = m.Time, m.Steps, m.Params.C, m.Substeps, m.Params.Gravity
 	sn.HydroSubsteps = m.HydroSubsteps
 	sn.DarkMatterOff = m.Params.DarkMatterOff

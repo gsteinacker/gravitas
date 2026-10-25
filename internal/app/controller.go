@@ -197,6 +197,8 @@ type Controller struct {
 	GalaxyTilt float64
 	// PlaceNormal and PlaceRadial orient placed galaxies (set by the launch planner); zero: z, x.
 	PlaceNormal, PlaceRadial vec.Vec3
+	// HoleSpin is the spin a* of the next black hole, about PlaceNormal (T-071).
+	HoleSpin float64
 	// CloudK and CloudTurb are the temperature (K) and turbulence (fraction of the virial speed)
 	// of the next gas cloud.
 	CloudK, CloudTurb float64
@@ -551,7 +553,8 @@ func (c *Controller) PlaceAt(pos, vel vec.Vec3) {
 	}
 	if c.Tool == ToolBlackHole {
 		c.Runner.Do(func(m *sim.Simulation) {
-			m.AddBody(sim.Body{Pos: pos, Vel: sim.ProperVelocity(vel, m.Params.C), Mass: mass, Kind: sim.BlackHole})
+			m.AddBody(sim.Body{Pos: pos, Vel: sim.ProperVelocity(vel, m.Params.C), Mass: mass, Kind: sim.BlackHole,
+				Spin: scene.SpinVector(c.HoleSpin, c.PlaceNormal, mass, m.Params.C)})
 		})
 		return
 	}

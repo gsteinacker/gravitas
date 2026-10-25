@@ -1,0 +1,11 @@
+{
+  "id": "kerr",
+  "title": "Rotierende Schwarze Löcher (Kerr)",
+  "keys": "",
+  "short": "Fast alle Schwarzen Löcher drehen sich. Das macht sie kleiner und lässt mitlaufende Sterne näher heran.",
+  "levels": {
+    "school": "Sterne drehen sich, und wenn ein Stern zu einem Schwarzen Loch zusammenfällt, dreht er sich danach noch viel schneller, wie eine Eiskunstläuferin, die die Arme anzieht. Auch alles, was ein Loch schluckt, bringt Drehung mit.\n\nEin drehendes Loch ist kleiner als ein ruhendes gleicher Masse. Es zieht sogar den Raum um sich herum ein wenig mit. Sterne, die in Drehrichtung kreisen, können ihm sehr nahe kommen; Sterne gegen die Drehrichtung stürzen schon weiter draußen hinein. Deshalb sind die Ringe um ein drehendes Loch in der App auf einer Seite enger.",
+    "lay": "Der Spin wird als a* zwischen 0 und 1 angegeben. Beobachtungen deuten bei vielen Löchern auf a* über 0,5 hin, einige liegen nahe am Maximum. Mehr als etwa 0,998 ist nicht möglich: Strahlung aus der Akkretionsscheibe, die ins Loch fällt, bremst die Drehung.\n\nMit dem Spin ändern sich die wichtigen Radien: Der Horizont schrumpft von 2 auf 1 r_g (r_g = GM/c²). Die innerste stabile Kreisbahn liegt für mitlaufende Bahnen bei bis zu 1 r_g statt 6 r_g, für gegenläufige bei bis zu 9 r_g. Eine Akkretionsscheibe reicht deshalb näher heran und setzt bis zu 42 % statt 6 % der Ruheenergie frei. Auch der Schatten im Bild des Event Horizon Telescope ist bei Drehung leicht D-förmig verformt.",
+    "physics": "Kerr-Metrik mit J = a* GM²/c. Horizont r₊ = r_g(1 + √(1 − a*²)); ISCO nach Bardeen, Press & Teukolsky (1972), 6 r_g bei a* = 0, 1 bzw. 9 r_g bei a* → 1 (pro-/retrograd); äquatoriale Photonenbahn 2r_g(1 + cos(⅔ arccos(∓a*))). Bindungsenergie an der ISCO 5,7 % bis 42 %. Thorne-Grenze a* = 0,998 (1974). Frame-Dragging: Knotenpräzession Ω_LT = 2GJ/(c²r³).\n\nIn der Simulation (T-071): Spin als Zustand, Spins und Bahndrehimpuls addieren sich bei Akkretion und Verschmelzung (ohne Abstrahlung durch Gravitationswellen, die bei gleichen Massen a* ≈ 0,69 ergäbe). Gezeichnet werden r₊, ISCO und Photonenring je nach Seite. Modellgrenzen: Die Bahnen folgen weiter dem Paczyński-Wiita-Potential (Schwarzschild). Frame-Dragging, Ergosphäre und Rückstöße bei Verschmelzungen fehlen. Die Linse bleibt die einer Punktmasse."
+  }
+}

@@ -371,36 +371,61 @@ fragment float4 finalFragment(Screen in [[stage_in]], texture2d<float> scene [[t
 
 // ---- black holes ----
 
-struct HoleOut { float4 position [[position]]; float2 uv; float r; float rings; };
+struct HoleOut { float4 position [[position]]; float2 uv; float r; float rings; float spin; float2 axis; };
 
-// Hole instances: x, y (render pixels), drawn radius R, ISCO ring flag.
+// Hole instances, two float4 each: x, y (render pixels), drawn horizon radius R, ISCO ring flag |
+// spin a*, projected spin axis (length sin of its inclination), unused (engine.Hole).
 vertex HoleOut holeVertex(uint vid [[vertex_id]], uint iid [[instance_id]], const device float4 *holes [[buffer(0)]],
                           constant Uniforms &u [[buffer(1)]]) {
-    float4 h = holes[iid];
-    float ext = 3.2 * h.z;
+    float4 h = holes[2 * iid], k = holes[2 * iid + 1];
+    float rg = 1 / (1 + sqrt(max(0.0, 1 - k.x * k.x))); // r_g in units of R = r₊
+    float ext = max(3.2, 9.6 * rg) * h.z;                // out to the retrograde ISCO (9 r_g)
     float2 c = corners[vid];
     float2 p = h.xy + c * ext;
     HoleOut o;
     o.position = float4(p.x / u.view.x * 2 - 1, 1 - p.y / u.view.y * 2, 0, 1);
-    o.uv = c * 3.2; // in units of R
+    o.uv = c * ext / h.z; // in units of R
     o.r = h.z;
     o.rings = h.w;
+    o.spin = k.x;
+    o.axis = k.yz;
     return o;
 }
 
-// holeFragment: glow out to the shadow edge (2.6 R), ISCO ring at 3 R, photon ring at 1.5 R and
-// the black horizon (premultiplied; glow has alpha 0, so it adds light).
+// kerrISCO and kerrPhoton are the equatorial radii in units of r_g (sim/kerr.go).
+float kerrISCO(float a, bool prograde) {
+    float z1 = 1 + pow(1 - a * a, 1.0 / 3) * (pow(1 + a, 1.0 / 3) + pow(max(1 - a, 0.0), 1.0 / 3));
+    float z2 = sqrt(3 * a * a + z1 * z1);
+    float s = sqrt(max(0.0, (3 - z1) * (3 + z1 + 2 * z2)));
+    return 3 + z2 + (prograde ? -s : s);
+}
+
+float kerrPhoton(float a, bool prograde) { return 2 * (1 + cos(2.0 / 3 * acos(prograde ? -a : a))); }
+
+// holeFragment: glow out to the shadow edge, ISCO ring, photon ring and the black horizon
+// (premultiplied; glow has alpha 0, so it adds light). For a rotating hole the rings are drawn
+// smaller on the side whose orbits run with the spin and larger on the other side, by how much the
+// spin axis is tilted across the line of sight (T-071).
 fragment float4 holeFragment(HoleOut in [[stage_in]]) {
     float d = length(in.uv);
     float px = 1 / max(in.r, 1e-3); // one pixel in units of R
     if (d < 1) return float4(0, 0, 0, 1);
+    float rg = 1 / (1 + sqrt(max(0.0, 1 - in.spin * in.spin)));
+    float sinI = min(1.0, length(in.axis));
+    float side = 0; // −1 prograde side … +1 retrograde side
+    if (in.spin > 0 && sinI > 1e-3) {
+        float2 across = float2(-in.axis.y, in.axis.x) / sinI;
+        side = dot(in.uv / max(d, 1e-3), across) * sinI;
+    }
+    float ph = mix(kerrPhoton(in.spin, true), kerrPhoton(in.spin, false), 0.5 + 0.5 * side) * rg;
+    float isco = mix(kerrISCO(in.spin, true), kerrISCO(in.spin, false), 0.5 + 0.5 * side) * rg;
     float4 c = 0;
-    if (d < 2.6) c += float4(18, 7, 2, 0) / 255;
+    if (d < 5.2 * rg) c += float4(18, 7, 2, 0) / 255; // shadow edge ≈ √27 r_g
     float ring = max(1.5 * px, 0.25);
-    float a = 1 - smoothstep(ring / 2, ring / 2 + px, fabs(d - 1.5));
+    float a = 1 - smoothstep(ring / 2, ring / 2 + px, fabs(d - ph));
     c = c * (1 - a * 0.86) + float4(1.0, 0.59, 0.2, 1) * a * 0.86;
     if (in.rings > 0) {
-        float b = 1 - smoothstep(0.5 * px, 1.5 * px, fabs(d - 3));
+        float b = 1 - smoothstep(0.5 * px, 1.5 * px, fabs(d - isco));
         c = c * (1 - b * 0.47) + float4(0.35, 0.24, 0.16, 1) * b * 0.47;
     }
     return c;

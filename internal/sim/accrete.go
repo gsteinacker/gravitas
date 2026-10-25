@@ -95,10 +95,25 @@ func (m *Simulation) merge(h, i int) {
 	})
 	m.ExternalEnergy += dK + dU
 
+	// Angular momentum: both spins plus the orbital angular momentum of the pair about its center
+	// of mass go into the spin of the hole (T-071), capped at the Thorne limit.
+	lx, ly, lz := cross(mh, xh-xn, yh-yn, zh-zn, s.VelX[h]-ux, s.VelY[h]-uy, s.VelZ[h]-uz)
+	mx, my, mz := cross(mi, xi-xn, yi-yn, zi-zn, s.VelX[i]-ux, s.VelY[i]-uy, s.VelZ[i]-uz)
+	s.SpinX[h] += s.SpinX[i] + lx + mx
+	s.SpinY[h] += s.SpinY[i] + ly + my
+	s.SpinZ[h] += s.SpinZ[i] + lz + mz
+	s.SpinX[i], s.SpinY[i], s.SpinZ[i] = 0, 0, 0
+
 	s.PosX[h], s.PosY[h], s.PosZ[h] = xn, yn, zn
 	s.VelX[h], s.VelY[h], s.VelZ[h] = ux, uy, uz
 	s.Mass[h] = mn
+	s.capSpin(h, c)
 	s.Alive[i], s.Mass[i] = false, 0
 }
 
 func sq(dx, dy, dz float64) float64 { return dx*dx + dy*dy + dz*dz }
+
+// cross returns m · (r × v).
+func cross(m, rx, ry, rz, vx, vy, vz float64) (x, y, z float64) {
+	return m * (ry*vz - rz*vy), m * (rz*vx - rx*vz), m * (rx*vy - ry*vx)
+}

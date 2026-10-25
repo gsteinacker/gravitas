@@ -145,6 +145,13 @@ struct InspectorView: View {
                            "Smaller than the scene's resolution: enlarged to twice the softening so its self-gravity acts."))
                         .font(.caption).foregroundStyle(.secondary)
                 }
+                if s.tool == 0 && s.c > 0 {
+                    SliderRow(info: InfoButton(engine, "holeSpin"), title: L("Spin", "Spin"),
+                              help: L("Drehung a* des Lochs um die Achse der Startebene: 0 ruht, 0,998 ist das Maximum",
+                                      "rotation a* of the hole about the launch plane's axis: 0 at rest, 0.998 the maximum"),
+                              value: Binding(get: { s.holeSpin }, set: { engine.set("holeSpin", $0) }), range: 0...0.998,
+                              text: String(format: "a* = %.2f", s.holeSpin))
+                }
                 if s.tool == 3 {
                     SliderRow(info: InfoButton(engine, "tilt"), title: L("Neigung", "Tilt"),
                               help: L("Winkel der Scheibe gegen die Startebene: 0° dreht mit der Galaxie, 180° gegen sie",

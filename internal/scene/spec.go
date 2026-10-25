@@ -52,6 +52,9 @@ type Component struct {
 	Position [3]float64 `json:"position"`
 	Velocity [3]float64 `json:"velocity"`
 	Seed     uint64     `json:"seed,omitempty"`
+	// hole: spin a* ∈ [0, 0.998] about SpinAxis (default +z); needs a speed of light (T-071)
+	Spin     float64    `json:"spin,omitempty"`
+	SpinAxis [3]float64 `json:"spinAxis,omitzero"`
 
 	// galaxy: exponential disk (+ optional dark matter halo, + optional central hole)
 	DiskFraction float64 `json:"diskFraction,omitempty"` // share of Mass in the disk; 0 means 1 (no halo)
@@ -162,7 +165,8 @@ func (sp *Spec) Build(n int) (*sim.State, sim.Params) {
 		case "plummer":
 			AddPlummer(s, counts[i], c.Mass, c.Scale, v3(c.Position), v3(c.Velocity), c.Seed)
 		case "hole":
-			s.Add(sim.Body{Pos: v3(c.Position), Vel: v3(c.Velocity), Mass: c.Mass, Kind: sim.BlackHole})
+			s.Add(sim.Body{Pos: v3(c.Position), Vel: v3(c.Velocity), Mass: c.Mass, Kind: sim.BlackHole,
+				Spin: SpinVector(c.Spin, v3(c.SpinAxis), c.Mass, p.C)})
 		case "orbits":
 			addOrbits(s, c, counts[i])
 		case "star":
@@ -175,6 +179,18 @@ func (sp *Spec) Build(n int) (*sim.State, sim.Params) {
 		RemoveBulkMotion(s)
 	}
 	return s, p
+}
+
+// SpinVector is the angular momentum J = a* G M²/c of a hole with spin a* about axis (+z if zero),
+// zero without a speed of light.
+func SpinVector(a float64, axis vec.Vec3, m, c float64) vec.Vec3 {
+	if c <= 0 || a <= 0 {
+		return vec.Vec3{}
+	}
+	if axis.Len2() == 0 {
+		axis = vec.Vec3{Z: 1}
+	}
+	return axis.Scale(math.Min(a, sim.MaxSpin) * m * m / c / axis.Len())
 }
 
 // pcPerKmSYr is one km/s · yr in parsec.

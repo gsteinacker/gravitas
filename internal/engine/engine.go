@@ -280,6 +280,12 @@ func (e *Engine) Frame(dst []float32, force bool) (FrameInfo, bool) {
 				info.Stars++
 			}
 		}
+		for _, h := range sn.Spins { // holes carry their spin J in the gas slots (engine.Prepare)
+			if h.Index < n {
+				d := dst[h.Index*FloatsPerBody:]
+				d[8], d[9], d[10] = float32(h.J.X), float32(h.J.Y), float32(h.J.Z)
+			}
+		}
 		info.Bodies, info.Version, info.Time, info.C, info.YoungAge = n, sn.Version, sn.Time, sn.C, sn.YoungAge
 		info.MeanStarMass = starMass / math.Max(1, float64(info.Stars))
 		e.last = info

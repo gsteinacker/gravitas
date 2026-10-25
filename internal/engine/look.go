@@ -5,6 +5,7 @@ import (
 	"slices"
 
 	"galaxy/internal/sim"
+	"galaxy/internal/vec"
 	"galaxy/internal/view"
 )
 
@@ -30,9 +31,12 @@ type Look struct {
 // Hole is a black hole on screen, in render pixels.
 type Hole struct {
 	X, Y  float32
-	R     float32 // drawn horizon radius (at least minHolePixels)
-	PhysR float32 // actual horizon radius, for the lens
+	R     float32 // drawn horizon radius r₊ (at least minHolePixels)
+	PhysR float32 // Schwarzschild radius 2GM/c², for the lens (spin does not change it to first order)
 	Rings bool    // large enough to draw the ISCO ring
+	// Spin a* (0: Schwarzschild) and the spin axis projected on the screen, of length sin(inclination):
+	// the shader draws the horizon, photon ring and ISCO of a Kerr hole from them (T-071).
+	Spin, AxisX, AxisY float32
 }
 
 // Constants of the auto exposure (T-033), the emission (T-037) and the haze.
@@ -121,7 +125,21 @@ func (e *Engine) Prepare(bodies, attn []float32, info FrameInfo, w, h, ps float6
 			continue
 		}
 		if kind == sim.BlackHole {
-			l.look.Holes = append(l.look.Holes, hole(float64(b[3]), info.C, sx, sy, focal/depth, ps))
+			hl := hole(float64(b[3]), info.C, sx, sy, focal/depth, ps)
+			j := vec.Vec3{X: float64(b[8]), Y: float64(b[9]), Z: float64(b[10])}
+			if a := sim.SpinParameter(j, float64(b[3]), info.C); a > 0 {
+				// The spin axis on screen: its projection, as long as sin of its inclination.
+				e := 0.01 * depth
+				d := j.Scale(e / j.Len())
+				ax, ay, _, ok := vw.Project(float64(b[0])+d.X, float64(b[1])+d.Y, float64(b[2])+d.Z)
+				if ok {
+					k := e * focal / depth
+					hl.Spin, hl.AxisX, hl.AxisY = float32(a), float32((ax-sx)/k), float32((ay-sy)/k)
+				}
+				hl.R = float32(math.Max(minHolePixels*ps, sim.KerrHorizon(float64(b[3]), a, info.C)*focal/depth))
+				hl.Rings = float64(hl.R) > minHolePixels*ps
+			}
+			l.look.Holes = append(l.look.Holes, hl)
 			continue
 		}
 		if fx.Dust {

@@ -25,6 +25,7 @@ typedef struct {
 	double cloudK, cloudTurb; // next gas cloud: temperature (K), turbulence (fraction of √(GM/R))
 	double cloudAlpha, cloudFloorK; // its virial parameter (< 1 collapses, > 2 disperses), effective temperature
 	double galaxyTilt;      // next galaxy: tilt of its disk against the launch plane (degrees)
+	double holeSpin;        // next black hole: spin a* about the launch plane normal
 	double massMin;         // smallest sensible mass (about 1 solar mass), simulation units
 	int galaxyScale;        // galaxies can be placed in this scene
 	int resolved;           // the next object is enlarged to the scene's resolution (2 × softening)
@@ -54,6 +55,7 @@ typedef struct {
 
 typedef struct {
 	float x, y, r, physR, rings; // render pixels; rings: 1 if the ISCO ring is drawn
+	float spin, axisX, axisY;    // Kerr spin a* and the projected spin axis (engine.Hole)
 } GalaxyHole;
 */
 import "C"
@@ -185,7 +187,7 @@ func galaxy_state(out *C.GalaxyState) {
 		sps: C.double(s.StepsPerSec), fps: C.double(s.FPS), time: C.double(s.Sim.Time),
 		yearsPer: C.double(s.YearsPer), drift: C.double(s.Drift), renderScale: C.double(s.RenderScale),
 		cloudK: C.double(s.CloudK), cloudTurb: C.double(s.CloudTurb),
-		cloudAlpha: C.double(alpha), cloudFloorK: C.double(floorK), galaxyTilt: C.double(eng.GalaxyTilt),
+		cloudAlpha: C.double(alpha), cloudFloorK: C.double(floorK), galaxyTilt: C.double(eng.GalaxyTilt), holeSpin: C.double(eng.HoleSpin),
 		massMin: C.double(massMin), galaxyScale: b(eng.GalaxyScale()), resolved: b(s.Resolved),
 	}
 }
@@ -239,6 +241,8 @@ func galaxy_set(name *C.char, v C.double) {
 		eng.SetGravity(sim.GravityMode(max(0, min(2, int(x)))))
 	case "tool":
 		eng.SetTool(app.Tool(max(0, min(3, int(x)))))
+	case "holeSpin":
+		eng.HoleSpin = math.Max(0, math.Min(sim.MaxSpin, float64(x)))
 	case "galaxyTilt":
 		eng.GalaxyTilt = math.Max(0, math.Min(180, x))
 	case "cloudK":
@@ -417,7 +421,8 @@ func galaxy_prepare(buf *C.float, attnBuf *C.float, capacity C.int, w, h, ps C.d
 		if hl.Rings {
 			rings = 1
 		}
-		dst[i] = C.GalaxyHole{x: C.float(hl.X), y: C.float(hl.Y), r: C.float(hl.R), physR: C.float(hl.PhysR), rings: rings}
+		dst[i] = C.GalaxyHole{x: C.float(hl.X), y: C.float(hl.Y), r: C.float(hl.R), physR: C.float(hl.PhysR), rings: rings,
+			spin: C.float(hl.Spin), axisX: C.float(hl.AxisX), axisY: C.float(hl.AxisY)}
 	}
 	wd := unsafe.Slice((*float32)(unsafe.Pointer(world)), int(maxWorld)*4)
 	nw := min(len(look.World), int(maxWorld))
