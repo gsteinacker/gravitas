@@ -10,7 +10,7 @@ struct Uniforms {
     float4 target; // camera target xyz, yaw
     float4 cam;    // pitch, distance, mean star mass, speed of light (0 = Newtonian)
     float4 eye;    // camera position xyz, exposure
-    float4 misc;   // effect bits, young age, emission normalization, unused
+    float4 misc;   // effect bits, young age, emission normalization, dust opacity κ
 };
 
 struct Body { float4 pos; float4 vel; float4 gas; }; // xyz mass | v kind | age ion h rho
@@ -78,8 +78,10 @@ Sprite culled() {
 }
 
 vertex Sprite spriteVertex(uint vid [[vertex_id]], uint iid [[instance_id]],
-                           const device Body *bodies [[buffer(0)]], constant Uniforms &u [[buffer(1)]]) {
+                           const device Body *bodies [[buffer(0)]], constant Uniforms &u [[buffer(1)]],
+                           const device float4 *attn [[buffer(2)]]) {
     Body b = bodies[iid];
+    bool dusty = (int(u.misc.x) & 64) != 0;
     int kind = int(b.vel.w + 0.5);
     int fx = int(u.misc.x);
     float ps = u.view.w;
@@ -104,16 +106,38 @@ vertex Sprite spriteVertex(uint vid [[vertex_id]], uint iid [[instance_id]],
             col = sc.xyz;
             alpha *= sc.w;
         }
+        if (dusty) { // dust in front (computed in the Go core): reddened and dimmed (render/stars.go)
+            float4 t = attn[iid];
+            col *= t.rgb;
+            alpha *= t.g;
+        }
         return makeSprite(s, size / 2, float4(col * alpha * u.eye.w, 0), vid, u);
     }
     if (kind == 3 && b.gas.y > 0.2) { // photoionized gas: Hα emission
         float size = clamp(3 * b.gas.z * focal / s.z, 3 * ps, 120 * ps);
         float ion = b.gas.y;
         float brightness = ion * ion * b.pos.w * b.gas.w / (size * size);
+        if (dusty) brightness *= attn[iid].r; // Hα is red
         float a = 1 - exp(-u.misc.z * brightness);
         return makeSprite(s, size / 2, float4(float3(1.0, 0.16, 0.22) * a, 0), vid, u);
     }
     return culled();
+}
+
+// dustVertex draws the neutral gas as column density into the dust image: alpha accumulates
+// "over", the background is attenuated by exp(−alpha · DustStrength · k) (render/stars.go DrawDust).
+vertex Sprite dustVertex(uint vid [[vertex_id]], uint iid [[instance_id]],
+                         const device Body *bodies [[buffer(0)]], constant Uniforms &u [[buffer(1)]]) {
+    Body b = bodies[iid];
+    if (int(b.vel.w + 0.5) != 3) return culled();
+    float3 s = project(b.pos.xyz, u);
+    if (s.z < 0.05) return culled();
+    float focal = u.view.z, ps = u.view.w;
+    float size = clamp(2 * b.gas.z * focal / s.z, 2 * ps, 80 * ps);
+    float k = focal / s.z;
+    float tauArea = u.misc.w * b.pos.w * (1 - b.gas.y) * k * k;
+    float a = min(1.0, tauArea / (0.10972 * size * size) / 2.5);
+    return makeSprite(s, size / 2, float4(a), vid, u);
 }
 
 fragment float4 spriteFragment(Sprite in [[stage_in]]) {
@@ -145,10 +169,13 @@ fragment float4 trailFragment(Screen in [[stage_in]], texture2d<float> stars [[t
     return max(max(p * 0.93 - 0.002, 0.0), s);
 }
 
-// composeFragment puts the stars over the static sky.
+// composeFragment puts the stars over the static sky, which the dust in front attenuates per
+// color channel (interstellar reddening; the stars were attenuated individually).
 fragment float4 composeFragment(Screen in [[stage_in]], texture2d<float> stars [[texture(0)]],
-                                texture2d<float> sky [[texture(1)]]) {
-    return sky.sample(linearSampler, in.uv) + stars.sample(linearSampler, in.uv);
+                                texture2d<float> sky [[texture(1)]], texture2d<float> dust [[texture(2)]]) {
+    float tau = dust.sample(linearSampler, in.uv).a * 2.5;
+    float4 c = sky.sample(linearSampler, in.uv);
+    return float4(c.rgb * exp(-tau * float3(0.55, 0.75, 1.0)), c.a) + stars.sample(linearSampler, in.uv);
 }
 
 struct Lens { float4 holes[16]; float4 info; }; // x, y, θ_E² | count, width, height

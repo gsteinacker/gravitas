@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"galaxy/internal/app"
+	"galaxy/internal/sim"
 	"galaxy/internal/view"
 )
 
@@ -93,7 +94,7 @@ func TestPrepareAdaptsAndCaches(t *testing.T) {
 	fx := view.Effects{Glow: true, Dark: true}
 	var look Look
 	for range 30 { // the exposure converges over a few recomputations
-		look = e.Prepare(buf, info, 1440, 900, 1, fx)
+		look = e.Prepare(buf, nil, info, 1440, 900, 1, fx)
 	}
 	if look.Exposure <= 0 || look.Exposure > 1 || look.DarkAlpha <= 0 || len(look.Holes) != 1 {
 		t.Fatalf("look %+v", look)
@@ -108,15 +109,63 @@ func TestPrepareAdaptsAndCaches(t *testing.T) {
 	// Cached: same input, same result, no recomputation.
 	before := e.looker.look.Exposure
 	e.looker.look.Exposure = 42
-	if got := e.Prepare(buf, info, 1440, 900, 1, fx); got.Exposure != 42 {
+	if got := e.Prepare(buf, nil, info, 1440, 900, 1, fx); got.Exposure != 42 {
 		t.Error("unchanged input must use the cache")
 	}
 	e.looker.look.Exposure = before
 	e.Zoom(0.5)
-	if got := e.Prepare(buf, info, 1440, 900, 1, fx); got.Exposure == 42 {
+	if got := e.Prepare(buf, nil, info, 1440, 900, 1, fx); got.Exposure == 42 {
 		t.Error("camera change must recompute")
 	}
-	if got := e.Prepare(buf, info, 1440, 900, 1, view.Effects{}); got.DarkAlpha != 0 {
+	if got := e.Prepare(buf, nil, info, 1440, 900, 1, view.Effects{}); got.DarkAlpha != 0 {
 		t.Error("hidden dark matter needs no haze")
+	}
+}
+
+func TestDustAttenuatesStarsBehindGas(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+	e := New(0, 20000) // spiral galaxy with a gas disk
+	defer e.Close()
+	e.Runner.SetPaused(true)
+	e.Cam.Pitch = 0.15 // nearly edge-on: much gas in front of stars
+	buf := make([]float32, 40000*FloatsPerBody)
+	var info FrameInfo
+	deadline := time.Now().Add(5 * time.Second)
+	for info.Bodies == 0 && time.Now().Before(deadline) {
+		e.Tick(60, 1, 0, false)
+		info, _ = e.Frame(buf, true)
+		time.Sleep(5 * time.Millisecond)
+	}
+	attn := make([]float32, 4*info.Bodies)
+	look := e.Prepare(buf, attn, info, 1440, 900, 1, view.Effects{Dust: true})
+	if look.DustKappa <= 0 {
+		t.Fatalf("no dust opacity: %+v", look)
+	}
+	dimmed, reddened := 0, 0
+	for i := range info.Bodies {
+		if sim.Kind(buf[i*FloatsPerBody+7]+0.5) != sim.Star {
+			continue
+		}
+		r, g, b := attn[4*i], attn[4*i+1], attn[4*i+2]
+		if r < 0 || r > 1 || b > g || g > r {
+			t.Fatalf("star %d: transmission %v %v %v (blue must be absorbed most)", i, r, g, b)
+		}
+		if g < 0.5 {
+			dimmed++
+		}
+		if b < 0.9*r {
+			reddened++
+		}
+	}
+	if dimmed == 0 || reddened == 0 {
+		t.Errorf("edge-on disk: %d stars dimmed, %d reddened", dimmed, reddened)
+	}
+	// Cached frames still fill the buffer (the front end may pass another one).
+	other := make([]float32, len(attn))
+	e.Prepare(buf, other, info, 1440, 900, 1, view.Effects{Dust: true})
+	for i := range attn {
+		if other[i] != attn[i] {
+			t.Fatal("cached attenuation not copied")
+		}
 	}
 }

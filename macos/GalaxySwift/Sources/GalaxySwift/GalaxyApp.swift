@@ -118,6 +118,7 @@ struct GalaxyApp: App {
             Toggle(L("Spuren", "Trails"), isOn: engine.fxBinding(Engine.trails)).keyboardShortcut("t", modifiers: [])
             Toggle(L("Gravitationslinse", "Lensing"), isOn: engine.fxBinding(Engine.lens)).keyboardShortcut("l", modifiers: [])
             Toggle(L("Doppler-Farben", "Doppler Colors"), isOn: engine.fxBinding(Engine.doppler)).keyboardShortcut("d", modifiers: [])
+            Toggle(L("Staub", "Dust"), isOn: engine.fxBinding(Engine.dust)).keyboardShortcut("u", modifiers: [])
             Divider()
             Toggle(L("Inspektor", "Inspector"), isOn: $showInspector).keyboardShortcut("i", modifiers: [.command, .option])
             Toggle(L("Lernmodus", "Learning Mode"), isOn: $showLearning).keyboardShortcut("e", modifiers: [])

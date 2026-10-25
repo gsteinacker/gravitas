@@ -25,7 +25,7 @@ typedef struct {
 } GalaxyState;
 
 typedef struct {
-	double exposure, emNorm;
+	double exposure, emNorm, dustKappa;
 	float darkAlpha, gasAlpha;
 	int holes; // number written to the hole array (at most its capacity)
 } GalaxyLook;
@@ -296,15 +296,20 @@ func galaxy_fullscreen_requested() C.int {
 var fullscreen bool
 
 // galaxy_prepare computes the look of the bodies last copied into buf by galaxy_frame (see
-// engine.Prepare) for a w×h viewport in render pixels at pixel scale ps with effect bits fx.
+// engine.Prepare) for a w×h viewport in render pixels at pixel scale ps with effect bits fx. With
+// dust it writes the transmission of every body (r, g, b, 1) to attn (4 floats per body).
 //
 //export galaxy_prepare
-func galaxy_prepare(buf *C.float, capacity C.int, w, h, ps C.double, fx C.int, out *C.GalaxyLook, holes *C.GalaxyHole, maxHoles C.int) {
+func galaxy_prepare(buf *C.float, attnBuf *C.float, capacity C.int, w, h, ps C.double, fx C.int, out *C.GalaxyLook, holes *C.GalaxyHole, maxHoles C.int) {
 	src := unsafe.Slice((*float32)(unsafe.Pointer(buf)), int(capacity)*engine.FloatsPerBody)
+	var attn []float32
+	if attnBuf != nil {
+		attn = unsafe.Slice((*float32)(unsafe.Pointer(attnBuf)), int(capacity)*4)
+	}
 	k := int(fx)
 	effects := view.Effects{Glow: k&1 != 0, Doppler: k&2 != 0, Lensing: k&4 != 0, Trails: k&8 != 0,
 		Dark: k&16 != 0, Gas: k&32 != 0, Dust: k&64 != 0}
-	look := eng.Prepare(src, eng.LastFrame(), float64(w), float64(h), float64(ps), effects)
+	look := eng.Prepare(src, attn, eng.LastFrame(), float64(w), float64(h), float64(ps), effects)
 	dst := unsafe.Slice(holes, int(maxHoles))
 	n := min(len(look.Holes), len(dst))
 	for i := range n {
@@ -315,6 +320,6 @@ func galaxy_prepare(buf *C.float, capacity C.int, w, h, ps C.double, fx C.int, o
 		}
 		dst[i] = C.GalaxyHole{x: C.float(hl.X), y: C.float(hl.Y), r: C.float(hl.R), physR: C.float(hl.PhysR), rings: rings}
 	}
-	*out = C.GalaxyLook{exposure: C.double(look.Exposure), emNorm: C.double(look.EmNorm),
+	*out = C.GalaxyLook{exposure: C.double(look.Exposure), emNorm: C.double(look.EmNorm), dustKappa: C.double(look.DustKappa),
 		darkAlpha: C.float(look.DarkAlpha), gasAlpha: C.float(look.GasAlpha), holes: C.int(n)}
 }

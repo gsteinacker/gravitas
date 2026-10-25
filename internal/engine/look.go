@@ -16,6 +16,9 @@ type Look struct {
 	EmNorm    float64 // normalization of the Hα emission
 	DarkAlpha float32 // opacity per dark matter sprite (haze), 0 if hidden
 	GasAlpha  float32 // opacity per gas sprite of the gas map, 0 if hidden
+	// DustKappa is the dust opacity (V-band optical depth per unit column) for the dust image of
+	// the background; 0 without dust. The attenuation of the bodies is in Prepare's attn buffer.
+	DustKappa float64
 	Holes     []Hole
 }
 
@@ -52,17 +55,25 @@ type looker struct {
 	light, emLight  [gridW * gridH]float32
 	darkGrid, gasGr [gridW * gridH]float32
 	sortBuf         []float32
+	dust            dustMap
+	dustNorm        float64   // automatic dust opacity, 0 before the first frame
+	attn            []float32 // r, g, b transmission and unused, per body
 }
 
 // Prepare computes the look of the bodies last copied by Frame (bodies holds them, FloatsPerBody
-// floats each) for a viewport of w×h render pixels at pixel scale ps. It recomputes only when the
-// snapshot, the camera, the effects or the size changed, or while the exposure still adapts.
-func (e *Engine) Prepare(bodies []float32, info FrameInfo, w, h, ps float64, fx view.Effects) Look {
+// floats each) for a viewport of w×h render pixels at pixel scale ps. With dust, it writes the
+// transmission of every body (r, g, b, 1) to attn (4 floats per body), every call, so the front
+// end may pass a different buffer per frame. It recomputes only when the snapshot, the camera,
+// the effects or the size changed, or while the exposure still adapts.
+func (e *Engine) Prepare(bodies, attn []float32, info FrameInfo, w, h, ps float64, fx view.Effects) Look {
 	l := &e.looker
 	cam := e.Cam
 	cam.W, cam.H = w, h
 	vw := cam.View()
 	if info.Version == l.version && vw == l.view && fx == l.fx && !l.adapting {
+		if fx.Dust {
+			copy(attn, l.attn)
+		}
 		return l.look
 	}
 	l.version, l.view, l.fx = info.Version, vw, fx
@@ -75,6 +86,14 @@ func (e *Engine) Prepare(bodies []float32, info FrameInfo, w, h, ps float64, fx 
 	clear(l.gasGr[:])
 	l.look.Holes = l.look.Holes[:0]
 	mean := math.Max(info.MeanStarMass, 1e-12)
+	l.look.DustKappa = 0
+	if fx.Dust {
+		l.look.DustKappa = l.buildDust(bodies, n, &vw, w, h, focal, ps, e.Scene.DustOpacity())
+		if cap(l.attn) < 4*n {
+			l.attn = make([]float32, 4*n)
+		}
+		l.attn = l.attn[:4*n]
+	}
 	hazeSize := func(depth float64) float64 { return math.Max(6*ps, math.Min(48*ps, 0.12*focal/depth)) }
 	for i := range n {
 		b := bodies[i*FloatsPerBody : i*FloatsPerBody+FloatsPerBody : i*FloatsPerBody+FloatsPerBody]
@@ -87,6 +106,10 @@ func (e *Engine) Prepare(bodies []float32, info FrameInfo, w, h, ps float64, fx 
 			l.look.Holes = append(l.look.Holes, hole(float64(b[3]), info.C, sx, sy, focal/depth, ps))
 			continue
 		}
+		if fx.Dust {
+			tr, tg, tb := transmission(l.dust.front(sx, sy, depth))
+			l.attn[4*i], l.attn[4*i+1], l.attn[4*i+2], l.attn[4*i+3] = tr, tg, tb, 1
+		}
 		cx, cy := int(sx/cw), int(sy/ch)
 		if cx < 0 || cy < 0 || cx >= gridW || cy >= gridH {
 			continue
@@ -97,6 +120,9 @@ func (e *Engine) Prepare(bodies []float32, info FrameInfo, w, h, ps float64, fx 
 			rel := float64(b[3]) / mean
 			size := math.Max(3.5*ps, math.Min(28*ps, 0.05*math.Cbrt(rel)*focal/depth))
 			alpha := math.Min(1, 0.55+0.2*rel)
+			if fx.Dust {
+				alpha *= float64(l.attn[4*i+1]) // the exposure sees the attenuated light
+			}
 			if age := float64(b[8]); age >= 0 && age < info.YoungAge {
 				f := 1 - age/info.YoungAge
 				alpha *= 1 + 1.5*f
@@ -111,6 +137,9 @@ func (e *Engine) Prepare(bodies []float32, info FrameInfo, w, h, ps float64, fx 
 			if ion := float64(b[9]); ion > minEmissionIon {
 				size := math.Max(3*ps, math.Min(120*ps, 3*float64(b[10])*focal/depth))
 				brightness := ion * ion * float64(b[3]) * float64(b[11]) / (size * size)
+				if fx.Dust {
+					brightness *= float64(l.attn[4*i]) // Hα is red
+				}
 				l.emLight[cell] += float32(brightness * spriteMean * size * size)
 			}
 		case sim.DarkMatter:
@@ -145,6 +174,9 @@ func (e *Engine) Prepare(bodies []float32, info FrameInfo, w, h, ps float64, fx 
 	}
 	if fx.Gas {
 		l.look.GasAlpha = l.hazeAlpha(l.gasGr[:])
+	}
+	if fx.Dust {
+		copy(attn, l.attn)
 	}
 	return l.look
 }

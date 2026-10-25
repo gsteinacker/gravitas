@@ -35,9 +35,11 @@ final class Renderer: NSObject, MTKViewDelegate {
     let device: MTLDevice
     let queue: MTLCommandQueue
     let engine: Engine
-    private var sprite, trail, compose, lens, copy, blur, final, hole: MTLRenderPipelineState!
-    private var stars, trailA, trailB, scene, lensed, small, blurA, blurB, sky: MTLTexture?
+    private var sprite, dust, trail, compose, lens, copy, blur, final, hole: MTLRenderPipelineState!
+    private var stars, dustImage, trailA, trailB, scene, lensed, small, blurA, blurB, sky: MTLTexture?
     private var bodies: [MTLBuffer] = []
+    private var attn: [MTLBuffer] = [] // dust transmission per body, one per frame in flight
+    private var slot = 0
     private var capacity = 0
     private var current = -1, filled = 0
     private var info = GalaxyFrameInfo()
@@ -76,6 +78,7 @@ final class Renderer: NSObject, MTKViewDelegate {
             }
             let hdr = MTLPixelFormat.rgba16Float
             sprite = try pipe("spriteVertex", "spriteFragment", hdr, blend: (.one, .one))
+            dust = try pipe("dustVertex", "spriteFragment", hdr, blend: (.one, .oneMinusSourceAlpha))
             trail = try pipe("screenVertex", "trailFragment", hdr)
             compose = try pipe("screenVertex", "composeFragment", hdr)
             lens = try pipe("screenVertex", "lensFragment", hdr)
@@ -110,7 +113,7 @@ final class Renderer: NSObject, MTKViewDelegate {
         guard s != size else { return }
         size = s
         let w = Int(s.width), h = Int(s.height)
-        stars = texture(w, h); trailA = texture(w, h); trailB = texture(w, h)
+        stars = texture(w, h); dustImage = texture(w, h); trailA = texture(w, h); trailB = texture(w, h)
         scene = texture(w, h); lensed = texture(w, h)
         // The bloom works at a quarter of the window resolution at every render scale.
         let div = max(1, Int((4 * scale).rounded()))
@@ -142,6 +145,7 @@ final class Renderer: NSObject, MTKViewDelegate {
         bodies = (0..<3).map { _ in
             device.makeBuffer(length: capacity * Engine.floatsPerBody * 4, options: .storageModeShared)!
         }
+        attn = (0..<3).map { _ in device.makeBuffer(length: capacity * 16, options: .storageModeShared)! }
         current = -1
     }
 
@@ -202,7 +206,7 @@ final class Renderer: NSObject, MTKViewDelegate {
             target: SIMD4(Float(info.camX), Float(info.camY), Float(info.camZ), Float(info.yaw)),
             cam: SIMD4(Float(info.pitch), Float(info.distance), Float(info.meanStarMass), Float(info.c)),
             eye: SIMD4(Float(eye.x), Float(eye.y), Float(eye.z), Float(look.exposure)),
-            misc: SIMD4(Float(fx), Float(info.youngAge), Float(look.emNorm), 0))
+            misc: SIMD4(Float(fx), Float(info.youngAge), Float(look.emNorm), Float(look.dustKappa)))
     }
 
     private func screenPass(_ cmd: MTLCommandBuffer, _ target: MTLTexture, _ p: MTLRenderPipelineState, load: MTLLoadAction = .dontCare,
@@ -221,6 +225,20 @@ final class Renderer: NSObject, MTKViewDelegate {
 
     private func render(_ cmd: MTLCommandBuffer, pass: MTLRenderPassDescriptor, fx: Int) {
         var u = uniforms(fx)
+        // Dust first: the column density in front attenuates the background.
+        let dd = MTLRenderPassDescriptor()
+        dd.colorAttachments[0].texture = dustImage
+        dd.colorAttachments[0].loadAction = .clear
+        dd.colorAttachments[0].clearColor = MTLClearColor(red: 0, green: 0, blue: 0, alpha: 0)
+        dd.colorAttachments[0].storeAction = .store
+        let de = cmd.makeRenderCommandEncoder(descriptor: dd)!
+        if fx & Engine.dust != 0, look.dustKappa > 0, filled > 0 {
+            de.setRenderPipelineState(dust)
+            de.setVertexBuffer(bodies[current], offset: 0, index: 0)
+            de.setVertexBytes(&u, length: MemoryLayout<Uniforms>.stride, index: 1)
+            de.drawPrimitives(type: .triangleStrip, vertexStart: 0, vertexCount: 4, instanceCount: filled)
+        }
+        de.endEncoding()
         // Stars and emission, additive, into the HDR image.
         let d = MTLRenderPassDescriptor()
         d.colorAttachments[0].texture = stars
@@ -231,6 +249,7 @@ final class Renderer: NSObject, MTKViewDelegate {
         e.setRenderPipelineState(sprite)
         e.setVertexBuffer(bodies[current], offset: 0, index: 0)
         e.setVertexBytes(&u, length: MemoryLayout<Uniforms>.stride, index: 1)
+        e.setVertexBuffer(attn[slot], offset: 0, index: 2)
         if filled > 0 {
             e.drawPrimitives(type: .triangleStrip, vertexStart: 0, vertexCount: 4, instanceCount: filled)
         }
@@ -248,6 +267,7 @@ final class Renderer: NSObject, MTKViewDelegate {
         screenPass(cmd, scene!, compose) { e in
             e.setFragmentTexture(starImage, index: 0)
             e.setFragmentTexture(sky, index: 1)
+            e.setFragmentTexture(dustImage, index: 2)
         }
         var out = scene!
         if fx & Engine.lens != 0, !lensHoles.isEmpty {
@@ -302,8 +322,10 @@ final class Renderer: NSObject, MTKViewDelegate {
     /// normalization and the black holes on screen (engine/look.go).
     private func prepare(_ fx: Int) {
         let p = bodies[current].contents().bindMemory(to: Float.self, capacity: capacity * Engine.floatsPerBody)
+        slot = (slot + 1) % 3
+        let a = attn[slot].contents().bindMemory(to: Float.self, capacity: capacity * 4)
         var raw = [GalaxyHole](repeating: GalaxyHole(), count: 64)
-        galaxy_prepare(p, Int32(capacity), Double(size.width), Double(size.height), scale, Int32(fx), &look, &raw, 64)
+        galaxy_prepare(p, a, Int32(capacity), Double(size.width), Double(size.height), scale, Int32(fx), &look, &raw, 64)
         holes.removeAll(keepingCapacity: true)
         lensHoles.removeAll(keepingCapacity: true)
         for h in raw.prefix(Int(look.holes)) {

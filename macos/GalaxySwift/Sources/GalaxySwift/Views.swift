@@ -112,6 +112,7 @@ struct InspectorView: View {
                 Toggle(L("Spuren", "Trails"), isOn: engine.fxBinding(Engine.trails))
                 Toggle(L("Gravitationslinse", "Lensing"), isOn: engine.fxBinding(Engine.lens))
                 Toggle(L("Doppler-Farben", "Doppler colors"), isOn: engine.fxBinding(Engine.doppler))
+                Toggle(L("Staub", "Dust"), isOn: engine.fxBinding(Engine.dust))
             }
         }
         .formStyle(.grouped)
