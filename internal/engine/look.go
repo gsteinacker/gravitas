@@ -20,6 +20,9 @@ type Look struct {
 	// the background; 0 without dust. The attenuation of the bodies is in Prepare's attn buffer.
 	DustKappa float64
 	Holes     []Hole
+	// World are all black holes in world space with their Schwarzschild radius (0 without c), for
+	// the gravitational redshift of the stars around them.
+	World [][4]float32
 }
 
 // Hole is a black hole on screen, in render pixels.
@@ -85,6 +88,7 @@ func (e *Engine) Prepare(bodies, attn []float32, info FrameInfo, w, h, ps float6
 	clear(l.darkGrid[:])
 	clear(l.gasGr[:])
 	l.look.Holes = l.look.Holes[:0]
+	l.look.World = l.look.World[:0]
 	mean := math.Max(info.MeanStarMass, 1e-12)
 	l.look.DustKappa = 0
 	if fx.Dust {
@@ -98,6 +102,10 @@ func (e *Engine) Prepare(bodies, attn []float32, info FrameInfo, w, h, ps float6
 	for i := range n {
 		b := bodies[i*FloatsPerBody : i*FloatsPerBody+FloatsPerBody : i*FloatsPerBody+FloatsPerBody]
 		kind := sim.Kind(b[7] + 0.5)
+		if kind == sim.BlackHole {
+			rs := sim.SchwarzschildRadius(float64(b[3]), info.C)
+			l.look.World = append(l.look.World, [4]float32{b[0], b[1], b[2], float32(rs)})
+		}
 		sx, sy, depth, ok := vw.Project(float64(b[0]), float64(b[1]), float64(b[2]))
 		if !ok {
 			continue

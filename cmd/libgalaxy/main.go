@@ -28,6 +28,7 @@ typedef struct {
 	double exposure, emNorm, dustKappa;
 	float darkAlpha, gasAlpha;
 	int holes; // number written to the hole array (at most its capacity)
+	int worldHoles; // number written to the world hole array: x, y, z, r_s each
 } GalaxyLook;
 
 typedef struct {
@@ -300,7 +301,7 @@ var fullscreen bool
 // dust it writes the transmission of every body (r, g, b, 1) to attn (4 floats per body).
 //
 //export galaxy_prepare
-func galaxy_prepare(buf *C.float, attnBuf *C.float, capacity C.int, w, h, ps C.double, fx C.int, out *C.GalaxyLook, holes *C.GalaxyHole, maxHoles C.int) {
+func galaxy_prepare(buf *C.float, attnBuf *C.float, capacity C.int, w, h, ps C.double, fx C.int, out *C.GalaxyLook, holes *C.GalaxyHole, maxHoles C.int, world *C.float, maxWorld C.int) {
 	src := unsafe.Slice((*float32)(unsafe.Pointer(buf)), int(capacity)*engine.FloatsPerBody)
 	var attn []float32
 	if attnBuf != nil {
@@ -320,6 +321,11 @@ func galaxy_prepare(buf *C.float, attnBuf *C.float, capacity C.int, w, h, ps C.d
 		}
 		dst[i] = C.GalaxyHole{x: C.float(hl.X), y: C.float(hl.Y), r: C.float(hl.R), physR: C.float(hl.PhysR), rings: rings}
 	}
-	*out = C.GalaxyLook{exposure: C.double(look.Exposure), emNorm: C.double(look.EmNorm), dustKappa: C.double(look.DustKappa),
+	wd := unsafe.Slice((*float32)(unsafe.Pointer(world)), int(maxWorld)*4)
+	nw := min(len(look.World), int(maxWorld))
+	for i := range nw {
+		copy(wd[4*i:4*i+4], look.World[i][:])
+	}
+	*out = C.GalaxyLook{worldHoles: C.int(nw), exposure: C.double(look.Exposure), emNorm: C.double(look.EmNorm), dustKappa: C.double(look.DustKappa),
 		darkAlpha: C.float(look.DarkAlpha), gasAlpha: C.float(look.GasAlpha), holes: C.int(n)}
 }

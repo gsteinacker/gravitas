@@ -113,6 +113,8 @@ struct InspectorView: View {
                 Toggle(L("Gravitationslinse", "Lensing"), isOn: engine.fxBinding(Engine.lens))
                 Toggle(L("Doppler-Farben", "Doppler colors"), isOn: engine.fxBinding(Engine.doppler))
                 Toggle(L("Staub", "Dust"), isOn: engine.fxBinding(Engine.dust))
+                Toggle(L("Gas zeigen", "Show gas"), isOn: engine.fxBinding(Engine.gas))
+                Toggle(L("Dunkle Materie zeigen", "Show dark matter"), isOn: engine.fxBinding(Engine.dark))
             }
         }
         .formStyle(.grouped)

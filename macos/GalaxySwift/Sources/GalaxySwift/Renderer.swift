@@ -11,6 +11,7 @@ struct Uniforms {
     var cam: SIMD4<Float>
     var eye: SIMD4<Float>
     var misc: SIMD4<Float>
+    var haze: SIMD4<Float>
 }
 
 /// Camera is the projection of view.Camera, for the camera position used by the Doppler shift.
@@ -47,6 +48,7 @@ final class Renderer: NSObject, MTKViewDelegate {
     private var look = GalaxyLook()
     private var holes: [SIMD4<Float>] = []
     private var lensHoles: [SIMD4<Float>] = []
+    private var worldHoles = [SIMD4<Float>](repeating: .zero, count: 16)
     private var lastDraw = CFAbsoluteTimeGetCurrent(), fps = 60.0
     private var lastRefresh = 0.0
     private var size = CGSize.zero
@@ -206,7 +208,8 @@ final class Renderer: NSObject, MTKViewDelegate {
             target: SIMD4(Float(info.camX), Float(info.camY), Float(info.camZ), Float(info.yaw)),
             cam: SIMD4(Float(info.pitch), Float(info.distance), Float(info.meanStarMass), Float(info.c)),
             eye: SIMD4(Float(eye.x), Float(eye.y), Float(eye.z), Float(look.exposure)),
-            misc: SIMD4(Float(fx), Float(info.youngAge), Float(look.emNorm), Float(look.dustKappa)))
+            misc: SIMD4(Float(fx), Float(info.youngAge), Float(look.emNorm), Float(look.dustKappa)),
+            haze: SIMD4(look.darkAlpha, look.gasAlpha, Float(look.worldHoles), 0))
     }
 
     private func screenPass(_ cmd: MTLCommandBuffer, _ target: MTLTexture, _ p: MTLRenderPipelineState, load: MTLLoadAction = .dontCare,
@@ -250,6 +253,7 @@ final class Renderer: NSObject, MTKViewDelegate {
         e.setVertexBuffer(bodies[current], offset: 0, index: 0)
         e.setVertexBytes(&u, length: MemoryLayout<Uniforms>.stride, index: 1)
         e.setVertexBuffer(attn[slot], offset: 0, index: 2)
+        e.setVertexBytes(worldHoles, length: 16 * 16, index: 3)
         if filled > 0 {
             e.drawPrimitives(type: .triangleStrip, vertexStart: 0, vertexCount: 4, instanceCount: filled)
         }
@@ -325,7 +329,10 @@ final class Renderer: NSObject, MTKViewDelegate {
         slot = (slot + 1) % 3
         let a = attn[slot].contents().bindMemory(to: Float.self, capacity: capacity * 4)
         var raw = [GalaxyHole](repeating: GalaxyHole(), count: 64)
-        galaxy_prepare(p, a, Int32(capacity), Double(size.width), Double(size.height), scale, Int32(fx), &look, &raw, 64)
+        worldHoles.withUnsafeMutableBytes { w in
+            galaxy_prepare(p, a, Int32(capacity), Double(size.width), Double(size.height), scale, Int32(fx), &look, &raw, 64,
+                           w.baseAddress!.assumingMemoryBound(to: Float.self), 16)
+        }
         holes.removeAll(keepingCapacity: true)
         lensHoles.removeAll(keepingCapacity: true)
         for h in raw.prefix(Int(look.holes)) {

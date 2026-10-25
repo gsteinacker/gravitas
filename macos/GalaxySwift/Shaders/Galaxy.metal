@@ -11,6 +11,7 @@ struct Uniforms {
     float4 cam;    // pitch, distance, mean star mass, speed of light (0 = Newtonian)
     float4 eye;    // camera position xyz, exposure
     float4 misc;   // effect bits, young age, emission normalization, dust opacity κ
+    float4 haze;   // dark matter alpha, gas map alpha, number of world holes, unused
 };
 
 struct Body { float4 pos; float4 vel; float4 gas; }; // xyz mass | v kind | age ion h rho
@@ -42,14 +43,19 @@ float3 starColor(float rel) {
     return float3(1 - 0.35 * t, 0.75 + 0.15 * t, 0.45 + 0.55 * t);
 }
 
-// frequencyShift is ν_observed/ν_emitted for velocity v seen from direction n (render/shift.go,
-// without the gravitational redshift of the holes).
-float frequencyShift(float3 v, float3 n, float c) {
-    if (c <= 0) return 1;
+// gravShift is √(1 − r_s/r), clamped so stars right at a horizon stay faintly visible.
+float gravShift(float r, float rs) {
+    return rs <= 0 ? 1.0 : sqrt(max(0.02, 1 - rs / r));
+}
+
+// frequencyShift is ν_observed/ν_emitted for velocity v seen from direction n at speed of light c,
+// times the gravitational redshift grav of the holes (render/shift.go).
+float frequencyShift(float3 v, float3 n, float c, float grav) {
+    if (c <= 0) return grav;
     float3 b = v / c;
     float b2 = min(dot(b, b), 0.9999);
     float gamma = 1 / sqrt(1 - b2);
-    return 1 / (gamma * (1 - dot(b, n)));
+    return grav / (gamma * (1 - dot(b, n)));
 }
 
 // shiftColor tints by the frequency factor and returns the beaming factor in w.
@@ -79,7 +85,7 @@ Sprite culled() {
 
 vertex Sprite spriteVertex(uint vid [[vertex_id]], uint iid [[instance_id]],
                            const device Body *bodies [[buffer(0)]], constant Uniforms &u [[buffer(1)]],
-                           const device float4 *attn [[buffer(2)]]) {
+                           const device float4 *attn [[buffer(2)]], const device float4 *holes [[buffer(3)]]) {
     Body b = bodies[iid];
     bool dusty = (int(u.misc.x) & 64) != 0;
     int kind = int(b.vel.w + 0.5);
@@ -96,13 +102,17 @@ vertex Sprite spriteVertex(uint vid [[vertex_id]], uint iid [[instance_id]],
         float age = b.gas.x;
         if (age >= 0 && age < u.misc.y) { // young stars from gas: hot, blue, bright
             float f = 1 - age / u.misc.y;
-            col = mix(col, float3(0.6, 0.75, 1.0), f);
+            col = mix(col, float3(0.6, 0.78, 1.0), f);
             alpha *= 1 + 1.5 * f;
             size *= 1 + 0.5 * f;
         }
         if ((fx & 2) != 0 && u.cam.w > 0) {
             float3 n = normalize(u.eye.xyz - b.pos.xyz);
-            float4 sc = shiftColor(col, frequencyShift(b.vel.xyz, n, u.cam.w));
+            float grav = 1;
+            for (int h = 0; h < int(u.haze.z); h++) {
+                grav *= gravShift(length(b.pos.xyz - holes[h].xyz), holes[h].w);
+            }
+            float4 sc = shiftColor(col, frequencyShift(b.vel.xyz, n, u.cam.w, grav));
             col = sc.xyz;
             alpha *= sc.w;
         }
@@ -112,6 +122,19 @@ vertex Sprite spriteVertex(uint vid [[vertex_id]], uint iid [[instance_id]],
             alpha *= t.g;
         }
         return makeSprite(s, size / 2, float4(col * alpha * u.eye.w, 0), vid, u);
+    }
+    if ((kind == 2 && (fx & 16) != 0) || (kind == 3 && (fx & 32) != 0)) {
+        // Haze: dark matter violet, the gas map in false colors (neutral blue, partly ionized
+        // green, ionized red); opacity from the projected density (Go core).
+        float size = clamp(0.12 * focal / s.z, 6 * ps, 48 * ps);
+        float3 tint = float3(0.55, 0.35, 1.0);
+        float alpha = u.haze.x;
+        if (kind == 3) {
+            float ion = b.gas.y;
+            tint = float3(0.25 + 0.75 * ion, 0.45 + 0.5 * (1 - 2 * fabs(ion - 0.5)), 1 - 0.8 * ion);
+            alpha = u.haze.y;
+        }
+        return makeSprite(s, size / 2, float4(tint * alpha, 0), vid, u);
     }
     if (kind == 3 && b.gas.y > 0.2) { // photoionized gas: Hα emission
         float size = clamp(3 * b.gas.z * focal / s.z, 3 * ps, 120 * ps);
@@ -211,7 +234,10 @@ fragment float4 blurFragment(Screen in [[stage_in]], texture2d<float> src [[text
 // finalFragment adds the bloom and maps the HDR image softly to the display.
 fragment float4 finalFragment(Screen in [[stage_in]], texture2d<float> scene [[texture(0)]],
                               texture2d<float> bloom [[texture(1)]], constant float &bloomStrength [[buffer(0)]]) {
-    float3 c = scene.sample(linearSampler, in.uv).rgb + bloomStrength * bloom.sample(linearSampler, in.uv).rgb;
+    float3 c = scene.sample(linearSampler, in.uv).rgb;
+    if (bloomStrength > 0) { // without glow the bloom image is not drawn: never read it (0 · NaN = NaN)
+        c += bloomStrength * bloom.sample(linearSampler, in.uv).rgb;
+    }
     c = 1 - exp(-1.6 * c);
     return float4(c, 1);
 }

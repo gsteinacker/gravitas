@@ -10,6 +10,7 @@ struct Arguments {
     var shot: String?
     var shotAfter = 6.0
     var explain = false
+    var fx: Int?
 
     init() {
         var it = CommandLine.arguments.dropFirst().makeIterator()
@@ -20,9 +21,18 @@ struct Arguments {
             case "-shot": shot = it.next()
             case "-shot-after": shotAfter = Double(it.next() ?? "") ?? 6
             case "-explain": explain = true
+            case "-fx": fx = Arguments.effects(it.next() ?? "")
             default: break
             }
         }
+    }
+}
+
+extension Arguments {
+    /// effects parses a list such as "glow,lens,doppler" into the effect bits of GalaxyState.fx.
+    static func effects(_ list: String) -> Int {
+        let bits = ["glow": 1, "doppler": 2, "lens": 4, "trails": 8, "dark": 16, "gas": 32, "dust": 64]
+        return list.split(separator: ",").reduce(0) { $0 | (bits[$1.trimmingCharacters(in: .whitespaces)] ?? 0) }
     }
 }
 
@@ -46,6 +56,7 @@ struct GalaxyApp: App {
         renderer = r
         AppDelegate.engine = e
         if args.explain { e.set("explain", 1) }
+        if let fx = args.fx { e.set("fx", Double(fx)) }
     }
 
     var body: some Scene {
@@ -119,6 +130,8 @@ struct GalaxyApp: App {
             Toggle(L("Gravitationslinse", "Lensing"), isOn: engine.fxBinding(Engine.lens)).keyboardShortcut("l", modifiers: [])
             Toggle(L("Doppler-Farben", "Doppler Colors"), isOn: engine.fxBinding(Engine.doppler)).keyboardShortcut("d", modifiers: [])
             Toggle(L("Staub", "Dust"), isOn: engine.fxBinding(Engine.dust)).keyboardShortcut("u", modifiers: [])
+            Toggle(L("Gas zeigen", "Show Gas"), isOn: engine.fxBinding(Engine.gas)).keyboardShortcut("o", modifiers: [])
+            Toggle(L("Dunkle Materie zeigen", "Show Dark Matter"), isOn: engine.fxBinding(Engine.dark)).keyboardShortcut("v", modifiers: [])
             Divider()
             Toggle(L("Inspektor", "Inspector"), isOn: $showInspector).keyboardShortcut("i", modifiers: [.command, .option])
             Toggle(L("Lernmodus", "Learning Mode"), isOn: $showLearning).keyboardShortcut("e", modifiers: [])
