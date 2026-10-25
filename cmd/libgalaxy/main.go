@@ -38,7 +38,7 @@ typedef struct {
 } GalaxySettings;
 
 typedef struct {
-	int active, plane, hasUnits;
+	int active, plane, hasUnits, binary, holeAttractor;
 	double height, azimuth, elevation, speed; // length and velocity units, radians
 	double circular, escape, radius, impact;  // references at the position
 	double kmPerS, pcPerUnit;                 // physical units of the scene (if hasUnits)
@@ -415,7 +415,7 @@ func galaxy_launch_begin(x, y C.double) { eng.BeginLaunch(float64(x), float64(y)
 //export galaxy_launch_set
 func galaxy_launch_set(name *C.char, v C.double) { eng.SetLaunch(C.GoString(name), float64(v)) }
 
-// galaxy_launch_preset: 0 rest, 1 circular orbit, 2 escape, 3 towards the center.
+// galaxy_launch_preset: 0 rest, 1 circular orbit, 2 escape, 3 towards the center, 4 binary.
 //
 //export galaxy_launch_preset
 func galaxy_launch_preset(p C.int) { eng.LaunchPreset(int(p)) }
@@ -435,24 +435,53 @@ func galaxy_launch_cancel() { eng.CancelLaunch() }
 func galaxy_launch(out *C.GalaxyLaunch) {
 	l := eng.LaunchPlan()
 	v, pc, ok := eng.Scene.Units()
-	*out = C.GalaxyLaunch{active: b(l.Active), plane: C.int(l.Plane), hasUnits: b(ok),
+	*out = C.GalaxyLaunch{active: b(l.Active), plane: C.int(l.Plane), hasUnits: b(ok), binary: b(l.Binary), holeAttractor: b(l.HoleMass > 0),
 		height: C.double(l.Height), azimuth: C.double(l.Azimuth), elevation: C.double(l.Elevation),
 		speed: C.double(l.Speed), circular: C.double(l.Circular), escape: C.double(l.Escape),
 		radius: C.double(l.Radius), impact: C.double(l.Impact), kmPerS: C.double(v), pcPerUnit: C.double(pc)}
 }
 
-// galaxy_gizmo writes the lines of the launch plan for the current view (x0, y0, x1, y1, color;
-// render pixels) and returns their number.
+// galaxy_gizmo writes the lines (x0, y0, x1, y1, color) and markers (x, y, kind) of the launch pad
+// for the current view, in render pixels; it returns the number of lines and sets *nMarks.
 //
 //export galaxy_gizmo
-func galaxy_gizmo(out *C.float, max C.int) C.int {
-	gizmo = eng.Gizmo(gizmo)
-	dst := unsafe.Slice((*float32)(unsafe.Pointer(out)), int(max)*5)
-	n := min(len(gizmo), int(max))
-	for i, sg := range gizmo[:n] {
+func galaxy_gizmo(segOut *C.float, maxSegs C.int, markOut *C.float, maxMarks C.int, nMarks *C.int) C.int {
+	gizmoSegs, gizmoMarks = eng.Gizmo(gizmoSegs, gizmoMarks)
+	dst := unsafe.Slice((*float32)(unsafe.Pointer(segOut)), int(maxSegs)*5)
+	n := min(len(gizmoSegs), int(maxSegs))
+	for i, sg := range gizmoSegs[:n] {
 		copy(dst[5*i:5*i+5], []float32{sg.X0, sg.Y0, sg.X1, sg.Y1, float32(sg.Color)})
 	}
+	md := unsafe.Slice((*float32)(unsafe.Pointer(markOut)), int(maxMarks)*3)
+	m := min(len(gizmoMarks), int(maxMarks))
+	for i, mk := range gizmoMarks[:m] {
+		copy(md[3*i:3*i+3], []float32{mk.X, mk.Y, float32(mk.Kind)})
+	}
+	*nMarks = C.int(m)
 	return C.int(n)
 }
 
-var gizmo []engine.Segment
+var (
+	gizmoSegs  []engine.Segment
+	gizmoMarks []engine.Marker
+)
+
+// galaxy_launch_hit returns the handle of the launch pad at (x, y), -1 for none (engine.Handle).
+//
+//export galaxy_launch_hit
+func galaxy_launch_hit(x, y C.double) C.int { return C.int(eng.HitLaunch(float64(x), float64(y))) }
+
+//export galaxy_launch_drag_begin
+func galaxy_launch_drag_begin(h C.int, x, y C.double) {
+	eng.BeginDrag(engine.Handle(h), float64(x), float64(y))
+}
+
+// galaxy_launch_drag_to moves the dragged handle; snap 1 snaps to reference speeds and axes.
+//
+//export galaxy_launch_drag_to
+func galaxy_launch_drag_to(x, y C.double, snap C.int) { eng.DragTo(float64(x), float64(y), snap != 0) }
+
+// galaxy_launch_drag_end ends the drag; it returns 1 if a slingshot was released (then launch).
+//
+//export galaxy_launch_drag_end
+func galaxy_launch_drag_end() C.int { return b(eng.EndDrag()) }

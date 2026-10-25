@@ -23,6 +23,7 @@ struct ContentView: View {
         } detail: {
             ZStack(alignment: .bottom) {
                 MetalView(engine: engine, renderer: renderer)
+                LaunchPadOverlay(engine: engine, pad: renderer.pad)
                 if engine.state.showHUD != 0 {
                     StatusOverlay(engine: engine).frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
                 }
@@ -196,6 +197,7 @@ struct LaunchSection: View {
                 Button(L("Kreisbahn", "Circular")) { engine.launchPreset(1) }
                 Button(L("Flucht", "Escape")) { engine.launchPreset(2) }
                 Button(L("Zentrum", "Center")) { engine.launchPreset(3) }
+                Button(L("Doppel", "Binary")) { engine.launchPreset(4) }.disabled(l.holeAttractor == 0)
             }
             .controlSize(.small)
             HStack {
@@ -300,10 +302,14 @@ struct KeyOverview: View {
 
     private let keys: [(String, String)] = [
         ("1 – 9", L("Szene laden", "load scene")),
-        (L("Klick", "Click"), L("Start planen: Ort auf der Scheibenebene, Inspektor für Höhe, Richtung, Tempo", "plan a launch: position on the disk plane, inspector for height, direction, speed")),
-        (L("↩  ⎋", "↩  ⎋"), L("geplanten Start ausführen / verwerfen", "launch / discard the plan")),
+        (L("Klick", "Click"), L("Startrampe öffnen: Objekt auf der Scheibenebene mit Griffen", "open the launch pad: object on the disk plane with handles")),
+        (L("Objekt ziehen", "Drag object"), L("Schleuder: zurückziehen und loslassen startet", "slingshot: pull back and release to launch")),
+        (L("Griffe ziehen", "Drag handles"), L("gelb mit/gegen die Drehung, cyan außen/innen, magenta oben/unten, Spitze frei", "yellow pro/retrograde, cyan out/in, magenta up/down, tip freely")),
+        (L("Ring, ↕-Knopf", "Ring, ↕ knob"), L("auf der Ebene verschieben, Höhe", "move on the plane, height")),
+        (L("⌘ beim Ziehen", "⌘ while dragging"), L("ohne Einrasten an Kreisbahn, Flucht, Achsen", "no snapping to circular, escape, axes")),
+        (L("↩  ⎋", "↩  ⎋"), L("starten / verwerfen", "launch / discard")),
         (L("Doppelklick", "Double click"), L("sofort platzieren", "place at once")),
-        (L("⌥ + Ziehen", "⌥ + drag"), L("Richtung und Tempo ziehen und starten (Länge = Abstand → Kreisbahntempo)", "drag direction and speed, then launch (length = distance → circular speed)")),
+        (L("⌥ + Ziehen", "⌥ + drag"), L("Richtung und Tempo ziehen und starten", "drag direction and speed, then launch")),
         ("b  k  ⇥", L("Werkzeug: Loch / Sternhaufen / wechseln", "tool: hole / cluster / switch")),
         ("m  n", L("Masse + / −", "mass + / −")),
         (L("Ziehen", "Drag"), L("drehen", "rotate")),

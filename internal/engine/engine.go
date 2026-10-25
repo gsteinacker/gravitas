@@ -41,6 +41,7 @@ type Engine struct {
 	opts       *Options
 	launch     Launch
 	launchDone bool
+	drag       drag
 
 	correction map[*scene.Spec]float64 // measured/predicted step time per scene (observe)
 	running    *scene.Spec
@@ -64,7 +65,7 @@ func Start(o *Options) (*Engine, error) {
 		i18n.Set(i18n.FromLocale(o.Lang)) // before the scene: its messages are translated
 	}
 	fixed := o.Screenshot() && !o.Adapt
-	e := &Engine{settings: prefs.Load(prefs.Path()), hw: perf.Probe(), opts: o}
+	e := &Engine{settings: prefs.Load(prefs.Path()), hw: perf.Probe(), opts: o, drag: drag{handle: HandleNone}}
 	if fixed {
 		e.settings = prefs.Default()
 	}

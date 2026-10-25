@@ -19,20 +19,25 @@ import (
 //   - Speeds are relative to the attractor's velocity. The circular and escape speeds at the
 //     position (from the frozen field of the current snapshot) are offered as references.
 type Launch struct {
-	Active     bool
-	Plane      LaunchPlane
-	Height     float64 // along the plane normal, length units
-	Azimuth    float64 // radians
-	Elevation  float64 // radians
-	Speed      float64 // velocity units, relative to the attractor
-	Center     vec.Vec3
-	CenterVel  vec.Vec3
-	Normal     vec.Vec3
-	Foot       vec.Vec3 // the clicked point on the plane
-	Circular   float64  // circular speed at the position
-	Escape     float64  // escape speed from the whole scene at the position
-	Radius     float64  // distance from the attractor
-	Impact     float64  // impact parameter: closest approach to the center on a straight line
+	Active    bool
+	Plane     LaunchPlane
+	Height    float64 // along the plane normal, length units
+	Azimuth   float64 // radians
+	Elevation float64 // radians
+	Speed     float64 // velocity units, relative to the attractor
+	Center    vec.Vec3
+	CenterVel vec.Vec3
+	Normal    vec.Vec3
+	Foot      vec.Vec3 // the clicked point on the plane
+	Circular  float64  // circular speed at the position
+	Escape    float64  // escape speed from the whole scene at the position
+	Radius    float64  // distance from the attractor
+	Impact    float64  // impact parameter: closest approach to the center on a straight line
+	// Binary: the object and the attractor hole orbit their common center of mass (momentum is
+	// conserved: the hole gets the opposite share of the relative velocity).
+	Binary     bool
+	HoleMass   float64 // mass of the attractor if it is a black hole, else 0
+	holeVel    vec.Vec3
 	field      []vec.Vec3
 	fieldMass  []float64
 	soft2      float64
@@ -54,6 +59,7 @@ const (
 	PresetCircular
 	PresetEscape
 	PresetCenter
+	PresetBinary
 )
 
 // maxFieldPoints bounds the bodies of the frozen field (black holes always count fully).
@@ -106,12 +112,14 @@ func (e *Engine) freezeField(x, y float64) {
 		// The attractor: the hole nearest to the click on screen.
 		vw := e.Cam.View()
 		best := math.Inf(1)
+		l.HoleMass = 0
 		for _, i := range holes {
 			sx, sy, _, ok := vw.Project(float64(sn.X[i]), float64(sn.Y[i]), float64(sn.Z[i]))
 			if d := math.Hypot(sx-x, sy-y); ok && d < best {
 				best = d
 				l.Center = vec.Vec3{X: float64(sn.X[i]), Y: float64(sn.Y[i]), Z: float64(sn.Z[i])}
 				l.CenterVel = vec.Vec3{X: float64(sn.VX[i]), Y: float64(sn.VY[i]), Z: float64(sn.VZ[i])}
+				l.HoleMass = float64(sn.Mass[i])
 			}
 		}
 		l.diskNormal = diskNormal(sn, l.Center, l.CenterVel)
@@ -283,6 +291,7 @@ func (e *Engine) LaunchPreset(preset int) {
 		return
 	}
 	l.Elevation = 0
+	l.Binary = false
 	switch preset {
 	case PresetRest:
 		l.Speed, l.Azimuth = 0, 0
@@ -292,6 +301,10 @@ func (e *Engine) LaunchPreset(preset int) {
 		l.Speed, l.Azimuth = l.Escape, math.Pi/2
 	case PresetCenter:
 		l.Speed, l.Azimuth = math.Max(l.Speed, 0.5*l.Circular), -math.Pi/2
+	case PresetBinary:
+		// Relative circular orbit of the pair: the object's own mass adds to the pull.
+		l.Binary = l.HoleMass > 0
+		l.Speed, l.Azimuth = math.Sqrt(l.Circular*l.Circular+e.Mass/math.Max(l.Radius, 1e-9)), 0
 	}
 	e.planLaunch()
 }
@@ -324,95 +337,82 @@ func (e *Engine) DragLaunch(x1, y1 float64) {
 	e.planLaunch()
 }
 
-// GoLaunch places the current tool's object as planned and ends the plan.
+// GoLaunch places the current tool's object as planned and ends the plan. For a binary, the
+// relative velocity is split by mass so the pair's momentum is that of the hole before.
 func (e *Engine) GoLaunch() {
 	l := &e.launch
 	if !l.Active {
 		return
 	}
-	e.PlaceAt(l.Position(), l.CenterVel.Add(l.Velocity()))
+	v := l.Velocity()
+	if l.Binary && l.HoleMass > 0 {
+		m, mh := e.Mass, l.HoleMass
+		center, holeVel := l.Center, l.CenterVel.Sub(v.Scale(m/(m+mh)))
+		e.Runner.Do(func(s *sim.Simulation) { setHoleVelocity(s, center, holeVel) })
+		v = v.Scale(mh / (m + mh))
+	}
+	e.PlaceAt(l.Position(), l.CenterVel.Add(v))
 	l.Active = false
 }
+
+// setHoleVelocity gives the black hole at center (as frozen at planning) the coordinate velocity v.
+func setHoleVelocity(s *sim.Simulation, center, v vec.Vec3) {
+	st := s.State
+	best, bi := math.Inf(1), -1
+	for i := range st.Len() {
+		if st.Kind[i] != sim.BlackHole {
+			continue
+		}
+		d := vec.Vec3{X: st.PosX[i], Y: st.PosY[i], Z: st.PosZ[i]}.Sub(center).Len()
+		if d < best {
+			best, bi = d, i
+		}
+	}
+	if bi < 0 {
+		return
+	}
+	u := sim.ProperVelocity(v, s.Params.C)
+	st.VelX[bi], st.VelY[bi], st.VelZ[bi] = u.X, u.Y, u.Z
+	s.Epoch++ // the energy changed by intent
+}
+
+// setVelocity sets the relative velocity from a vector; with snap, the speed snaps to the circular
+// and escape speed and the direction to the axes of the disk when they are close.
+func (e *Engine) setVelocity(v vec.Vec3, snap bool) {
+	l := &e.launch
+	radial, prograde := l.basis()
+	l.Speed = v.Len()
+	if l.Speed < 1e-12 {
+		l.Speed, l.Azimuth, l.Elevation = 0, 0, 0
+		e.planLaunch()
+		return
+	}
+	l.Elevation = math.Asin(math.Max(-1, math.Min(1, v.Dot(l.Normal)/l.Speed)))
+	l.Azimuth = math.Atan2(v.Dot(radial), v.Dot(prograde))
+	if snap {
+		for _, ref := range []float64{l.Circular, l.Escape} {
+			if ref > 0 && math.Abs(l.Speed-ref) < snapSpeed*ref {
+				l.Speed = ref
+			}
+		}
+		if q := math.Round(l.Azimuth / (math.Pi / 2)); math.Abs(l.Azimuth-q*math.Pi/2) < snapAngle {
+			l.Azimuth = q * math.Pi / 2
+		}
+		if math.Abs(l.Elevation) < snapAngle {
+			l.Elevation = 0
+		}
+	}
+	e.planLaunch()
+}
+
+// Snapping tolerances: 4 % of a reference speed, 6° of an axis.
+const (
+	snapSpeed = 0.04
+	snapAngle = 6 * math.Pi / 180
+)
 
 // CancelLaunch ends the plan without placing anything.
 func (e *Engine) CancelLaunch() { e.launch.Active = false }
 
 // LaunchPlan returns the current plan.
 func (e *Engine) LaunchPlan() Launch { return e.launch }
-
-// Gizmo line colors.
-const (
-	GizmoGrid = iota
-	GizmoRadial
-	GizmoDrop
-	GizmoArrow
-	GizmoPath
-)
-
-// Segment is a line on screen, in render pixels.
-type Segment struct {
-	X0, Y0, X1, Y1 float32
-	Color          int
-}
-
-// Gizmo projects the plan for the current view: rings of the plane around the attractor, the line
-// to the position, the drop to the plane, the velocity arrow and the preview path.
-func (e *Engine) Gizmo(dst []Segment) []Segment {
-	dst = dst[:0]
-	l := &e.launch
-	if !l.Active {
-		return dst
-	}
-	vw := e.Cam.View()
-	line := func(a, b vec.Vec3, c int) {
-		x0, y0, _, ok0 := vw.Project(a.X, a.Y, a.Z)
-		x1, y1, _, ok1 := vw.Project(b.X, b.Y, b.Z)
-		if ok0 && ok1 {
-			dst = append(dst, Segment{float32(x0), float32(y0), float32(x1), float32(y1), c})
-		}
-	}
-	radial, prograde := l.basis()
-	r := math.Hypot(l.Foot.Sub(l.Center).Dot(radial), l.Foot.Sub(l.Center).Dot(prograde))
-	if r < 1e-6 {
-		r = math.Max(l.Radius, 1)
-	}
-	for _, k := range []float64{0.5, 1, 1.5} {
-		const seg = 72
-		var prev vec.Vec3
-		for i := 0; i <= seg; i++ {
-			phi := 2 * math.Pi * float64(i) / seg
-			p := l.Center.Add(radial.Scale(k * r * math.Cos(phi))).Add(prograde.Scale(k * r * math.Sin(phi)))
-			if i > 0 {
-				line(prev, p, GizmoGrid)
-			}
-			prev = p
-		}
-	}
-	pos := l.Position()
-	line(l.Center, l.Foot, GizmoRadial)
-	if l.Height != 0 {
-		line(l.Foot, pos, GizmoDrop)
-	}
-	for i := 1; i < len(l.path); i += 2 {
-		line(l.path[i-1], l.path[min(i+1, len(l.path)-1)], GizmoPath)
-	}
-	if l.Speed > 0 {
-		ref := math.Max(l.Circular, l.Speed)
-		tip := pos.Add(l.Velocity().Scale(0.6 * r / ref))
-		line(pos, tip, GizmoArrow)
-		// The arrow head in screen space.
-		x0, y0, _, ok0 := vw.Project(pos.X, pos.Y, pos.Z)
-		x1, y1, _, ok1 := vw.Project(tip.X, tip.Y, tip.Z)
-		if ok0 && ok1 {
-			dx, dy := x1-x0, y1-y0
-			if d := math.Hypot(dx, dy); d > 4 {
-				ux, uy := dx/d, dy/d
-				for _, side := range []float64{1, -1} {
-					dst = append(dst, Segment{float32(x1), float32(y1),
-						float32(x1 - 12*ux + 7*side*uy), float32(y1 - 12*uy - 7*side*ux), GizmoArrow})
-				}
-			}
-		}
-	}
-	return dst
-}

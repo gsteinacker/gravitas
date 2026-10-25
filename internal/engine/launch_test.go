@@ -85,18 +85,22 @@ func TestLaunchInScene(t *testing.T) {
 		t.Errorf("circular %.0f km/s, escape %.0f km/s", vc, l.Escape*kmPerS)
 	}
 	e.LaunchPreset(PresetCircular)
-	before := 0
-	e.Runner.View(func(sn *sim.Snapshot) { before = sn.Len() })
 	e.GoLaunch()
 	if e.LaunchPlan().Active {
 		t.Error("launch must end the plan")
 	}
-	e.Runner.SetPaused(false)
-	deadline := time.Now().Add(3 * time.Second)
+	// Paused: the runner still executes the placement; count holes, accretion may change the rest.
+	deadline := time.Now().Add(5 * time.Second)
 	for time.Now().Before(deadline) {
-		n := 0
-		e.Runner.View(func(sn *sim.Snapshot) { n = sn.Len() })
-		if n == before+1 {
+		holes := 0
+		e.Runner.View(func(sn *sim.Snapshot) {
+			for _, k := range sn.Kind {
+				if k == sim.BlackHole {
+					holes++
+				}
+			}
+		})
+		if holes == 2 {
 			return
 		}
 		time.Sleep(10 * time.Millisecond)

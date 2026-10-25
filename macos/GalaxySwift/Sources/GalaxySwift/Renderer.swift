@@ -1,4 +1,5 @@
 import AppKit
+import Observation
 import CGalaxy
 @preconcurrency import Metal
 @preconcurrency import MetalKit
@@ -55,6 +56,9 @@ final class Renderer: NSObject, MTKViewDelegate {
     private var scale = 1.0
     private var gizmoLayers: [CAShapeLayer] = []
     private var gizmoBuf = [Float](repeating: 0, count: 5 * 4096)
+    private var markBuf = [Float](repeating: 0, count: 3 * 256)
+    /// pad publishes the screen anchors of the launch pad (labels, speedometer) to SwiftUI.
+    let pad = PadAnchors()
     var exportURL: URL?
     var shot: (url: URL, after: Double, start: Double)?
 
@@ -366,19 +370,37 @@ final class Renderer: NSObject, MTKViewDelegate {
         e.endEncoding()
     }
 
-    /// updateGizmo draws the launch plan (engine.Gizmo) as vector layers over the Metal image:
-    /// rings of the plane, line to the position, drop to the plane, velocity arrow, preview path.
+    /// updateGizmo draws the launch pad (engine.Gizmo) as vector layers over the Metal image and
+    /// passes the anchors for labels, speedometer and toolbar to the SwiftUI overlay.
     private func updateGizmo(_ view: MTKView) {
-        let styles: [(NSColor, CGFloat, [NSNumber]?)] = [
-            (NSColor(white: 1, alpha: 0.22), 1, [4, 4]),                              // plane rings
-            (NSColor(white: 1, alpha: 0.45), 1, nil),                                 // to the position
-            (NSColor(white: 1, alpha: 0.8), 1, [3, 3]),                               // drop to the plane
-            (NSColor(red: 1, green: 0.59, blue: 0.2, alpha: 1), 2.5, nil),            // velocity
-            (NSColor(red: 1, green: 0.85, blue: 0.35, alpha: 0.85), 1.5, [6, 4]),     // preview path
+        let yellow = NSColor(red: 1, green: 0.84, blue: 0.25, alpha: 1)
+        let cyan = NSColor(red: 0.3, green: 0.85, blue: 1, alpha: 1)
+        let magenta = NSColor(red: 1, green: 0.4, blue: 0.9, alpha: 1)
+        let orange = NSColor(red: 1, green: 0.59, blue: 0.2, alpha: 1)
+        // Line styles in the order of the engine's Gizmo colors.
+        let lines: [(NSColor, CGFloat, [NSNumber]?)] = [
+            (NSColor(white: 1, alpha: 0.18), 1, [4, 4]),                            // plane rings
+            (NSColor(white: 1, alpha: 0.4), 1, nil),                                // to the position
+            (NSColor(white: 1, alpha: 0.8), 1, [3, 3]),                             // drop to the plane
+            (orange, 3, nil),                                                       // velocity
+            (NSColor(red: 1, green: 0.85, blue: 0.35, alpha: 0.85), 1.5, [6, 4]),   // preview path
+            (NSColor(white: 1, alpha: 0.55), 1.2, nil),                             // compass
+            (yellow, 2, nil), (cyan, 2, nil), (magenta, 2, nil),                    // axes
+            (NSColor(red: 1, green: 0.35, blue: 0.25, alpha: 0.9), 2, [2, 3]),      // slingshot band
+        ]
+        // Marker styles in the order of the engine's Marker kinds: fill, stroke, radius (points).
+        let ghostFill = engine.state.tool == 0 ? NSColor.black : NSColor(white: 1, alpha: 0.75)
+        let markers: [(NSColor?, NSColor?, CGFloat)] = [
+            (ghostFill.withAlphaComponent(0.85), orange, 9),       // ghost
+            (yellow, nil, 6), (nil, yellow, 5),                    // prograde, retrograde
+            (cyan, nil, 6), (nil, cyan, 5),                        // out, in
+            (magenta, nil, 6), (nil, magenta, 5),                  // up, down
+            (NSColor.white, nil, 5),                               // height
+            (orange, NSColor.white, 6),                            // tip
         ]
         if gizmoLayers.isEmpty {
             view.wantsLayer = true
-            for (color, width, dash) in styles {
+            for (color, width, dash) in lines {
                 let l = CAShapeLayer()
                 l.strokeColor = color.cgColor
                 l.fillColor = nil
@@ -388,15 +410,39 @@ final class Renderer: NSObject, MTKViewDelegate {
                 view.layer?.addSublayer(l)
                 gizmoLayers.append(l)
             }
+            for (fill, stroke, _) in markers {
+                let l = CAShapeLayer()
+                l.fillColor = fill?.cgColor
+                l.strokeColor = stroke?.cgColor
+                l.lineWidth = 2
+                view.layer?.addSublayer(l)
+                gizmoLayers.append(l)
+            }
         }
-        let n = gizmoBuf.withUnsafeMutableBufferPointer { Int(galaxy_gizmo($0.baseAddress!, 4096)) }
-        let paths = styles.map { _ in CGMutablePath() }
+        var nMarks: Int32 = 0
+        let n = gizmoBuf.withUnsafeMutableBufferPointer { segs in
+            markBuf.withUnsafeMutableBufferPointer { marks in
+                Int(galaxy_gizmo(segs.baseAddress!, 4096, marks.baseAddress!, 256, &nMarks))
+            }
+        }
+        let paths = (0..<gizmoLayers.count).map { _ in CGMutablePath() }
         let k = 1 / CGFloat(scale), h = view.bounds.height
         for i in 0..<n {
-            let g = Array(gizmoBuf[5 * i..<5 * i + 5])
-            let c = min(paths.count - 1, max(0, Int(g[4])))
-            paths[c].move(to: CGPoint(x: CGFloat(g[0]) * k, y: h - CGFloat(g[1]) * k))
-            paths[c].addLine(to: CGPoint(x: CGFloat(g[2]) * k, y: h - CGFloat(g[3]) * k))
+            let c = min(lines.count - 1, max(0, Int(gizmoBuf[5 * i + 4])))
+            paths[c].move(to: CGPoint(x: CGFloat(gizmoBuf[5 * i]) * k, y: h - CGFloat(gizmoBuf[5 * i + 1]) * k))
+            paths[c].addLine(to: CGPoint(x: CGFloat(gizmoBuf[5 * i + 2]) * k, y: h - CGFloat(gizmoBuf[5 * i + 3]) * k))
+        }
+        var anchors: [Int: CGPoint] = [:]
+        for i in 0..<Int(nMarks) {
+            let kind = Int(markBuf[3 * i + 2])
+            let x = CGFloat(markBuf[3 * i]) * k, y = CGFloat(markBuf[3 * i + 1]) * k
+            if kind < markers.count {
+                let r = markers[kind].2
+                let rect = CGRect(x: x - r, y: h - y - r, width: 2 * r, height: 2 * r)
+                if kind == 7 { paths[lines.count + kind].addRect(rect) } else { paths[lines.count + kind].addEllipse(in: rect) }
+            } else {
+                anchors[kind] = CGPoint(x: x, y: y) // SwiftUI coordinates: origin top left
+            }
         }
         CATransaction.begin()
         CATransaction.setDisableActions(true)
@@ -405,6 +451,7 @@ final class Renderer: NSObject, MTKViewDelegate {
             l.path = paths[i]
         }
         CATransaction.commit()
+        if anchors != pad.anchors { pad.anchors = anchors }
     }
 
     /// prepare takes the look of the frame from the Go core: exposure, emission and haze
@@ -480,4 +527,14 @@ func writePNG(_ bgra: [UInt8], _ w: Int, _ h: Int, _ url: URL) {
     guard let v = w.contentView, let rep = v.bitmapImageRepForCachingDisplay(in: v.bounds) else { return }
     v.cacheDisplay(in: v.bounds, to: rep)
     try? rep.representation(using: .png, properties: [:])?.write(to: url)
+}
+
+/// PadAnchors are the positions (points, origin top left) of the launch pad's labels and
+/// speedometer, by engine marker kind.
+@MainActor
+@Observable
+final class PadAnchors {
+    var anchors: [Int: CGPoint] = [:]
+
+    static let labelPrograde = 9, labelOut = 10, labelCenter = 11, gauge = 12
 }

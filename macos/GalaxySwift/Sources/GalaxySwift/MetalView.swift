@@ -8,6 +8,7 @@ final class SimulationView: MTKView {
     var engine: Engine!
     private var press: CGPoint?, last: CGPoint = .zero
     private var moved = false, launching = false, panning = false
+    private var handle: Int32 = -1 // launch pad handle being dragged (engine.Handle), -1 none
 
     override var acceptsFirstResponder: Bool { true }
     override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
@@ -24,6 +25,12 @@ final class SimulationView: MTKView {
         press = pixel(e)
         last = press!
         moved = false
+        handle = engine.launch.active != 0 ? galaxy_launch_hit(press!.x, press!.y) : -1
+        if handle >= 0 {
+            galaxy_launch_drag_begin(handle, press!.x, press!.y)
+            NSCursor.closedHand.set()
+            return
+        }
         launching = e.modifierFlags.contains(.option)
         panning = e.modifierFlags.contains(.shift)
         if launching { galaxy_launch_begin(press!.x, press!.y) } // ⌥-drag: aim and launch at once
@@ -43,6 +50,12 @@ final class SimulationView: MTKView {
     private func drag(_ e: NSEvent) {
         guard let p0 = press else { return }
         let p = pixel(e)
+        if handle >= 0 {
+            // ⌘ turns the magnetic snapping to circular/escape speed and the axes off.
+            galaxy_launch_drag_to(p.x, p.y, e.modifierFlags.contains(.command) ? 0 : 1)
+            engine.refresh()
+            return
+        }
         let threshold = 4 * drawableSize.width / max(bounds.width, 1)
         if abs(p.x - p0.x) > threshold || abs(p.y - p0.y) > threshold { moved = true }
         if launching {
@@ -61,6 +74,14 @@ final class SimulationView: MTKView {
     override func mouseUp(with e: NSEvent) {
         guard let p0 = press else { return }
         let p = pixel(e)
+        if handle >= 0 {
+            if galaxy_launch_drag_end() != 0 { galaxy_launch_go() } // the slingshot was released
+            handle = -1
+            press = nil
+            engine.refresh()
+            updateCursor(at: p)
+            return
+        }
         if launching {
             galaxy_launch_go()
         } else if !moved {
@@ -75,6 +96,26 @@ final class SimulationView: MTKView {
     }
 
     override func rightMouseUp(with e: NSEvent) { press = nil }
+
+    // Cursor feedback over the launch pad: open hand for the slingshot, pointing hand for handles.
+    override func updateTrackingAreas() {
+        super.updateTrackingAreas()
+        trackingAreas.forEach(removeTrackingArea)
+        addTrackingArea(NSTrackingArea(rect: bounds, options: [.mouseMoved, .activeInKeyWindow, .inVisibleRect], owner: self))
+    }
+
+    override func mouseMoved(with e: NSEvent) { updateCursor(at: pixel(e)) }
+
+    private func updateCursor(at p: CGPoint) {
+        guard engine.launch.active != 0 else { NSCursor.arrow.set(); return }
+        switch galaxy_launch_hit(p.x, p.y) {
+        case 0: NSCursor.openHand.set()        // ghost: slingshot
+        case 1: NSCursor.openHand.set()        // ring: move on the plane
+        case 2: NSCursor.resizeUpDown.set()    // height
+        case 3...: NSCursor.pointingHand.set() // tip and axis handles
+        default: NSCursor.arrow.set()
+        }
+    }
 
     override func scrollWheel(with e: NSEvent) {
         let dy = e.hasPreciseScrollingDeltas ? e.scrollingDeltaY / 10 : e.scrollingDeltaY
