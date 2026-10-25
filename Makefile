@@ -1,6 +1,6 @@
 GO ?= go
 
-.PHONY: check fmt vet test race bench run build shot plan next app dmg notarize icon lib lib-test metallib swift app-swift
+.PHONY: check fmt vet test race bench run build shot plan next app dmg notarize icon dmg-swift notarize-swift package-dmg notarize-dmg lib lib-test metallib swift app-swift
 
 check: fmt vet test
 	$(GO) run ./tools/plan check
@@ -68,20 +68,36 @@ app:
 	codesign --verify --strict $(APP)
 	@echo "$(APP) $(VERSION) ($$(lipo -archs $(APP)/Contents/MacOS/Galaxy))"
 
+# DMG_APP and DMG_NAME choose the app: make dmg (Ebitengine) or make dmg-swift (SwiftUI).
+DMG_APP  ?= $(APP)
+DMG_NAME ?= Galaxy
+
 dmg: app
-	rm -rf bin/dmg bin/Galaxy-$(VERSION).dmg
+	$(MAKE) package-dmg DMG_APP="$(APP)" DMG_NAME=Galaxy
+
+dmg-swift: app-swift
+	$(MAKE) package-dmg DMG_APP="$(SWIFT_APP)" DMG_NAME=Galaxy-SwiftUI
+
+package-dmg:
+	rm -rf bin/dmg "bin/$(DMG_NAME)-$(VERSION).dmg"
 	mkdir -p bin/dmg
-	cp -R $(APP) bin/dmg/
+	cp -R "$(DMG_APP)" bin/dmg/
 	ln -s /Applications bin/dmg/Applications
-	hdiutil create -volname "Galaxy $(VERSION)" -srcfolder bin/dmg -fs HFS+ -format UDZO -ov bin/Galaxy-$(VERSION).dmg
-	$(if $(filter -,$(SIGN_ID)),,codesign --sign "$(SIGN_ID)" --timestamp bin/Galaxy-$(VERSION).dmg)
+	hdiutil create -volname "$(DMG_NAME) $(VERSION)" -srcfolder bin/dmg -fs HFS+ -format UDZO -ov "bin/$(DMG_NAME)-$(VERSION).dmg"
+	$(if $(filter -,$(SIGN_ID)),,codesign --sign "$(SIGN_ID)" --timestamp "bin/$(DMG_NAME)-$(VERSION).dmg")
 	rm -rf bin/dmg
-	@echo bin/Galaxy-$(VERSION).dmg
+	@echo "bin/$(DMG_NAME)-$(VERSION).dmg"
 
 notarize: dmg
+	$(MAKE) notarize-dmg DMG_NAME=Galaxy
+
+notarize-swift: dmg-swift
+	$(MAKE) notarize-dmg DMG_NAME=Galaxy-SwiftUI
+
+notarize-dmg:
 	@if [ "$(SIGN_ID)" = "-" ]; then echo "notarize needs SIGN_ID=\"Developer ID Application: …\""; exit 1; fi
-	xcrun notarytool submit bin/Galaxy-$(VERSION).dmg --keychain-profile "$(NOTARY_PROFILE)" --wait
-	xcrun stapler staple bin/Galaxy-$(VERSION).dmg
+	xcrun notarytool submit "bin/$(DMG_NAME)-$(VERSION).dmg" --keychain-profile "$(NOTARY_PROFILE)" --wait
+	xcrun stapler staple "bin/$(DMG_NAME)-$(VERSION).dmg"
 
 icon: build
 	./bin/galaxy -preset 1 -n 120000 -hud=false -scale 2 -shot bin/icon-src.png -shot-after 8
