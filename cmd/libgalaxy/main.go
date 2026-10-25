@@ -311,6 +311,10 @@ func galaxy_text(what *C.char) *C.char {
 		s = eng.Hardware()
 	case "info":
 		s = eng.Options().Info
+	case "intro":
+		if eng.Options().Intro {
+			s = "1"
+		}
 	case "lang":
 		s = "en"
 		if i18n.Current() == i18n.German {

@@ -39,6 +39,7 @@ type Options struct {
 	Tool      string  // hole, cluster, cloud or galaxy
 	Mass      float64 // mass of the placed object (simulation units), 0 = default
 	Info      string  // open the (i) explanation of this control (screenshots, T-061)
+	Intro     bool    // show the opening crawl, also in screenshots (T-060)
 	Zoom      float64 // start zoomed in by this factor (0 or 1: scene view)
 	Target    string  // start with the camera on "x,y,z" (world units)
 	Shot      string  // save a screenshot after ShotAfter seconds and quit
@@ -72,6 +73,7 @@ func ParseOptions(args []string) (*Options, error) {
 	fs.StringVar(&o.Launch, "launch", "", "plan a launch at x,y (fractions of the view) with preset 0 rest, 1 circular, 2 escape, 3 center, 4 binary; ,1 launches")
 	fs.StringVar(&o.Tool, "tool", "", "tool for placing: hole, cluster, cloud or galaxy")
 	fs.Float64Var(&o.Mass, "mass", 0, "mass of placed objects (simulation units)")
+	fs.BoolVar(&o.Intro, "intro", false, "show the opening crawl (screenshots: a still frame)")
 	fs.StringVar(&o.Info, "info", "", "open the explanation of a control, e.g. c, theta, dust (screenshots)")
 	fs.Float64Var(&o.Zoom, "zoom", 0, "start zoomed in by this factor")
 	fs.StringVar(&o.Target, "target", "", "start with the camera on x,y,z (world units)")

@@ -116,6 +116,7 @@ struct GalaxyApp: App {
                 .keyboardShortcut("h", modifiers: [])
         }
         CommandGroup(replacing: .help) {
+            Button(L("Intro abspielen", "Play Intro")) { engine.showIntro = true }
             Button(L("Tastenübersicht", "Keys and Mouse")) { engine.action("help") }
                 .keyboardShortcut(KeyEquivalent(Character(UnicodeScalar(NSF1FunctionKey)!)), modifiers: [])
         }

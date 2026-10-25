@@ -29,6 +29,9 @@ final class Engine {
     /// shotInfo is the explanation the screenshot mode shows in the window (-info, T-061): a
     /// popover is a window of its own, which the screenshot mode does not capture.
     var shotInfo: SettingInfo?
+    /// showIntro shows the opening crawl (T-060): at the first start, then only if chosen in the
+    /// settings (introAtStart), from the Help menu, or with -intro.
+    var showIntro = false
     let presets: [String]
     let hardware: String
 
@@ -55,6 +58,13 @@ final class Engine {
         }
         refresh()
         if shot != nil { shotInfo = settingInfo(Engine.text("info")) }
+        if Engine.text("intro") == "1" {
+            showIntro = true
+        } else if shot == nil {
+            let d = UserDefaults.standard
+            showIntro = d.object(forKey: "introAtStart") == nil || d.bool(forKey: "introAtStart")
+            if d.object(forKey: "introAtStart") == nil { d.set(false, forKey: "introAtStart") } // once by default
+        }
     }
 
     /// startError describes invalid command line arguments.

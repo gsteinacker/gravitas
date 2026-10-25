@@ -53,6 +53,7 @@ struct ContentView: View {
         }
         .onChange(of: showLearning) { _, on in engine.set("explain", on ? 1 : 0) }
         .onChange(of: engine.state.explain) { _, on in showLearning = on != 0 }
+        .overlay { if engine.showIntro { IntroView(engine: engine) } } // over the whole window, inspector too
     }
 }
 
@@ -329,6 +330,7 @@ func groupDigits(_ n: Int) -> String {
 struct SettingsView: View {
     var engine: Engine
     @AppStorage("profile") private var profile = ""
+    @AppStorage("introAtStart") private var introAtStart = false
 
     var body: some View {
         Form {
@@ -362,6 +364,10 @@ struct SettingsView: View {
                 LabeledContent(L("Messung", "Measurement"),
                                verbatim: String(format: L("%@ Sterne bei 30 Schritten/s", "%@ stars at 30 steps/s"), groupDigits(Int(engine.settings.capacity))))
                 Button(L("Leistung neu messen", "Measure Again")) { engine.recalibrate() }
+            }
+            Section(L("Start", "Start")) {
+                Toggle(L("Intro beim Start zeigen", "Show the intro at start"), isOn: $introAtStart)
+                Button(L("Intro jetzt abspielen", "Play the intro now")) { engine.showIntro = true }
             }
             Section(L("Lernmodus", "Learning mode")) {
                 Picker(L("Zielgruppe", "Audience"), selection: Binding(get: { Int(engine.state.level) }, set: { engine.set("level", Double($0)) })) {
