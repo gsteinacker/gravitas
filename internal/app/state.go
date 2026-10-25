@@ -19,6 +19,7 @@ type State struct {
 	Mass          float64
 	CloudK        float64
 	CloudTurb     float64
+	Resolved      bool // the next object is enlarged to the resolution of the scene
 	FX            view.Effects
 	ShowHUD       bool
 	ShowHelp      bool
@@ -44,7 +45,7 @@ type State struct {
 func (c *Controller) Publish() {
 	s := &State{
 		Paused: c.Runner.Paused(), Speed: c.Speed, C: c.sim.C, Gravity: c.sim.Gravity,
-		DarkMatterOff: c.sim.DarkMatterOff, Tool: c.Tool, Mass: c.Mass, CloudK: c.CloudK, CloudTurb: c.CloudTurb, FX: c.FX,
+		DarkMatterOff: c.sim.DarkMatterOff, Tool: c.Tool, Mass: c.Mass, CloudK: c.CloudK, CloudTurb: c.CloudTurb, Resolved: c.ResolutionLimited(), FX: c.FX,
 		ShowHUD: c.ShowHUD, ShowHelp: c.ShowHelp, Explain: c.Explain, Level: c.Level,
 		Scene: -1, Sim: c.sim, StepsPerSec: c.Runner.StepsPerSecond(), FPS: c.FPS,
 	}

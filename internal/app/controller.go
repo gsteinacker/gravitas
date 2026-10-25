@@ -57,16 +57,42 @@ const (
 // Larson's relation R ≈ 20 pc · (M/10⁶ M☉)^½ in scenes with units, else 1.5 times a cluster.
 func (c *Controller) cloudRadius(mass float64) float64 {
 	if mu, pc, ok := c.units(); ok {
-		return 20 * math.Sqrt(mass*mu/1e6) / pc
+		return c.resolved(20 * math.Sqrt(mass*mu/1e6) / pc)
 	}
 	return 1.5 * clusterRadius(mass)
+}
+
+// resolved enlarges a radius below the resolution of the scene to twice the gravitational
+// softening: smaller objects would lose their self-gravity to the softening and fall apart.
+func (c *Controller) resolved(r float64) float64 {
+	if c.Scene == nil {
+		return r
+	}
+	return math.Max(r, 2*c.Scene.Params.Softening)
+}
+
+// ResolutionLimited reports whether the next object of the current tool is enlarged to the
+// resolution of the scene (its realistic radius is below twice the softening).
+func (c *Controller) ResolutionLimited() bool {
+	mu, pc, ok := c.units()
+	if !ok || c.Scene == nil {
+		return false
+	}
+	eps2 := 2 * c.Scene.Params.Softening
+	switch c.Tool {
+	case ToolCluster:
+		return 3*math.Cbrt(c.Mass*mu/1e5)/pc < eps2
+	case ToolGasCloud:
+		return 20*math.Sqrt(c.Mass*mu/1e6)/pc < eps2
+	}
+	return false
 }
 
 // clusterRadius is the Plummer scale radius of a star cluster of the given mass: r ≈ 3 pc ·
 // (M/10⁵ M☉)^⅓ (globular clusters) in scenes with units, else a scene-free rule.
 func (c *Controller) clusterRadius(mass float64) float64 {
 	if mu, pc, ok := c.units(); ok {
-		return 3 * math.Cbrt(mass*mu/1e5) / pc
+		return c.resolved(3 * math.Cbrt(mass*mu/1e5) / pc)
 	}
 	return clusterRadius(mass)
 }
@@ -88,8 +114,12 @@ func (c *Controller) GalaxyScale() bool {
 }
 
 // defaultMasses are realistic starting masses per tool for the scale of the scene (simulation
-// units): in galaxy scenes a Sgr A*-like hole, a globular cluster, a giant molecular cloud and an
-// LMC-sized galaxy; in parsec scenes a stellar black hole, an open cluster and a small cloud.
+// units). They must also be resolvable: in a galaxy scene (softening ~150 pc) a globular cluster
+// (10⁵ M☉, 3 pc) or a giant molecular cloud (10⁶ M☉, 20 pc) would be enlarged to the resolution
+// and torn apart by the tides at once. So galaxy scenes start with a Sgr A*-like hole, a massive
+// cluster like the nucleus of a dwarf galaxy (3·10⁷ M☉, bound against the tides), a giant gas
+// complex (10⁸ M☉, collapses even at 10⁴ K) and an LMC-sized galaxy; parsec scenes with a stellar
+// black hole, an open cluster and a small cloud.
 func (c *Controller) defaultMasses() [toolCount]float64 {
 	mu, pc, ok := c.units()
 	if !ok {
@@ -97,7 +127,7 @@ func (c *Controller) defaultMasses() [toolCount]float64 {
 	}
 	msun := [toolCount]float64{10, 1e3, 1e3, 2e10}
 	if pc >= 100 {
-		msun = [toolCount]float64{4e6, 1e5, 1e6, 2e10}
+		msun = [toolCount]float64{4e6, 3e7, 1e8, 2e10}
 	}
 	var m [toolCount]float64
 	for i, v := range msun {

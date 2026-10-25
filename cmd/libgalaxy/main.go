@@ -27,6 +27,7 @@ typedef struct {
 	double galaxyTilt;      // next galaxy: tilt of its disk against the launch plane (degrees)
 	double massMin;         // smallest sensible mass (about 1 solar mass), simulation units
 	int galaxyScale;        // galaxies can be placed in this scene
+	int resolved;           // the next object is enlarged to the scene's resolution (2 × softening)
 } GalaxyState;
 
 typedef struct {
@@ -183,7 +184,7 @@ func galaxy_state(out *C.GalaxyState) {
 		yearsPer: C.double(s.YearsPer), drift: C.double(s.Drift), renderScale: C.double(s.RenderScale),
 		cloudK: C.double(s.CloudK), cloudTurb: C.double(s.CloudTurb),
 		cloudAlpha: C.double(alpha), cloudFloorK: C.double(floorK), galaxyTilt: C.double(eng.GalaxyTilt),
-		massMin: C.double(massMin), galaxyScale: b(eng.GalaxyScale()),
+		massMin: C.double(massMin), galaxyScale: b(eng.GalaxyScale()), resolved: b(s.Resolved),
 	}
 }
 

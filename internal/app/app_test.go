@@ -318,7 +318,7 @@ func TestPlaceGasCloud(t *testing.T) {
 	sp := scene.Presets[0].Spec // spiral galaxy, with physical units
 	c := newTestController(t, sp, 4000)
 	waitSim(t, c, "first snapshot", func(sn *sim.Snapshot) bool { return sn.Len() > 0 })
-	before := c.Sim().Gas
+	before, bodies := c.Sim().Gas, c.Sim().Bodies
 	c.Tool, c.Mass = ToolGasCloud, 0.001 // 2·10⁷ M☉: R ≈ 90 pc
 	c.SetCloud(100, 0.3)
 	pos, vel := vec.Vec3{X: 3, Y: 1}, vec.Vec3{Y: 0.4}
@@ -327,12 +327,9 @@ func TestPlaceGasCloud(t *testing.T) {
 	waitSim(t, c, "cloud", func(sn *sim.Snapshot) bool {
 		var gas int
 		var m, cx, cy, vy float64
-		for i, k := range sn.Kind {
-			if k != sim.Gas {
+		for i := bodies; i < sn.Len(); i++ { // new bodies are appended
+			if sn.Kind[i] != sim.Gas {
 				continue
-			}
-			if d := math.Hypot(float64(sn.X[i])-pos.X, float64(sn.Y[i])-pos.Y); d > 10*c.cloudRadius(0.001) {
-				continue // gas of the galaxy
 			}
 			gas++
 			w := float64(sn.Mass[i])
@@ -369,7 +366,7 @@ func TestRealisticDefaultsPerScene(t *testing.T) {
 	}
 	c := newTestController(t, byName["Spiral galaxy"], 500)
 	mu, _, _ := c.units()
-	for tool, want := range map[Tool]float64{ToolBlackHole: 4e6, ToolCluster: 1e5, ToolGasCloud: 1e6, ToolGalaxy: 2e10} {
+	for tool, want := range map[Tool]float64{ToolBlackHole: 4e6, ToolCluster: 3e7, ToolGasCloud: 1e8, ToolGalaxy: 2e10} {
 		c.SetTool(tool)
 		if got := c.Mass * mu; math.Abs(got/want-1) > 1e-6 {
 			t.Errorf("%v: %.3g Msun, want %.3g", tool, got, want)
@@ -380,16 +377,29 @@ func TestRealisticDefaultsPerScene(t *testing.T) {
 	c.SetMass(c.Mass * 3)
 	c.SetTool(ToolBlackHole)
 	c.SetTool(ToolCluster)
-	if got := c.Mass * mu; math.Abs(got/3e5-1) > 1e-6 {
+	if got := c.Mass * mu; math.Abs(got/9e7-1) > 1e-6 {
 		t.Errorf("cluster mass not kept: %.3g", got)
 	}
-	// Radii: a globular cluster of 1e5 Msun has 3 pc, a cloud of 1e6 Msun 20 pc.
+	// Radii: a globular cluster of 1e5 Msun has 3 pc, a cloud of 1e6 Msun 20 pc – below the
+	// resolution of the galaxy scene (softening 150 pc), so both are enlarged to 2ε.
 	_, pc, _ := c.units()
-	if r := c.clusterRadius(1e5/mu) * pc; math.Abs(r-3) > 1e-9 {
-		t.Errorf("cluster radius %v pc", r)
+	eps2 := 2 * c.Scene.Params.Softening
+	if r := c.clusterRadius(1e5 / mu); math.Abs(r-eps2) > 1e-12 {
+		t.Errorf("cluster radius %v pc, want the resolution %v pc", r*pc, eps2*pc)
 	}
-	if r := c.cloudRadius(1e6/mu) * pc; math.Abs(r-20) > 1e-9 {
-		t.Errorf("cloud radius %v pc", r)
+	c.SetTool(ToolCluster)
+	c.SetMass(1e5 / mu)
+	if !c.ResolutionLimited() {
+		t.Error("a globular cluster is below the resolution of a galaxy scene")
+	}
+	// The default gas complex collapses even at the scene's floor of 10⁴ K.
+	c.SetTool(ToolGasCloud)
+	c.SetMass(1e8 / mu)
+	if a, k := c.CloudForecast(); a >= 1 || k < 1e4 {
+		t.Errorf("default cloud: α = %.2f at %.0f K, want collapse", a, k)
+	}
+	if r := c.cloudRadius(1e9/mu) * pc; math.Abs(r-20*math.Sqrt(1e3)) > 1e-6 {
+		t.Errorf("cloud of 1e9 Msun: radius %v pc, want 632 (Larson, resolved)", r)
 	}
 	// Parsec scenes: stellar hole, no galaxies.
 	h := newTestController(t, byName["Horsehead Nebula"], 500)

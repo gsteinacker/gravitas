@@ -119,6 +119,11 @@ struct InspectorView: View {
                 .labelsHidden()
                 SliderRow(title: L("Masse", "Mass"), value: Binding(get: { log10(s.mass) }, set: { engine.set("mass", pow(10, $0)) }),
                           range: log10(max(s.massMin, 1e-12))...log10(20), text: engine.massText(s.mass))
+                if s.resolved != 0 {
+                    Text(L("Kleiner als die Auflösung der Szene: auf die doppelte Glättungslänge vergrößert, damit die Eigengravitation wirkt.",
+                           "Smaller than the scene's resolution: enlarged to twice the softening so its self-gravity acts."))
+                        .font(.caption).foregroundStyle(.secondary)
+                }
                 if s.tool == 3 {
                     SliderRow(title: L("Neigung", "Tilt"),
                               help: L("Winkel der Scheibe gegen die Startebene: 0° dreht mit der Galaxie, 180° gegen sie",
