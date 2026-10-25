@@ -12,7 +12,7 @@ struct Uniforms {
     var misc: SIMD4<Float>
 }
 
-/// Camera is the projection of view.Camera, for the statistics and the holes on the CPU.
+/// Camera is the projection of view.Camera, for the camera position used by the Doppler shift.
 struct Camera {
     var tx, ty, tz, yaw, pitch, distance, focal, w, h: Double
 
@@ -20,17 +20,6 @@ struct Camera {
         tx = i.camX; ty = i.camY; tz = i.camZ; yaw = i.yaw; pitch = i.pitch; distance = i.distance
         self.w = w; self.h = h
         focal = h / (2 * tan(max(i.fov, 0.1) / 2))
-    }
-
-    func project(_ x: Double, _ y: Double, _ z: Double) -> (Double, Double, Double)? {
-        let px = x - tx, py = y - ty, pz = z - tz
-        let sy = sin(yaw), cy = cos(yaw), sp = sin(pitch), cp = cos(pitch)
-        let x1 = cy * px - sy * py, y1 = sy * px + cy * py
-        let fwd = cp * y1 - sp * pz, up = sp * y1 + cp * pz
-        let depth = distance + fwd
-        if depth < 0.05 { return nil }
-        let f = focal / depth
-        return (w / 2 + f * x1, h / 2 - f * up, depth)
     }
 
     var position: SIMD3<Double> {
@@ -52,7 +41,7 @@ final class Renderer: NSObject, MTKViewDelegate {
     private var current = -1, filled = 0
     private var info = GalaxyFrameInfo()
     private let inFlight = DispatchSemaphore(value: 3)
-    private var exposure = 0.0, emNorm = 0.0
+    private var look = GalaxyLook()
     private var holes: [SIMD4<Float>] = []
     private var lensHoles: [SIMD4<Float>] = []
     private var lastDraw = CFAbsoluteTimeGetCurrent(), fps = 60.0
@@ -176,10 +165,8 @@ final class Renderer: NSObject, MTKViewDelegate {
         if galaxy_frame(ptr, Int32(capacity), current < 0 ? 1 : 0, &info) != 0 {
             current = next
             filled = Int(info.bodies)
-            measure(ptr)
-        } else {
-            projectHoles() // the camera may have moved
         }
+        if current >= 0 { prepare(Int(st.fx)) }
         guard current >= 0, let pass = view.currentRenderPassDescriptor, let drawable = view.currentDrawable,
               let cmd = queue.makeCommandBuffer() else {
             inFlight.signal()
@@ -205,8 +192,8 @@ final class Renderer: NSObject, MTKViewDelegate {
             view: SIMD4(Float(size.width), Float(size.height), Float(cam.focal), Float(scale)),
             target: SIMD4(Float(info.camX), Float(info.camY), Float(info.camZ), Float(info.yaw)),
             cam: SIMD4(Float(info.pitch), Float(info.distance), Float(info.meanStarMass), Float(info.c)),
-            eye: SIMD4(Float(eye.x), Float(eye.y), Float(eye.z), Float(exposure)),
-            misc: SIMD4(Float(fx), Float(info.youngAge), Float(emNorm), 0))
+            eye: SIMD4(Float(eye.x), Float(eye.y), Float(eye.z), Float(look.exposure)),
+            misc: SIMD4(Float(fx), Float(info.youngAge), Float(look.emNorm), 0))
     }
 
     private func screenPass(_ cmd: MTLCommandBuffer, _ target: MTLTexture, _ p: MTLRenderPipelineState, load: MTLLoadAction = .dontCare,
@@ -302,73 +289,18 @@ final class Renderer: NSObject, MTKViewDelegate {
         e.endEncoding()
     }
 
-    // ---- statistics on the CPU (render/stars.go: auto exposure, emission normalization) ----
-
-    private static let gridW = 96, gridH = 60
-    private static let spriteMean = 0.165 // mean of the sprite falloff over its quad
-
-    /// measure adapts exposure and emission normalization to the new snapshot and collects holes.
-    private func measure(_ p: UnsafeMutablePointer<Float>) {
-        let cam = Camera(info, w: Double(size.width), h: Double(size.height))
-        let gw = Renderer.gridW, gh = Renderer.gridH
-        var light = [Float](repeating: 0, count: gw * gh), em = light
-        let cw = cam.w / Double(gw), ch = cam.h / Double(gh)
-        let mean = max(info.meanStarMass, 1e-12)
-        let k = Engine.floatsPerBody
-        for i in 0..<filled {
-            let b = p + i * k
-            let kind = Int(b[7] + 0.5)
-            if kind != 0 && kind != 3 { continue }
-            guard let (sx, sy, depth) = cam.project(Double(b[0]), Double(b[1]), Double(b[2])) else { continue }
-            let cx = Int(sx / cw), cy = Int(sy / ch)
-            guard cx >= 0, cy >= 0, cx < gw, cy < gh else { continue }
-            if kind == 0 {
-                let rel = Double(b[3]) / mean
-                let size = min(28 * scale, max(3.5 * scale, 0.05 * cbrt(rel) * cam.focal / depth))
-                light[cy * gw + cx] += Float(min(1, 0.55 + 0.2 * rel) * Renderer.spriteMean * size * size)
-            } else if b[9] > 0.2 {
-                let size = min(120 * scale, max(3 * scale, 3 * Double(b[10]) * cam.focal / depth))
-                let ion = Double(b[9])
-                let bright = ion * ion * Double(b[3]) * Double(b[11]) / (size * size)
-                em[cy * gw + cx] += Float(bright * Renderer.spriteMean * size * size)
-            }
-        }
-        let area = Float(cw * ch)
-        if let p90 = percentile(light, area, 0.9) {
-            let target = max(1e-4, min(1, 0.9 / p90))
-            exposure = exposure == 0 ? target : exposure + 0.35 * (target - exposure)
-        }
-        if let p50 = percentile(em, area, 0.5) {
-            let target = 0.25 / p50
-            emNorm = emNorm == 0 ? target : emNorm + 0.35 * (target - emNorm)
-        }
-        projectHoles()
-    }
-
-    private func percentile(_ cells: [Float], _ area: Float, _ q: Double) -> Double? {
-        let lit = cells.filter { $0 > 0 }.map { $0 / area }.sorted()
-        guard !lit.isEmpty else { return nil }
-        return Double(lit[Int(q * Double(lit.count - 1))])
-    }
-
-    /// projectHoles finds the black holes of the current snapshot on screen.
-    private func projectHoles() {
+    /// prepare takes the look of the frame from the Go core: exposure, emission and haze
+    /// normalization and the black holes on screen (engine/look.go).
+    private func prepare(_ fx: Int) {
+        let p = bodies[current].contents().bindMemory(to: Float.self, capacity: capacity * Engine.floatsPerBody)
+        var raw = [GalaxyHole](repeating: GalaxyHole(), count: 64)
+        galaxy_prepare(p, Int32(capacity), Double(size.width), Double(size.height), scale, Int32(fx), &look, &raw, 64)
         holes.removeAll(keepingCapacity: true)
         lensHoles.removeAll(keepingCapacity: true)
-        guard current >= 0 else { return }
-        let cam = Camera(info, w: Double(size.width), h: Double(size.height))
-        let p = bodies[current].contents().bindMemory(to: Float.self, capacity: capacity * Engine.floatsPerBody)
-        for i in 0..<filled {
-            let b = p + i * Engine.floatsPerBody
-            guard Int(b[7] + 0.5) == 1, let (sx, sy, depth) = cam.project(Double(b[0]), Double(b[1]), Double(b[2])) else { continue }
-            let m = Double(b[3])
-            var r = info.c > 0 ? 2 * m / (info.c * info.c) : 0
-            if r == 0 { r = 0.06 * sqrt(m) }
-            let px = r * cam.focal / depth
-            let drawn = max(3 * scale, px)
-            holes.append(SIMD4(Float(sx), Float(sy), Float(drawn), drawn > 3 * scale ? 1 : 0))
-            let e = 5 * px // Einstein radius on screen: 5 horizon radii (render/post.go: lensFactor)
-            lensHoles.append(SIMD4(Float(sx), Float(sy), Float(e * e), 0))
+        for h in raw.prefix(Int(look.holes)) {
+            holes.append(SIMD4(h.x, h.y, h.r, h.rings))
+            let e = 5 * h.physR // Einstein radius on screen: 5 horizon radii (render/post.go: lensFactor)
+            lensHoles.append(SIMD4(h.x, h.y, e * e, 0))
         }
     }
 

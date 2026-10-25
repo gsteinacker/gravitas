@@ -36,6 +36,7 @@ type Engine struct {
 	spsCap   int
 	version  uint64
 	last     FrameInfo // snapshot part of the last copy, returned again while nothing changed
+	looker   looker
 }
 
 // New starts built-in scene preset (0-based) with stars bodies; stars ≤ 0 chooses them from the
@@ -172,6 +173,9 @@ func (e *Engine) Click(x, y float64) { e.Place(x, y, vec.Vec3{}) }
 func (e *Engine) Launch(x0, y0, x1, y1 float64) {
 	e.Place(x0, y0, app.LaunchVelocity(&e.Cam, x0, y0, x1, y1))
 }
+
+// LastFrame describes the bodies of the last Frame copy.
+func (e *Engine) LastFrame() FrameInfo { return e.last }
 
 // FloatsPerBody is the layout of Frame: x, y, z, mass, vx, vy, vz, kind, age, ion, h, rho.
 const FloatsPerBody = 12

@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"galaxy/internal/app"
+	"galaxy/internal/view"
 )
 
 func TestFrameCopiesBodies(t *testing.T) {
@@ -73,5 +74,49 @@ func TestNoEbitengine(t *testing.T) {
 		if strings.Contains(string(out), bad) {
 			t.Errorf("engine depends on %s", bad)
 		}
+	}
+}
+
+func TestPrepareAdaptsAndCaches(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+	e := New(0, 3000)
+	defer e.Close()
+	e.Runner.SetPaused(true)
+	buf := make([]float32, 10000*FloatsPerBody)
+	var info FrameInfo
+	deadline := time.Now().Add(5 * time.Second)
+	for info.Bodies == 0 && time.Now().Before(deadline) {
+		e.Tick(60, 1, 0, false)
+		info, _ = e.Frame(buf, true)
+		time.Sleep(5 * time.Millisecond)
+	}
+	fx := view.Effects{Glow: true, Dark: true}
+	var look Look
+	for range 30 { // the exposure converges over a few recomputations
+		look = e.Prepare(buf, info, 1440, 900, 1, fx)
+	}
+	if look.Exposure <= 0 || look.Exposure > 1 || look.DarkAlpha <= 0 || len(look.Holes) != 1 {
+		t.Fatalf("look %+v", look)
+	}
+	h := look.Holes[0]
+	if h.X < 0 || h.X > 1440 || h.Y < 0 || h.Y > 900 || h.R < minHolePixels {
+		t.Errorf("hole %+v", h)
+	}
+	if e.looker.adapting {
+		t.Error("exposure did not converge")
+	}
+	// Cached: same input, same result, no recomputation.
+	before := e.looker.look.Exposure
+	e.looker.look.Exposure = 42
+	if got := e.Prepare(buf, info, 1440, 900, 1, fx); got.Exposure != 42 {
+		t.Error("unchanged input must use the cache")
+	}
+	e.looker.look.Exposure = before
+	e.Zoom(0.5)
+	if got := e.Prepare(buf, info, 1440, 900, 1, fx); got.Exposure == 42 {
+		t.Error("camera change must recompute")
+	}
+	if got := e.Prepare(buf, info, 1440, 900, 1, view.Effects{}); got.DarkAlpha != 0 {
+		t.Error("hidden dark matter needs no haze")
 	}
 }

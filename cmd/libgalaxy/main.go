@@ -23,6 +23,16 @@ typedef struct {
 	int fx; // bits: 1 glow, 2 doppler, 4 lens, 8 trails, 16 dark, 32 gas, 64 dust
 	double c, mass, theta, thetaUser, sps, fps, time, yearsPer, drift, renderScale;
 } GalaxyState;
+
+typedef struct {
+	double exposure, emNorm;
+	float darkAlpha, gasAlpha;
+	int holes; // number written to the hole array (at most its capacity)
+} GalaxyLook;
+
+typedef struct {
+	float x, y, r, physR, rings; // render pixels; rings: 1 if the ISCO ring is drawn
+} GalaxyHole;
 */
 import "C"
 
@@ -284,3 +294,27 @@ func galaxy_fullscreen_requested() C.int {
 }
 
 var fullscreen bool
+
+// galaxy_prepare computes the look of the bodies last copied into buf by galaxy_frame (see
+// engine.Prepare) for a w×h viewport in render pixels at pixel scale ps with effect bits fx.
+//
+//export galaxy_prepare
+func galaxy_prepare(buf *C.float, capacity C.int, w, h, ps C.double, fx C.int, out *C.GalaxyLook, holes *C.GalaxyHole, maxHoles C.int) {
+	src := unsafe.Slice((*float32)(unsafe.Pointer(buf)), int(capacity)*engine.FloatsPerBody)
+	k := int(fx)
+	effects := view.Effects{Glow: k&1 != 0, Doppler: k&2 != 0, Lensing: k&4 != 0, Trails: k&8 != 0,
+		Dark: k&16 != 0, Gas: k&32 != 0, Dust: k&64 != 0}
+	look := eng.Prepare(src, eng.LastFrame(), float64(w), float64(h), float64(ps), effects)
+	dst := unsafe.Slice(holes, int(maxHoles))
+	n := min(len(look.Holes), len(dst))
+	for i := range n {
+		hl := look.Holes[i]
+		rings := C.float(0)
+		if hl.Rings {
+			rings = 1
+		}
+		dst[i] = C.GalaxyHole{x: C.float(hl.X), y: C.float(hl.Y), r: C.float(hl.R), physR: C.float(hl.PhysR), rings: rings}
+	}
+	*out = C.GalaxyLook{exposure: C.double(look.Exposure), emNorm: C.double(look.EmNorm),
+		darkAlpha: C.float(look.DarkAlpha), gasAlpha: C.float(look.GasAlpha), holes: C.int(n)}
+}
