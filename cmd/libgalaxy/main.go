@@ -38,6 +38,13 @@ typedef struct {
 } GalaxySettings;
 
 typedef struct {
+	int active, plane, hasUnits;
+	double height, azimuth, elevation, speed; // length and velocity units, radians
+	double circular, escape, radius, impact;  // references at the position
+	double kmPerS, pcPerUnit;                 // physical units of the scene (if hasUnits)
+} GalaxyLaunch;
+
+typedef struct {
 	float x, y, r, physR, rings; // render pixels; rings: 1 if the ISCO ring is drawn
 } GalaxyHole;
 */
@@ -243,14 +250,6 @@ func galaxy_pan(dx, dy C.double) { eng.Pan(float64(dx), float64(dy)) }
 //export galaxy_zoom
 func galaxy_zoom(f C.double) { eng.Zoom(float64(f)) }
 
-//export galaxy_click
-func galaxy_click(x, y C.double) { eng.Click(float64(x), float64(y)) }
-
-//export galaxy_launch
-func galaxy_launch(x0, y0, x1, y1 C.double) {
-	eng.Launch(float64(x0), float64(y0), float64(x1), float64(y1))
-}
-
 // galaxy_text returns a text (freed with galaxy_free): presets, sceneName, sceneInfo, message,
 // topics (titles, one per line), title and body of the focused explanation, hardware, profile.
 //
@@ -406,7 +405,54 @@ func galaxy_set_gpu(mode C.int) {
 //export galaxy_recalibrate
 func galaxy_recalibrate() { eng.Recalibrate() }
 
-//export galaxy_launch_speed
-func galaxy_launch_speed(x0, y0, x1, y1 C.double) C.double {
-	return C.double(eng.LaunchSpeed(float64(x0), float64(y0), float64(x1), float64(y1)))
+// galaxy_launch_begin starts planning a launch at (x, y) in render pixels (engine.Launch).
+//
+//export galaxy_launch_begin
+func galaxy_launch_begin(x, y C.double) { eng.BeginLaunch(float64(x), float64(y)) }
+
+// galaxy_launch_set changes plane, height, azimuth, elevation or speed (simulation units, radians).
+//
+//export galaxy_launch_set
+func galaxy_launch_set(name *C.char, v C.double) { eng.SetLaunch(C.GoString(name), float64(v)) }
+
+// galaxy_launch_preset: 0 rest, 1 circular orbit, 2 escape, 3 towards the center.
+//
+//export galaxy_launch_preset
+func galaxy_launch_preset(p C.int) { eng.LaunchPreset(int(p)) }
+
+// galaxy_launch_drag sets direction and speed from a drag to (x1, y1).
+//
+//export galaxy_launch_drag
+func galaxy_launch_drag(x1, y1 C.double) { eng.DragLaunch(float64(x1), float64(y1)) }
+
+//export galaxy_launch_go
+func galaxy_launch_go() { eng.GoLaunch() }
+
+//export galaxy_launch_cancel
+func galaxy_launch_cancel() { eng.CancelLaunch() }
+
+//export galaxy_launch
+func galaxy_launch(out *C.GalaxyLaunch) {
+	l := eng.LaunchPlan()
+	v, pc, ok := eng.Scene.Units()
+	*out = C.GalaxyLaunch{active: b(l.Active), plane: C.int(l.Plane), hasUnits: b(ok),
+		height: C.double(l.Height), azimuth: C.double(l.Azimuth), elevation: C.double(l.Elevation),
+		speed: C.double(l.Speed), circular: C.double(l.Circular), escape: C.double(l.Escape),
+		radius: C.double(l.Radius), impact: C.double(l.Impact), kmPerS: C.double(v), pcPerUnit: C.double(pc)}
 }
+
+// galaxy_gizmo writes the lines of the launch plan for the current view (x0, y0, x1, y1, color;
+// render pixels) and returns their number.
+//
+//export galaxy_gizmo
+func galaxy_gizmo(out *C.float, max C.int) C.int {
+	gizmo = eng.Gizmo(gizmo)
+	dst := unsafe.Slice((*float32)(unsafe.Pointer(out)), int(max)*5)
+	n := min(len(gizmo), int(max))
+	for i, sg := range gizmo[:n] {
+		copy(dst[5*i:5*i+5], []float32{sg.X0, sg.Y0, sg.X1, sg.Y1, float32(sg.Color)})
+	}
+	return C.int(n)
+}
+
+var gizmo []engine.Segment

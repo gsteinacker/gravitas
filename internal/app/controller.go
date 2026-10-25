@@ -378,9 +378,12 @@ func (c *Controller) applyScene(sp *scene.Spec) {
 	}
 }
 
-// Place adds the current tool's object at screen position (x, y) with velocity vel.
-func (c *Controller) Place(x, y float64, vel vec.Vec3) {
-	pos := c.Cam.Unproject(x, y)
+// Place adds the current tool's object at screen position (x, y) in the camera's focal plane with
+// velocity vel.
+func (c *Controller) Place(x, y float64, vel vec.Vec3) { c.PlaceAt(c.Cam.Unproject(x, y), vel) }
+
+// PlaceAt adds the current tool's object at world position pos with coordinate velocity vel.
+func (c *Controller) PlaceAt(pos, vel vec.Vec3) {
 	mass := c.Mass
 	if c.hinted == nil {
 		c.hinted = map[string]bool{}

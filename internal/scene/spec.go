@@ -177,6 +177,18 @@ func (sp *Spec) Build(n int) (*sim.State, sim.Params) {
 	return s, p
 }
 
+// pcPerKmSYr is one km/s · yr in parsec.
+const pcPerKmSYr = 1.0 / 977_792.2
+
+// Units returns the physical scale of the scene: km/s per velocity unit and parsec per length unit
+// (L = v · t); ok is false for scenes without physical units.
+func (sp *Spec) Units() (kmPerS, pcPerUnit float64, ok bool) {
+	if sp.KmPerS <= 0 || sp.YearsPer <= 0 {
+		return 0, 0, false
+	}
+	return sp.KmPerS, sp.KmPerS * sp.YearsPer * pcPerKmSYr, true
+}
+
 // specificEnergy converts a gas temperature in K into specific internal energy in simulation
 // units: u = 3 k T / (2 μ m_p), μ = 0.6 for ionized (T ≥ 8000 K) and 1.27 for neutral gas.
 func (sp *Spec) specificEnergy(kelvin float64) float64 {

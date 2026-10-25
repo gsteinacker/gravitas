@@ -53,6 +53,8 @@ final class Renderer: NSObject, MTKViewDelegate {
     private var lastRefresh = 0.0
     private var size = CGSize.zero
     private var scale = 1.0
+    private var gizmoLayers: [CAShapeLayer] = []
+    private var gizmoBuf = [Float](repeating: 0, count: 5 * 4096)
     var exportURL: URL?
     var shot: (url: URL, after: Double, start: Double)?
 
@@ -184,6 +186,7 @@ final class Renderer: NSObject, MTKViewDelegate {
             filled = Int(info.bodies)
         }
         if current >= 0 { prepare(Int(st.fx)) }
+        updateGizmo(view)
         guard current >= 0, let pass = view.currentRenderPassDescriptor, let drawable = view.currentDrawable,
               let cmd = queue.makeCommandBuffer() else {
             inFlight.signal()
@@ -361,6 +364,47 @@ final class Renderer: NSObject, MTKViewDelegate {
             e.drawPrimitives(type: .triangleStrip, vertexStart: 0, vertexCount: 4, instanceCount: holes.count)
         }
         e.endEncoding()
+    }
+
+    /// updateGizmo draws the launch plan (engine.Gizmo) as vector layers over the Metal image:
+    /// rings of the plane, line to the position, drop to the plane, velocity arrow, preview path.
+    private func updateGizmo(_ view: MTKView) {
+        let styles: [(NSColor, CGFloat, [NSNumber]?)] = [
+            (NSColor(white: 1, alpha: 0.22), 1, [4, 4]),                              // plane rings
+            (NSColor(white: 1, alpha: 0.45), 1, nil),                                 // to the position
+            (NSColor(white: 1, alpha: 0.8), 1, [3, 3]),                               // drop to the plane
+            (NSColor(red: 1, green: 0.59, blue: 0.2, alpha: 1), 2.5, nil),            // velocity
+            (NSColor(red: 1, green: 0.85, blue: 0.35, alpha: 0.85), 1.5, [6, 4]),     // preview path
+        ]
+        if gizmoLayers.isEmpty {
+            view.wantsLayer = true
+            for (color, width, dash) in styles {
+                let l = CAShapeLayer()
+                l.strokeColor = color.cgColor
+                l.fillColor = nil
+                l.lineWidth = width
+                l.lineDashPattern = dash
+                l.lineCap = .round
+                view.layer?.addSublayer(l)
+                gizmoLayers.append(l)
+            }
+        }
+        let n = gizmoBuf.withUnsafeMutableBufferPointer { Int(galaxy_gizmo($0.baseAddress!, 4096)) }
+        let paths = styles.map { _ in CGMutablePath() }
+        let k = 1 / CGFloat(scale), h = view.bounds.height
+        for i in 0..<n {
+            let g = Array(gizmoBuf[5 * i..<5 * i + 5])
+            let c = min(paths.count - 1, max(0, Int(g[4])))
+            paths[c].move(to: CGPoint(x: CGFloat(g[0]) * k, y: h - CGFloat(g[1]) * k))
+            paths[c].addLine(to: CGPoint(x: CGFloat(g[2]) * k, y: h - CGFloat(g[3]) * k))
+        }
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+        for (i, l) in gizmoLayers.enumerated() {
+            l.frame = view.bounds
+            l.path = paths[i]
+        }
+        CATransaction.commit()
     }
 
     /// prepare takes the look of the frame from the Go core: exposure, emission and haze

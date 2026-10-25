@@ -11,13 +11,13 @@ import (
 	"time"
 
 	"galaxy/internal/app"
+	"galaxy/internal/i18n"
 	"galaxy/internal/perf"
 	"galaxy/internal/prefs"
 	"galaxy/internal/scene"
 	"galaxy/internal/sim"
 	"galaxy/internal/sim/bh"
 	"galaxy/internal/sph"
-	"galaxy/internal/vec"
 )
 
 // defaultStars is the star count of uncalibrated machines.
@@ -26,19 +26,21 @@ const defaultStars = 50000
 // Engine is one running simulation with its controller.
 type Engine struct {
 	*app.Controller
-	cancel   context.CancelFunc
-	settings *prefs.Prefs
-	cal      prefs.Calibration
-	hw       perf.Hardware
-	profile  perf.Profile
-	gov      *perf.Governor
-	scale    float64 // render pixels per point, chosen by the governor
-	ticks    int
-	spsCap   int
-	version  uint64
-	last     FrameInfo // snapshot part of the last copy, returned again while nothing changed
-	looker   looker
-	opts     *Options
+	cancel     context.CancelFunc
+	settings   *prefs.Prefs
+	cal        prefs.Calibration
+	hw         perf.Hardware
+	profile    perf.Profile
+	gov        *perf.Governor
+	scale      float64 // render pixels per point, chosen by the governor
+	ticks      int
+	spsCap     int
+	version    uint64
+	last       FrameInfo // snapshot part of the last copy, returned again while nothing changed
+	looker     looker
+	opts       *Options
+	launch     Launch
+	launchDone bool
 
 	correction map[*scene.Spec]float64 // measured/predicted step time per scene (observe)
 	running    *scene.Spec
@@ -58,6 +60,9 @@ func New(preset, stars int) *Engine {
 // Start runs the app with its command line options. Screenshots (o.Shot without o.Adapt) ignore the
 // user's settings and keep stars, render scale and θ fixed, so measurements are reproducible.
 func Start(o *Options) (*Engine, error) {
+	if o.Lang != "" {
+		i18n.Set(i18n.FromLocale(o.Lang)) // before the scene: its messages are translated
+	}
 	fixed := o.Screenshot() && !o.Adapt
 	e := &Engine{settings: prefs.Load(prefs.Path()), hw: perf.Probe(), opts: o}
 	if fixed {
@@ -166,6 +171,13 @@ func (e *Engine) SetProfile(id string) {
 func (e *Engine) Tick(fps, deviceScale float64, thermal int, lowPower bool) {
 	e.Drain()
 	e.FPS = fps
+	if fx, fy, preset, ok := e.opts.pendingLaunch(); ok && e.Cam.W > 0 && !e.launchDone {
+		e.launchDone = true // -launch: once the view has a size
+		e.BeginLaunch(fx*e.Cam.W, fy*e.Cam.H)
+		if preset >= 0 {
+			e.LaunchPreset(preset)
+		}
+	}
 	if o := e.opts; o.Scale > 0 && (!o.Screenshot() || !o.Adapt) {
 		// A fixed render scale (-scale, screenshots) also keeps θ and the step rate fixed.
 		e.scale, e.RenderScaleNow = o.Scale, o.Scale
@@ -219,13 +231,6 @@ func (e *Engine) SetViewport(w, h float64) { e.Cam.W, e.Cam.H = w, h }
 func (e *Engine) Rotate(dx, dy float64) { e.Cam.Rotate(dx/e.RenderScale(), dy/e.RenderScale()) }
 func (e *Engine) Pan(dx, dy float64)    { e.Cam.Pan(dx, dy) }
 func (e *Engine) Zoom(f float64)        { e.Cam.Zoom(f) }
-
-// Click places the current tool's object at (x, y) in render pixels; Launch with the velocity of a
-// drag from (x0, y0) to (x1, y1).
-func (e *Engine) Click(x, y float64) { e.Place(x, y, vec.Vec3{}) }
-func (e *Engine) Launch(x0, y0, x1, y1 float64) {
-	e.Place(x0, y0, app.LaunchVelocity(&e.Cam, x0, y0, x1, y1))
-}
 
 // LastFrame describes the bodies of the last Frame copy.
 func (e *Engine) LastFrame() FrameInfo { return e.last }

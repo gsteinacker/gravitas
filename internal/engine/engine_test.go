@@ -193,7 +193,4 @@ func TestStarSettingsAndCorrection(t *testing.T) {
 	if slow := e.stars(e.Scene); slow >= auto && auto > perf.MinStars && auto < perf.MaxStars {
 		t.Errorf("corrected stars %d, uncorrected %d", slow, auto)
 	}
-	if s := e.LaunchSpeed(100, 100, 100, 100); s != 0 {
-		t.Errorf("zero drag gives speed %v", s)
-	}
 }

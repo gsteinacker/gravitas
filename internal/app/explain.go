@@ -24,6 +24,17 @@ func topicList(sceneTopics []string) []string {
 	return list
 }
 
+// Hint shows the one-line hint of a topic once per run and makes it the one the panel opens.
+func (c *Controller) Hint(id string) {
+	if c.hinted == nil {
+		c.hinted = map[string]bool{}
+	}
+	if !c.hinted[id] {
+		c.hinted[id] = true
+		c.hint(id)
+	}
+}
+
 // hint shows the one-line hint of a topic and makes it the one the panel opens.
 func (c *Controller) hint(id string) {
 	t := learn.Get(id)

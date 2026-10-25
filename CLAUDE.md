@@ -22,7 +22,8 @@ App braucht Xcode.
 - Effekte für Screenshots über `-fx glow,lens,doppler,trails` wählen (Tasten gehen im Screenshot-Modus nicht).
 - Screenshots sind fest (50 000 Sterne, Faktor 1, ohne Einstellungen). `-adapt` misst wie die App (Kalibrierung,
   Regler), `-scale 2` rendert Retina, `-lang de|en` wählt die Sprache, `-hud`/`-help`/`-explain level:topic` zeigen
-  Statuszeile, Tastenübersicht, Lernmodus. Flags: `internal/engine/options.go`.
+  Statuszeile, Tastenübersicht, Lernmodus, `-launch x,y[,preset]` plant einen Start (Anteile der Bildgröße).
+  Flags: `internal/engine/options.go`.
 - Neben `<png>` entsteht `<png>.window.png` (die SwiftUI-Bedienelemente; das Metal-Bild bleibt darin leer) und bei
   offenem Sheet `<png>.sheet.png`. So lässt sich die Oberfläche ohne Bildschirmzugriff prüfen.
 - `make shot`: startet die App, speichert nach einigen Sekunden `bin/shot.png` und beendet sich.

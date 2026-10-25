@@ -14,6 +14,7 @@
   ],
   "info": "real distances and velocities, 1 unit = 100 kpc, real c, Hernquist dark matter halos (invisible)",
   "yearsPerUnit": 470000000.0,
+  "velocityUnit": 207.4,
   "params": {
     "dt": 0.002,
     "softening": 0.003,

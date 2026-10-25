@@ -24,7 +24,9 @@ Spielstände (F5/F9, `-load`) sind dagegen **exakte Abzüge** eines laufenden Zu
   Beispiele: 2,5 kpc und 2·10¹⁰ M☉ ergeben 185 km/s und 13,2 Myr. 100 kpc und 10¹² M☉ ergeben 207 km/s und 0,47 Gyr.
 - `c` in denselben Einheiten: echt wäre 3·10⁵ km/s geteilt durch die Geschwindigkeitseinheit.
 - Winkel in Grad. `weight` verteilt die Teilchenzahl `-n`, die letzte gewichtete Komponente bekommt den Rest.
-- Gas: `velocityUnit` (km/s je Geschwindigkeitseinheit) und `gasFloorK` auf Szenenebene, in `params.gas`
+- `velocityUnit` (km/s je Geschwindigkeitseinheit) zusammen mit `yearsPerUnit` legt die Längeneinheit fest
+  (L = v · t, Test `TestUnitsMatchInfo`). Damit zeigt das Start-Werkzeug Abstände und Tempo physikalisch an.
+- Gas: `velocityUnit` und `gasFloorK` auf Szenenebene, in `params.gas`
   `coolTime`, `sfDensity`, `sfEfficiency`, `youngAge` (Simulationseinheiten). Siehe ADR-0007.
 - `note` ist freier Text für Quellen und Annahmen und wird nicht ausgewertet.
 

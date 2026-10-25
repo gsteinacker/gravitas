@@ -3,7 +3,6 @@ package engine
 import (
 	"time"
 
-	"galaxy/internal/app"
 	"galaxy/internal/perf"
 	"galaxy/internal/prefs"
 	"galaxy/internal/scene"
@@ -77,9 +76,4 @@ func (e *Engine) observe() {
 		old = 1
 	}
 	e.correction[e.Scene] = 0.9*old + 0.1*(1/sps)/predicted
-}
-
-// LaunchSpeed is the speed a drag from (x0, y0) to (x1, y1) gives a launched black hole.
-func (e *Engine) LaunchSpeed(x0, y0, x1, y1 float64) float64 {
-	return app.LaunchVelocity(&e.Cam, x0, y0, x1, y1).Len()
 }

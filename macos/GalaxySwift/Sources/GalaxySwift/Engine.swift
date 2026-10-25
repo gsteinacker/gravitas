@@ -25,6 +25,7 @@ final class Engine {
     private(set) var explanationTitle = ""
     private(set) var explanationBody = ""
     private(set) var settings = GalaxySettings()
+    private(set) var launch = GalaxyLaunch()
     let presets: [String]
     let hardware: String
 
@@ -83,6 +84,9 @@ final class Engine {
         let t = Engine.text("topics").split(separator: "\n", omittingEmptySubsequences: false).map(String.init)
         if t != topics { topics = t }
         topicIndex = Int(galaxy_topic_index())
+        var la = GalaxyLaunch()
+        galaxy_launch(&la)
+        launch = la
         var st = GalaxySettings()
         galaxy_settings(&st)
         if st.stars != settings.stars || st.gpu != settings.gpu || st.capacity != settings.capacity { settings = st }
@@ -109,6 +113,38 @@ final class Engine {
     }
 
     static let starChoices = [0, 10_000, 25_000, 50_000, 100_000, 200_000, 500_000, 1_000_000]
+
+    func setLaunch(_ name: String, _ v: Double) {
+        name.withCString { galaxy_launch_set(UnsafeMutablePointer(mutating: $0), v) }
+        refresh()
+    }
+
+    func launchPreset(_ p: Int) { galaxy_launch_preset(Int32(p)); refresh() }
+    func launchGo() { galaxy_launch_go(); refresh() }
+    func launchCancel() { galaxy_launch_cancel(); refresh() }
+
+    /// num writes three significant digits without exponent: 0.0123, 4.56, 4 480, 12 300.
+    static func num(_ x: Double) -> String {
+        abs(x) >= 1000 ? groupDigits(Int(x.rounded())) : String(format: "%.3g", x)
+    }
+
+    /// speedText shows a speed in km/s if the scene has units, else in simulation units.
+    func speedText(_ v: Double) -> String {
+        launch.hasUnits != 0 ? Engine.num(v * launch.kmPerS) + " km/s" : Engine.num(v)
+    }
+
+    /// lengthText shows a length in the unit that suits the scale of the scene: AU, pc, kpc or Mpc.
+    func lengthText(_ l: Double) -> String {
+        guard launch.hasUnits != 0 else { return Engine.num(l) }
+        let pc = l * launch.pcPerUnit
+        let scale = max(abs(l), 1) * launch.pcPerUnit // small values keep the unit of the scene
+        switch scale {
+        case ..<0.05: return Engine.num(pc * 206_264.8) + " AU"
+        case ..<1000: return Engine.num(pc) + " pc"
+        case ..<1e6: return Engine.num(pc / 1000) + " kpc"
+        default: return Engine.num(pc / 1e6) + " Mpc"
+        }
+    }
 
     func setStars(_ n: Int) { galaxy_set_stars(Int32(n)); refresh() }
     func setGPU(_ mode: Int) { galaxy_set_gpu(Int32(mode)); refresh() }

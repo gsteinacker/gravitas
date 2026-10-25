@@ -63,6 +63,7 @@ struct InspectorView: View {
 
     var body: some View {
         Form {
+            if engine.launch.active != 0 { LaunchSection(engine: engine) }
             Section(L("Simulation", "Simulation")) {
                 LabeledContent(L("Szene", "Scene"), verbatim: engine.sceneName)
                 HStack {
@@ -141,6 +142,67 @@ struct InspectorView: View {
     private var driftText: String {
         if s.driftQuality == 0 || s.drift.isNaN { return L("wird gemessen …", "measuring…") }
         return String(format: s.driftQuality == 1 ? "≈ %+.0e" : "%+.1e", s.drift)
+    }
+}
+
+/// LaunchSection plans the start of a placed object (T-064): plane, height, direction and speed
+/// relative to the galaxy, with the circular and escape speed at the position as references.
+struct LaunchSection: View {
+    var engine: Engine
+
+    private var l: GalaxyLaunch { engine.launch }
+
+    /// row is a slider with a fixed label column, so labels do not wrap in the narrow inspector.
+    private func row(_ title: String, _ help: String? = nil, value: Binding<Double>, range: ClosedRange<Double>, text: String) -> some View {
+        HStack(spacing: 8) {
+            Text(title).frame(width: 64, alignment: .leading).help(help ?? "")
+            Slider(value: value, in: range)
+            Text(verbatim: text).monospacedDigit().lineLimit(1).minimumScaleFactor(0.8).frame(width: 66, alignment: .trailing)
+        }
+    }
+
+    var body: some View {
+        let maxSpeed = max(1.6 * l.escape, 1.2 * l.speed, 1e-3)
+        let maxHeight = max(1.5 * l.radius, 0.5, abs(l.height))
+        Section(L("Start", "Launch")) {
+            Picker(L("Ebene", "Plane"), selection: Binding(get: { Int(l.plane) }, set: { engine.setLaunch("plane", Double($0)) })) {
+                Text(L("Scheibe", "Disk")).tag(0)
+                Text(L("Bildebene", "View plane")).tag(1)
+            }
+            .pickerStyle(.segmented)
+            row(L("Höhe", "Height"), L("Abstand von der Ebene", "distance from the plane"),
+                value: Binding(get: { l.height }, set: { engine.setLaunch("height", $0) }), range: -maxHeight...maxHeight,
+                text: engine.lengthText(l.height))
+            row(L("Richtung", "Direction"),
+                L("0° mit der Drehung der Scheibe (Kreisbahn), 90° nach außen, ±180° gegen die Drehung, −90° nach innen",
+                  "0° along the rotation of the disk (circular orbit), 90° outward, ±180° against it, −90° inward"),
+                value: Binding(get: { l.azimuth * 180 / .pi }, set: { engine.setLaunch("azimuth", $0 * .pi / 180) }), range: -180...180,
+                text: String(format: "%.0f°", l.azimuth * 180 / .pi))
+            row(L("Neigung", "Elevation"), L("Winkel aus der Ebene heraus", "angle out of the plane"),
+                value: Binding(get: { l.elevation * 180 / .pi }, set: { engine.setLaunch("elevation", $0 * .pi / 180) }), range: -90...90,
+                text: String(format: "%.0f°", l.elevation * 180 / .pi))
+            row(L("Tempo", "Speed"), L("relativ zur Galaxie, deren Zentrum am nächsten liegt", "relative to the galaxy whose center is nearest"),
+                value: Binding(get: { l.speed }, set: { engine.setLaunch("speed", $0) }), range: 0...maxSpeed,
+                text: engine.speedText(l.speed))
+            Text(verbatim: String(format: L("Abstand %@ · Kreisbahn %@ · Flucht %@ · Stoßparameter %@",
+                                            "distance %@ · circular %@ · escape %@ · impact parameter %@"),
+                                  engine.lengthText(l.radius), engine.speedText(l.circular), engine.speedText(l.escape),
+                                  engine.lengthText(l.impact)))
+                .font(.callout).foregroundStyle(.secondary)
+                .help(L("Stoßparameter: wie knapp die Startrichtung geradlinig am Zentrum vorbeiführt",
+                        "impact parameter: how closely the launch direction passes the center on a straight line"))
+            HStack {
+                Button(L("Ruhe", "Rest")) { engine.launchPreset(0) }
+                Button(L("Kreisbahn", "Circular")) { engine.launchPreset(1) }
+                Button(L("Flucht", "Escape")) { engine.launchPreset(2) }
+                Button(L("Zentrum", "Center")) { engine.launchPreset(3) }
+            }
+            .controlSize(.small)
+            HStack {
+                Button(L("Starten", "Launch")) { engine.launchGo() }.keyboardShortcut(.defaultAction)
+                Button(L("Abbrechen", "Cancel")) { engine.launchCancel() }
+            }
+        }
     }
 }
 
@@ -238,8 +300,10 @@ struct KeyOverview: View {
 
     private let keys: [(String, String)] = [
         ("1 – 9", L("Szene laden", "load scene")),
-        (L("Klick", "Click"), L("Schwarzes Loch oder Sternhaufen platzieren", "place a black hole or star cluster")),
-        (L("⌥ + Ziehen", "⌥ + drag"), L("mit Geschwindigkeit starten", "launch with velocity")),
+        (L("Klick", "Click"), L("Start planen: Ort auf der Scheibenebene, Inspektor für Höhe, Richtung, Tempo", "plan a launch: position on the disk plane, inspector for height, direction, speed")),
+        (L("↩  ⎋", "↩  ⎋"), L("geplanten Start ausführen / verwerfen", "launch / discard the plan")),
+        (L("Doppelklick", "Double click"), L("sofort platzieren", "place at once")),
+        (L("⌥ + Ziehen", "⌥ + drag"), L("Richtung und Tempo ziehen und starten (Länge = Abstand → Kreisbahntempo)", "drag direction and speed, then launch (length = distance → circular speed)")),
         ("b  k  ⇥", L("Werkzeug: Loch / Sternhaufen / wechseln", "tool: hole / cluster / switch")),
         ("m  n", L("Masse + / −", "mass + / −")),
         (L("Ziehen", "Drag"), L("drehen", "rotate")),

@@ -8,7 +8,6 @@ final class SimulationView: MTKView {
     var engine: Engine!
     private var press: CGPoint?, last: CGPoint = .zero
     private var moved = false, launching = false, panning = false
-    private var arrow: CAShapeLayer?, label: CATextLayer?, pressPoint = CGPoint.zero
 
     override var acceptsFirstResponder: Bool { true }
     override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
@@ -27,7 +26,7 @@ final class SimulationView: MTKView {
         moved = false
         launching = e.modifierFlags.contains(.option)
         panning = e.modifierFlags.contains(.shift)
-        pressPoint = convert(e.locationInWindow, from: nil)
+        if launching { galaxy_launch_begin(press!.x, press!.y) } // ⌥-drag: aim and launch at once
     }
 
     override func rightMouseDown(with e: NSEvent) {
@@ -47,7 +46,7 @@ final class SimulationView: MTKView {
         let threshold = 4 * drawableSize.width / max(bounds.width, 1)
         if abs(p.x - p0.x) > threshold || abs(p.y - p0.y) > threshold { moved = true }
         if launching {
-            showArrow(to: convert(e.locationInWindow, from: nil), speed: galaxy_launch_speed(p0.x, p0.y, p.x, p.y))
+            galaxy_launch_drag(p.x, p.y)
         }
         if moved && !launching {
             if panning {
@@ -63,58 +62,16 @@ final class SimulationView: MTKView {
         guard let p0 = press else { return }
         let p = pixel(e)
         if launching {
-            galaxy_launch(p0.x, p0.y, p.x, p.y)
+            galaxy_launch_go()
         } else if !moved {
-            galaxy_click(p.x, p.y)
+            // A click plans a launch (shown in the view and the inspector, Return starts it);
+            // a double click starts at once.
+            galaxy_launch_begin(p.x, p.y)
+            if e.clickCount >= 2 { galaxy_launch_go() }
         }
+        _ = p0
         press = nil
-        hideArrow()
         engine.refresh()
-    }
-
-    /// showArrow previews the launch of an ⌥-drag: from the press point to the cursor, with the speed.
-    private func showArrow(to q: CGPoint, speed: Double) {
-        wantsLayer = true
-        if arrow == nil {
-            let a = CAShapeLayer()
-            a.strokeColor = NSColor(red: 1, green: 0.59, blue: 0.2, alpha: 1).cgColor
-            a.fillColor = nil
-            a.lineWidth = 2
-            let t = CATextLayer()
-            t.fontSize = 13
-            t.foregroundColor = a.strokeColor
-            t.contentsScale = window?.backingScaleFactor ?? 2
-            layer?.addSublayer(a)
-            layer?.addSublayer(t)
-            arrow = a
-            label = t
-        }
-        let p0 = pressPoint
-        let path = CGMutablePath()
-        path.addEllipse(in: CGRect(x: p0.x - 7, y: p0.y - 7, width: 14, height: 14))
-        path.move(to: p0)
-        path.addLine(to: q)
-        let dx = q.x - p0.x, dy = q.y - p0.y, l = hypot(dx, dy)
-        if l > 5 {
-            let ux = dx / l, uy = dy / l
-            for side in [1.0, -1.0] {
-                path.move(to: q)
-                path.addLine(to: CGPoint(x: q.x - 10 * ux + 6 * side * uy, y: q.y - 10 * uy - 6 * side * ux))
-            }
-        }
-        CATransaction.begin()
-        CATransaction.setDisableActions(true)
-        arrow?.path = path
-        label?.string = String(format: "v = %.2f", speed)
-        label?.frame = CGRect(x: q.x + 12, y: q.y - 24, width: 120, height: 18)
-        CATransaction.commit()
-    }
-
-    private func hideArrow() {
-        arrow?.removeFromSuperlayer()
-        label?.removeFromSuperlayer()
-        arrow = nil
-        label = nil
     }
 
     override func rightMouseUp(with e: NSEvent) { press = nil }
@@ -131,6 +88,13 @@ final class SimulationView: MTKView {
         if e.keyCode == 49 { // space
             engine.action("pause")
             return
+        }
+        if engine.launch.active != 0 {
+            switch e.keyCode {
+            case 36, 76: galaxy_launch_go(); engine.refresh(); return // return, enter
+            case 53: galaxy_launch_cancel(); engine.refresh(); return // escape
+            default: break
+            }
         }
         if engine.state.explain != 0 {
             switch e.keyCode {

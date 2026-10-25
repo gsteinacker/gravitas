@@ -33,6 +33,7 @@ type Options struct {
 	Adapt     bool    // screenshots: calibrate and govern like the app
 	HUD       bool    // status overlay
 	Help      bool    // key overview
+	Launch    string  // plan a launch at "x,y[,preset]" (fractions of the view; preset as LaunchPreset)
 	Shot      string  // save a screenshot after ShotAfter seconds and quit
 	ShotAfter float64
 }
@@ -61,6 +62,7 @@ func ParseOptions(args []string) (*Options, error) {
 	fs.BoolVar(&o.Adapt, "adapt", false, "screenshots: adapt quality and star count like the app")
 	fs.BoolVar(&o.HUD, "hud", false, "show the status overlay")
 	fs.BoolVar(&o.Help, "help", false, "show the key overview")
+	fs.StringVar(&o.Launch, "launch", "", "plan a launch at x,y (fractions of the view) with preset 0 rest, 1 circular, 2 escape, 3 center")
 	fs.StringVar(&o.Shot, "shot", "", "save a screenshot to this PNG file after -shot-after seconds and quit")
 	fs.Float64Var(&o.ShotAfter, "shot-after", 4, "seconds before the screenshot is taken")
 	var known []string
@@ -159,4 +161,14 @@ func (e *Engine) ShotLine(path string, fps float64) string {
 	return fmt.Sprintf("shot %s: bodies=%d fps=%.1f steps_per_s=%.1f substeps=%d gas_substeps=%d t=%.2f profile=%s auto_stars=%v gpu=%v scale=%g theta=%.2f",
 		path, s.Sim.Bodies, fps, s.StepsPerSec, s.Sim.Substeps, s.Sim.HydroSubsteps, s.Sim.Time, profile,
 		e.StarsFor != nil, s.GPU, e.RenderScale(), s.Theta)
+}
+
+// pendingLaunch parses -launch: fractions of the view and an optional preset.
+func (o *Options) pendingLaunch() (fx, fy float64, preset int, ok bool) {
+	if o.Launch == "" {
+		return 0, 0, 0, false
+	}
+	preset = -1
+	n, _ := fmt.Sscanf(o.Launch, "%g,%g,%d", &fx, &fy, &preset)
+	return fx, fy, preset, n >= 2
 }

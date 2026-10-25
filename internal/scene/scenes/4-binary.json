@@ -14,6 +14,7 @@
   ],
   "info": "1 unit = 1 pc, 1e5 Msun: two 5e4 Msun holes in a cluster; c reduced to 10 (real ~14500)",
   "yearsPerUnit": 47200.0,
+  "velocityUnit": 20.74,
   "params": {
     "dt": 0.004,
     "softening": 0.06,
