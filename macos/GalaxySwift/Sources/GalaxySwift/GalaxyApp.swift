@@ -11,6 +11,7 @@ struct Arguments {
     var shotAfter = 6.0
     var explain = false
     var fx: Int?
+    var hud = false, help = false
 
     init() {
         var it = CommandLine.arguments.dropFirst().makeIterator()
@@ -22,6 +23,8 @@ struct Arguments {
             case "-shot-after": shotAfter = Double(it.next() ?? "") ?? 6
             case "-explain": explain = true
             case "-fx": fx = Arguments.effects(it.next() ?? "")
+            case "-hud", "-hud=true": hud = true
+            case "-help": help = true
             default: break
             }
         }
@@ -57,6 +60,8 @@ struct GalaxyApp: App {
         AppDelegate.engine = e
         if args.explain { e.set("explain", 1) }
         if let fx = args.fx { e.set("fx", Double(fx)) }
+        if args.hud { e.action("hud") }
+        if args.help { e.action("help") }
     }
 
     var body: some Scene {
@@ -88,6 +93,11 @@ struct GalaxyApp: App {
             Divider()
             Button(L("Stand sichern …", "Save State…")) { save(type: .galaxyState, ext: "galaxy") { engine.save($0) } }
                 .keyboardShortcut("s")
+            Button(L("Schnell sichern", "Quick Save")) { engine.action("quickSave") }
+                .keyboardShortcut(KeyEquivalent(Character(UnicodeScalar(NSF5FunctionKey)!)), modifiers: [])
+            Button(L("Letzten Stand laden", "Load Latest")) { engine.action("quickLoad") }
+                .keyboardShortcut(KeyEquivalent(Character(UnicodeScalar(NSF9FunctionKey)!)), modifiers: [])
+            Divider()
             Button(L("Bild exportieren …", "Export Image…")) { save(type: .png, ext: "png") { renderer.exportURL = $0 } }
                 .keyboardShortcut("e", modifiers: [.command, .shift])
         }
@@ -136,6 +146,12 @@ struct GalaxyApp: App {
             Toggle(L("Inspektor", "Inspector"), isOn: $showInspector).keyboardShortcut("i", modifiers: [.command, .option])
             Toggle(L("Lernmodus", "Learning Mode"), isOn: $showLearning).keyboardShortcut("e", modifiers: [])
             Button(L("Ansicht zentrieren", "Center View")) { engine.action("center") }.keyboardShortcut("c", modifiers: [])
+            Toggle(L("Statusanzeige im Bild", "Status Overlay"), isOn: Binding(get: { engine.state.showHUD != 0 }, set: { _ in engine.action("hud") }))
+                .keyboardShortcut("h", modifiers: [])
+        }
+        CommandGroup(replacing: .help) {
+            Button(L("Tastenübersicht", "Keys and Mouse")) { engine.action("help") }
+                .keyboardShortcut(KeyEquivalent(Character(UnicodeScalar(NSF1FunctionKey)!)), modifiers: [])
         }
     }
 

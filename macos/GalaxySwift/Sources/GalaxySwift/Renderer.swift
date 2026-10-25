@@ -191,6 +191,9 @@ final class Renderer: NSObject, MTKViewDelegate {
         render(cmd, pass: pass, fx: Int(st.fx))
         if let url = shotDue(now), let w = view.window {
             snapshotWindow(w, url.deletingPathExtension().appendingPathExtension("window.png"))
+            if let sheet = w.attachedSheet {
+                snapshotWindow(sheet, url.deletingPathExtension().appendingPathExtension("sheet.png"))
+            }
         }
         if let url = exportURL ?? shotDue(now) {
             exportURL = nil

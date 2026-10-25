@@ -8,6 +8,7 @@ import (
 	"context"
 	"log"
 	"math"
+	"time"
 
 	"galaxy/internal/app"
 	"galaxy/internal/perf"
@@ -37,6 +38,10 @@ type Engine struct {
 	version  uint64
 	last     FrameInfo // snapshot part of the last copy, returned again while nothing changed
 	looker   looker
+
+	correction map[*scene.Spec]float64 // measured/predicted step time per scene (observe)
+	running    *scene.Spec
+	since      time.Time
 }
 
 // New starts built-in scene preset (0-based) with stars bodies; stars ≤ 0 chooses them from the
@@ -70,6 +75,7 @@ func New(preset, stars int) *Engine {
 	go r.Run(ctx)
 
 	e.Controller = app.New(r, stars, sp)
+	e.ShowHUD, e.ShowHelp = false, false // the native window has inspector and menus instead
 	e.Theta, e.ThetaUser, e.GPU = theta, theta, gpu
 	e.ApplyPrefs(e.settings)
 	e.PrefsPath = prefs.Path()
@@ -90,7 +96,11 @@ func (e *Engine) stars(sp *scene.Spec) int {
 	if e.settings.Stars > 0 {
 		return e.settings.Stars
 	}
-	return e.profile.SceneStars(e.cal, sp, 1, defaultStars)
+	corr := 1.0
+	if c, ok := e.correction[sp]; ok {
+		corr = c
+	}
+	return e.profile.SceneStars(e.cal, sp, corr, defaultStars)
 }
 
 func (e *Engine) gpu() bool {
@@ -142,6 +152,7 @@ func (e *Engine) Tick(fps, deviceScale float64, thermal int, lowPower bool) {
 		}
 		e.spsCap = set.SPSCap
 		e.RenderScaleNow = e.scale
+		e.observe()
 	}
 	limit := e.SpeedLimit()
 	if e.spsCap > 0 && (limit == 0 || e.spsCap < limit) {

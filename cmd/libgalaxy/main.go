@@ -19,7 +19,7 @@ typedef struct {
 
 typedef struct {
 	int paused, speed, gravity, darkOff, darkBodies, gasBodies, blackHoles, bodies, stars;
-	int tool, level, explain, scene, driftQuality, substeps, hydroSubsteps, gpu, showHUD;
+	int tool, level, explain, scene, driftQuality, substeps, hydroSubsteps, gpu, showHUD, showHelp;
 	int fx; // bits: 1 glow, 2 doppler, 4 lens, 8 trails, 16 dark, 32 gas, 64 dust
 	double c, mass, theta, thetaUser, sps, fps, time, yearsPer, drift, renderScale;
 } GalaxyState;
@@ -30,6 +30,12 @@ typedef struct {
 	int holes; // number written to the hole array (at most its capacity)
 	int worldHoles; // number written to the world hole array: x, y, z, r_s each
 } GalaxyLook;
+
+typedef struct {
+	int stars;    // fixed stars per scene, 0 = from the profile
+	int gpu;      // 0 automatic, 1 on, 2 off
+	int capacity; // stars for 30 steps/s on this machine
+} GalaxySettings;
 
 typedef struct {
 	float x, y, r, physR, rings; // render pixels; rings: 1 if the ISCO ring is drawn
@@ -113,7 +119,7 @@ func galaxy_state(out *C.GalaxyState) {
 		bodies: C.int(s.Sim.Bodies), stars: C.int(s.Stars), tool: C.int(s.Tool), level: C.int(s.Level),
 		explain: b(s.Explain), scene: C.int(s.Scene), driftQuality: C.int(s.DriftQuality),
 		substeps: C.int(s.Sim.Substeps), hydroSubsteps: C.int(s.Sim.HydroSubsteps), gpu: b(s.GPU),
-		showHUD: b(s.ShowHUD), fx: fxBits(s.FX),
+		showHUD: b(s.ShowHUD), showHelp: b(s.ShowHelp), fx: fxBits(s.FX),
 		c: C.double(s.C), mass: C.double(s.Mass), theta: C.double(s.Theta), thetaUser: C.double(s.ThetaUser),
 		sps: C.double(s.StepsPerSec), fps: C.double(s.FPS), time: C.double(s.Sim.Time),
 		yearsPer: C.double(s.YearsPer), drift: C.double(s.Drift), renderScale: C.double(s.RenderScale),
@@ -131,6 +137,7 @@ var actions = map[string]app.Action{
 	"center": app.ActionCenterView, "explain": app.ActionToggleExplain, "nextTopic": app.ActionNextTopic,
 	"prevTopic": app.ActionPrevTopic, "nextLevel": app.ActionNextLevel, "prevLevel": app.ActionPrevLevel,
 	"restart": app.ActionRestart, "quickSave": app.ActionQuickSave, "quickLoad": app.ActionQuickLoad,
+	"hud": app.ActionToggleHUD, "help": app.ActionToggleHelp,
 }
 
 //export galaxy_action
@@ -328,4 +335,34 @@ func galaxy_prepare(buf *C.float, attnBuf *C.float, capacity C.int, w, h, ps C.d
 	}
 	*out = C.GalaxyLook{worldHoles: C.int(nw), exposure: C.double(look.Exposure), emNorm: C.double(look.EmNorm), dustKappa: C.double(look.DustKappa),
 		darkAlpha: C.float(look.DarkAlpha), gasAlpha: C.float(look.GasAlpha), holes: C.int(n)}
+}
+
+//export galaxy_settings
+func galaxy_settings(out *C.GalaxySettings) {
+	p := eng.Settings()
+	gpu := 0
+	for i, m := range engine.GPUModes {
+		if m == p.GPU {
+			gpu = i
+		}
+	}
+	*out = C.GalaxySettings{stars: C.int(p.Stars), gpu: C.int(gpu), capacity: C.int(eng.Capacity())}
+}
+
+//export galaxy_set_stars
+func galaxy_set_stars(n C.int) { eng.SetStars(int(n)) }
+
+// galaxy_set_gpu sets 0 automatic, 1 on, 2 off.
+//
+//export galaxy_set_gpu
+func galaxy_set_gpu(mode C.int) {
+	eng.SetGPUMode(engine.GPUModes[max(0, min(len(engine.GPUModes)-1, int(mode)))])
+}
+
+//export galaxy_recalibrate
+func galaxy_recalibrate() { eng.Recalibrate() }
+
+//export galaxy_launch_speed
+func galaxy_launch_speed(x0, y0, x1, y1 C.double) C.double {
+	return C.double(eng.LaunchSpeed(float64(x0), float64(y0), float64(x1), float64(y1)))
 }

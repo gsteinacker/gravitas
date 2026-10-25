@@ -22,6 +22,7 @@ final class Engine {
     private(set) var topicIndex = 0
     private(set) var explanationTitle = ""
     private(set) var explanationBody = ""
+    private(set) var settings = GalaxySettings()
     let presets: [String]
     let hardware: String
 
@@ -53,6 +54,9 @@ final class Engine {
         let t = Engine.text("topics").split(separator: "\n", omittingEmptySubsequences: false).map(String.init)
         if t != topics { topics = t }
         topicIndex = Int(galaxy_topic_index())
+        var st = GalaxySettings()
+        galaxy_settings(&st)
+        if st.stars != settings.stars || st.gpu != settings.gpu || st.capacity != settings.capacity { settings = st }
         let title = Engine.text("title"), body = Engine.text("body")
         if title != explanationTitle { explanationTitle = title }
         if body != explanationBody { explanationBody = body }
@@ -74,6 +78,12 @@ final class Engine {
         refresh()
         return ok
     }
+
+    static let starChoices = [0, 10_000, 25_000, 50_000, 100_000, 200_000, 500_000, 1_000_000]
+
+    func setStars(_ n: Int) { galaxy_set_stars(Int32(n)); refresh() }
+    func setGPU(_ mode: Int) { galaxy_set_gpu(Int32(mode)); refresh() }
+    func recalibrate() { galaxy_recalibrate(); refresh() }
 
     func setProfile(_ id: String) {
         id.withCString { galaxy_set_profile(UnsafeMutablePointer(mutating: $0)) }

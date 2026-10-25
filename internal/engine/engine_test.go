@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"galaxy/internal/app"
+	"galaxy/internal/scene"
 	"galaxy/internal/sim"
 	"galaxy/internal/view"
 )
@@ -167,5 +168,30 @@ func TestDustAttenuatesStarsBehindGas(t *testing.T) {
 		if other[i] != attn[i] {
 			t.Fatal("cached attenuation not copied")
 		}
+	}
+}
+
+func TestStarSettingsAndCorrection(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+	e := New(0, 0) // stars from the profile
+	defer e.Close()
+	e.PrefsPath = "" // settings are saved in the background; nothing to write here
+	e.SetViewport(1440, 900)
+	auto := e.stars(e.Scene)
+	e.SetStars(25_000)
+	if e.N != 25_000 || e.Settings().Stars != 25_000 {
+		t.Errorf("fixed stars: N %d, settings %d", e.N, e.Settings().Stars)
+	}
+	e.SetStars(0)
+	if e.N != auto {
+		t.Errorf("back to the profile: %d, want %d", e.N, auto)
+	}
+	// A scene that ran twice as slow as predicted gets fewer stars next time.
+	e.correction = map[*scene.Spec]float64{e.Scene: 2}
+	if slow := e.stars(e.Scene); slow >= auto && auto < 1_000_000 {
+		t.Errorf("corrected stars %d, uncorrected %d", slow, auto)
+	}
+	if s := e.LaunchSpeed(100, 100, 100, 100); s != 0 {
+		t.Errorf("zero drag gives speed %v", s)
 	}
 }

@@ -8,6 +8,7 @@ final class SimulationView: MTKView {
     var engine: Engine!
     private var press: CGPoint?, last: CGPoint = .zero
     private var moved = false, launching = false, panning = false
+    private var arrow: CAShapeLayer?, label: CATextLayer?, pressPoint = CGPoint.zero
 
     override var acceptsFirstResponder: Bool { true }
     override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
@@ -26,6 +27,7 @@ final class SimulationView: MTKView {
         moved = false
         launching = e.modifierFlags.contains(.option)
         panning = e.modifierFlags.contains(.shift)
+        pressPoint = convert(e.locationInWindow, from: nil)
     }
 
     override func rightMouseDown(with e: NSEvent) {
@@ -44,6 +46,9 @@ final class SimulationView: MTKView {
         let p = pixel(e)
         let threshold = 4 * drawableSize.width / max(bounds.width, 1)
         if abs(p.x - p0.x) > threshold || abs(p.y - p0.y) > threshold { moved = true }
+        if launching {
+            showArrow(to: convert(e.locationInWindow, from: nil), speed: galaxy_launch_speed(p0.x, p0.y, p.x, p.y))
+        }
         if moved && !launching {
             if panning {
                 galaxy_pan(p.x - last.x, p.y - last.y)
@@ -63,7 +68,53 @@ final class SimulationView: MTKView {
             galaxy_click(p.x, p.y)
         }
         press = nil
+        hideArrow()
         engine.refresh()
+    }
+
+    /// showArrow previews the launch of an ⌥-drag: from the press point to the cursor, with the speed.
+    private func showArrow(to q: CGPoint, speed: Double) {
+        wantsLayer = true
+        if arrow == nil {
+            let a = CAShapeLayer()
+            a.strokeColor = NSColor(red: 1, green: 0.59, blue: 0.2, alpha: 1).cgColor
+            a.fillColor = nil
+            a.lineWidth = 2
+            let t = CATextLayer()
+            t.fontSize = 13
+            t.foregroundColor = a.strokeColor
+            t.contentsScale = window?.backingScaleFactor ?? 2
+            layer?.addSublayer(a)
+            layer?.addSublayer(t)
+            arrow = a
+            label = t
+        }
+        let p0 = pressPoint
+        let path = CGMutablePath()
+        path.addEllipse(in: CGRect(x: p0.x - 7, y: p0.y - 7, width: 14, height: 14))
+        path.move(to: p0)
+        path.addLine(to: q)
+        let dx = q.x - p0.x, dy = q.y - p0.y, l = hypot(dx, dy)
+        if l > 5 {
+            let ux = dx / l, uy = dy / l
+            for side in [1.0, -1.0] {
+                path.move(to: q)
+                path.addLine(to: CGPoint(x: q.x - 10 * ux + 6 * side * uy, y: q.y - 10 * uy - 6 * side * ux))
+            }
+        }
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+        arrow?.path = path
+        label?.string = String(format: "v = %.2f", speed)
+        label?.frame = CGRect(x: q.x + 12, y: q.y - 24, width: 120, height: 18)
+        CATransaction.commit()
+    }
+
+    private func hideArrow() {
+        arrow?.removeFromSuperlayer()
+        label?.removeFromSuperlayer()
+        arrow = nil
+        label = nil
     }
 
     override func rightMouseUp(with e: NSEvent) { press = nil }
