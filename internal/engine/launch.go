@@ -351,8 +351,20 @@ func (e *Engine) GoLaunch() {
 		e.Runner.Do(func(s *sim.Simulation) { setHoleVelocity(s, center, holeVel) })
 		v = v.Scale(mh / (m + mh))
 	}
+	radial, _ := l.basis()
+	e.PlaceNormal, e.PlaceRadial = l.Normal, radial // a galaxy's disk lies in the launch plane
 	e.PlaceAt(l.Position(), l.CenterVel.Add(v))
 	l.Active = false
+}
+
+// HoleKick is the speed change the attractor hole gets from a binary launch (momentum split by
+// mass): the lighter partner takes most of the relative motion.
+func (e *Engine) HoleKick() float64 {
+	l := &e.launch
+	if !l.Binary || l.HoleMass <= 0 {
+		return 0
+	}
+	return l.Speed * e.Mass / (e.Mass + l.HoleMass)
 }
 
 // setHoleVelocity gives the black hole at center (as frozen at planning) the coordinate velocity v.

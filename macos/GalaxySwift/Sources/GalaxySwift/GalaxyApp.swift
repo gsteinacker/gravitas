@@ -93,6 +93,7 @@ struct GalaxyApp: App {
                 Text(L("Schwarzes Loch", "Black Hole")).tag(0)
                 Text(L("Sternhaufen", "Star Cluster")).tag(1)
                 Text(L("Gaswolke", "Gas Cloud")).tag(2)
+                Text(L("Galaxie", "Galaxy")).tag(3)
             }
             .pickerStyle(.inline)
             Divider()

@@ -113,11 +113,23 @@ struct InspectorView: View {
                     Text(L("Schwarzes Loch", "Black hole")).tag(0)
                     Text(L("Sternhaufen", "Star cluster")).tag(1)
                     Text(L("Gaswolke", "Gas cloud")).tag(2)
+                    Text(L("Galaxie", "Galaxy")).tag(3)
                 }
                 .pickerStyle(.segmented)
                 .labelsHidden()
                 SliderRow(title: L("Masse", "Mass"), value: Binding(get: { log10(s.mass) }, set: { engine.set("mass", pow(10, $0)) }),
-                          range: -2...log10(20), text: engine.massText(s.mass))
+                          range: log10(max(s.massMin, 1e-12))...log10(20), text: engine.massText(s.mass))
+                if s.tool == 3 {
+                    SliderRow(title: L("Neigung", "Tilt"),
+                              help: L("Winkel der Scheibe gegen die Startebene: 0° dreht mit der Galaxie, 180° gegen sie",
+                                      "angle of the disk against the launch plane: 0° spins with the galaxy, 180° against it"),
+                              value: Binding(get: { s.galaxyTilt }, set: { engine.set("galaxyTilt", $0) }), range: 0...180,
+                              text: String(format: "%.0f°", s.galaxyTilt))
+                    if s.galaxyScale == 0 {
+                        Text(L("Galaxien passen nur in Szenen im Galaxienmaßstab.", "Galaxies only fit into scenes at galaxy scale."))
+                            .font(.callout).foregroundStyle(.secondary)
+                    }
+                }
                 if s.tool == 2 {
                     SliderRow(title: L("Temperatur", "Temperature"),
                               help: L("Temperatur des Gases: kalt (10–100 K) kollabiert, heiß (10⁴ K) bleibt aufgebläht",
@@ -338,7 +350,7 @@ struct KeyOverview: View {
         (L("↩  ⎋", "↩  ⎋"), L("starten / verwerfen", "launch / discard")),
         (L("Doppelklick", "Double click"), L("sofort platzieren", "place at once")),
         (L("⌥ + Ziehen", "⌥ + drag"), L("Richtung und Tempo ziehen und starten", "drag direction and speed, then launch")),
-        ("b  k  w  ⇥", L("Werkzeug: Loch / Sternhaufen / Gaswolke / wechseln", "tool: hole / cluster / gas cloud / switch")),
+        ("b  k  w  a  ⇥", L("Werkzeug: Loch / Sternhaufen / Gaswolke / Galaxie / wechseln", "tool: hole / cluster / gas cloud / galaxy / switch")),
         ("m  n", L("Masse + / −", "mass + / −")),
         (L("Ziehen", "Drag"), L("drehen", "rotate")),
         (L("⇧ / rechts ziehen", "⇧ / right drag"), L("verschieben", "pan")),

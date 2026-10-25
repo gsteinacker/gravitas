@@ -74,6 +74,25 @@ struct Speedometer: View {
             .frame(width: 150, height: 62)
             Text(verbatim: engine.speedText(l.speed)).font(.headline.monospacedDigit())
             Text(verbatim: ratioText(l)).font(.caption.monospacedDigit()).foregroundStyle(.secondary)
+            if l.binary != 0, l.holeKick > 0 {
+                Text(verbatim: String(format: L("Das Loch erhält %@", "The hole gets %@"), engine.speedText(l.holeKick)))
+                    .font(.caption.monospacedDigit()).foregroundStyle(l.holeKick > 0.3 * max(l.circular, 1e-9) ? .orange : .secondary)
+            }
+            if engine.state.tool == 2 { forecast }
+        }
+    }
+
+    /// forecast tells whether the planned gas cloud will collapse (virial parameter, Go core).
+    @ViewBuilder private var forecast: some View {
+        let s = engine.state
+        let (text, color): (String, Color) = s.cloudAlpha < 1
+            ? (L("Wolke kollabiert, bildet Sterne", "cloud collapses, forms stars"), .green)
+            : s.cloudAlpha < 2 ? (L("Wolke grenzwertig gebunden", "cloud marginally bound"), .yellow)
+            : (L("Wolke zerstreut sich", "cloud disperses"), .orange)
+        Text(verbatim: text + String(format: " (α = %.1f)", s.cloudAlpha)).font(.caption).foregroundStyle(color)
+        if s.cloudFloorK > s.cloudK + 1 {
+            Text(verbatim: String(format: L("Szene hält das Gas auf mind. %.0f K", "the scene keeps gas at ≥ %.0f K"), s.cloudFloorK))
+                .font(.caption2).foregroundStyle(.secondary)
         }
     }
 

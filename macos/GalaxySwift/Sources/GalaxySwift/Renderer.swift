@@ -390,9 +390,10 @@ final class Renderer: NSObject, MTKViewDelegate {
         ]
         // Marker styles in the order of the engine's Marker kinds: fill, stroke, radius (points).
         let ghostFill: NSColor = [NSColor.black, NSColor(white: 1, alpha: 0.75),
-                                  NSColor(red: 0.35, green: 0.55, blue: 1, alpha: 0.6)][min(2, max(0, Int(engine.state.tool)))]
+                                  NSColor(red: 0.35, green: 0.55, blue: 1, alpha: 0.6),
+                                  NSColor(red: 1, green: 0.9, blue: 0.7, alpha: 0.7)][min(3, max(0, Int(engine.state.tool)))]
         let markers: [(NSColor?, NSColor?, CGFloat)] = [
-            (ghostFill.withAlphaComponent(0.85), orange, engine.state.tool == 2 ? 14 : 9), // ghost
+            (ghostFill.withAlphaComponent(0.85), orange, [9, 9, 14, 18][min(3, max(0, Int(engine.state.tool)))]), // ghost
             (yellow, nil, 6), (nil, yellow, 5),                    // prograde, retrograde
             (cyan, nil, 6), (nil, cyan, 5),                        // out, in
             (magenta, nil, 6), (nil, magenta, 5),                  // up, down

@@ -23,6 +23,10 @@ typedef struct {
 	int fx; // bits: 1 glow, 2 doppler, 4 lens, 8 trails, 16 dark, 32 gas, 64 dust
 	double c, mass, theta, thetaUser, sps, fps, time, yearsPer, drift, renderScale;
 	double cloudK, cloudTurb; // next gas cloud: temperature (K), turbulence (fraction of √(GM/R))
+	double cloudAlpha, cloudFloorK; // its virial parameter (< 1 collapses, > 2 disperses), effective temperature
+	double galaxyTilt;      // next galaxy: tilt of its disk against the launch plane (degrees)
+	double massMin;         // smallest sensible mass (about 1 solar mass), simulation units
+	int galaxyScale;        // galaxies can be placed in this scene
 } GalaxyState;
 
 typedef struct {
@@ -42,6 +46,7 @@ typedef struct {
 	int active, plane, hasUnits, binary, holeAttractor;
 	double height, azimuth, elevation, speed; // length and velocity units, radians
 	double circular, escape, radius, impact;  // references at the position
+	double holeKick;                          // binary: speed the attractor hole gets
 	double kmPerS, pcPerUnit, msunPerUnit;    // physical units of the scene (if hasUnits)
 } GalaxyLaunch;
 
@@ -52,6 +57,7 @@ typedef struct {
 import "C"
 
 import (
+	"math"
 	"strings"
 	"unsafe"
 
@@ -160,6 +166,11 @@ func fxBits(fx view.Effects) C.int {
 //export galaxy_state
 func galaxy_state(out *C.GalaxyState) {
 	s := eng.State()
+	alpha, floorK := eng.CloudForecast()
+	massMin := 0.01
+	if mu, ok := eng.Scene.MassUnit(); ok {
+		massMin = math.Max(app.MassMin, 1/mu)
+	}
 	*out = C.GalaxyState{
 		paused: b(s.Paused), speed: C.int(s.Speed), gravity: C.int(s.Gravity), darkOff: b(s.DarkMatterOff),
 		darkBodies: C.int(s.Sim.Dark), gasBodies: C.int(s.Sim.Gas), blackHoles: C.int(s.Sim.BlackHoles),
@@ -171,6 +182,8 @@ func galaxy_state(out *C.GalaxyState) {
 		sps: C.double(s.StepsPerSec), fps: C.double(s.FPS), time: C.double(s.Sim.Time),
 		yearsPer: C.double(s.YearsPer), drift: C.double(s.Drift), renderScale: C.double(s.RenderScale),
 		cloudK: C.double(s.CloudK), cloudTurb: C.double(s.CloudTurb),
+		cloudAlpha: C.double(alpha), cloudFloorK: C.double(floorK), galaxyTilt: C.double(eng.GalaxyTilt),
+		massMin: C.double(massMin), galaxyScale: b(eng.GalaxyScale()),
 	}
 }
 
@@ -178,7 +191,7 @@ func galaxy_state(out *C.GalaxyState) {
 var actions = map[string]app.Action{
 	"pause": app.ActionTogglePause, "step": app.ActionStep, "faster": app.ActionFaster, "slower": app.ActionSlower,
 	"lightFaster": app.ActionLightFaster, "lightSlower": app.ActionLightSlower, "cycleGravity": app.ActionCycleGravity,
-	"darkMatter": app.ActionToggleDarkMatter, "toolHole": app.ActionToolBlackHole, "toolCluster": app.ActionToolCluster, "toolCloud": app.ActionToolGasCloud,
+	"darkMatter": app.ActionToggleDarkMatter, "toolHole": app.ActionToolBlackHole, "toolCluster": app.ActionToolCluster, "toolCloud": app.ActionToolGasCloud, "toolGalaxy": app.ActionToolGalaxy,
 	"massUp": app.ActionMassUp, "massDown": app.ActionMassDown, "glow": app.ActionToggleGlow,
 	"trails": app.ActionToggleTrails, "lens": app.ActionToggleLens, "doppler": app.ActionToggleDoppler,
 	"dark": app.ActionToggleDark, "gas": app.ActionToggleGas, "dust": app.ActionToggleDust,
@@ -222,7 +235,9 @@ func galaxy_set(name *C.char, v C.double) {
 	case "gravity":
 		eng.SetGravity(sim.GravityMode(max(0, min(2, int(x)))))
 	case "tool":
-		eng.Tool = app.Tool(max(0, min(2, int(x))))
+		eng.SetTool(app.Tool(max(0, min(3, int(x)))))
+	case "galaxyTilt":
+		eng.GalaxyTilt = math.Max(0, math.Min(180, x))
 	case "cloudK":
 		eng.SetCloud(x, eng.CloudTurb)
 	case "cloudTurb":
@@ -445,7 +460,7 @@ func galaxy_launch(out *C.GalaxyLaunch) {
 	*out = C.GalaxyLaunch{active: b(l.Active), plane: C.int(l.Plane), hasUnits: b(ok), binary: b(l.Binary), holeAttractor: b(l.HoleMass > 0),
 		height: C.double(l.Height), azimuth: C.double(l.Azimuth), elevation: C.double(l.Elevation),
 		speed: C.double(l.Speed), circular: C.double(l.Circular), escape: C.double(l.Escape),
-		radius: C.double(l.Radius), impact: C.double(l.Impact), kmPerS: C.double(v), pcPerUnit: C.double(pc),
+		radius: C.double(l.Radius), impact: C.double(l.Impact), holeKick: C.double(eng.HoleKick()), kmPerS: C.double(v), pcPerUnit: C.double(pc),
 		msunPerUnit: C.double(msun)}
 }
 

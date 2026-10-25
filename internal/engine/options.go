@@ -35,7 +35,7 @@ type Options struct {
 	HUD       bool    // status overlay
 	Help      bool    // key overview
 	Launch    string  // plan a launch at "x,y[,preset[,go]]" (fractions of the view; preset as LaunchPreset; go 1 launches)
-	Tool      string  // hole, cluster or cloud
+	Tool      string  // hole, cluster, cloud or galaxy
 	Mass      float64 // mass of the placed object (simulation units), 0 = default
 	Shot      string  // save a screenshot after ShotAfter seconds and quit
 	ShotAfter float64
@@ -66,7 +66,7 @@ func ParseOptions(args []string) (*Options, error) {
 	fs.BoolVar(&o.HUD, "hud", false, "show the status overlay")
 	fs.BoolVar(&o.Help, "help", false, "show the key overview")
 	fs.StringVar(&o.Launch, "launch", "", "plan a launch at x,y (fractions of the view) with preset 0 rest, 1 circular, 2 escape, 3 center, 4 binary; ,1 launches")
-	fs.StringVar(&o.Tool, "tool", "", "tool for placing: hole, cluster or cloud")
+	fs.StringVar(&o.Tool, "tool", "", "tool for placing: hole, cluster, cloud or galaxy")
 	fs.Float64Var(&o.Mass, "mass", 0, "mass of placed objects (simulation units)")
 	fs.StringVar(&o.Shot, "shot", "", "save a screenshot to this PNG file after -shot-after seconds and quit")
 	fs.Float64Var(&o.ShotAfter, "shot-after", 4, "seconds before the screenshot is taken")
@@ -140,13 +140,15 @@ func (o *Options) apply(e *Engine) error {
 	switch o.Tool {
 	case "":
 	case "hole":
-		e.Tool = app.ToolBlackHole
+		e.SetTool(app.ToolBlackHole)
 	case "cluster":
-		e.Tool = app.ToolCluster
+		e.SetTool(app.ToolCluster)
 	case "cloud":
-		e.Tool = app.ToolGasCloud
+		e.SetTool(app.ToolGasCloud)
+	case "galaxy":
+		e.SetTool(app.ToolGalaxy)
 	default:
-		return fmt.Errorf("unknown tool %q (want hole, cluster, cloud)", o.Tool)
+		return fmt.Errorf("unknown tool %q (want hole, cluster, cloud, galaxy)", o.Tool)
 	}
 	if o.Mass > 0 {
 		e.SetMass(o.Mass)
