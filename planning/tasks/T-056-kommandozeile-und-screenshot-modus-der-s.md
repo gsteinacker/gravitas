@@ -1,7 +1,7 @@
 ---
 id: T-056
 title: Kommandozeile und Screenshot-Modus der SwiftUI-App
-status: todo
+status: done
 milestone: M8
 priority: 2
 estimate: S
@@ -15,7 +15,14 @@ SwiftUI-App braucht dieselben Möglichkeiten, bevor die Go-App gelöscht wird.
 
 ## Akzeptanzkriterien
 
-- [ ] Argumente wie `cmd/galaxy`: -preset -n -scene -load -c -gravity -fx -explain -lang -scale -adapt
+- [x] Argumente wie `cmd/galaxy`: -preset -n -scene -load -c -gravity -fx -explain -lang -scale -adapt
       -hud -shot -shot-after
-- [ ] Screenshot-Modus reproduzierbar: ohne Einstellungen, Faktor 1, 50 000 Sterne ohne -n, gleiche Messzeile
-- [ ] `make shot` nutzt die SwiftUI-App
+- [x] Screenshot-Modus reproduzierbar: ohne Einstellungen, Faktor 1, 50 000 Sterne ohne -n, gleiche Messzeile
+- [x] `make shot` nutzt die SwiftUI-App
+
+## Notizen
+
+`engine.ParseOptions` (Go `flag`, gleiche Namen wie `cmd/galaxy`, unbekannte macOS-Argumente werden ignoriert, relative
+Pfade gegen `$PWD`), `engine.Start`; Swift reicht nur `CommandLine.arguments` an `galaxy_start`. Die Sprache
+entscheidet der Go-Kern (`-lang` oder System), Swift übernimmt sie. Messzeile identisch zur Go-App (`ShotLine`).
+`-hud`, `-help` neu. `make shot` nutzt `bin/swift/GalaxySwift`.

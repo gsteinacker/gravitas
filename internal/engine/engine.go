@@ -38,6 +38,7 @@ type Engine struct {
 	version  uint64
 	last     FrameInfo // snapshot part of the last copy, returned again while nothing changed
 	looker   looker
+	opts     *Options
 
 	correction map[*scene.Spec]float64 // measured/predicted step time per scene (observe)
 	running    *scene.Spec
@@ -47,27 +48,50 @@ type Engine struct {
 // New starts built-in scene preset (0-based) with stars bodies; stars ≤ 0 chooses them from the
 // performance profile and the calibration of this machine (measured once, cached in the settings).
 func New(preset, stars int) *Engine {
-	e := &Engine{settings: prefs.Load(prefs.Path()), hw: perf.Probe()}
+	e, err := Start(&Options{Preset: preset + 1, Stars: stars, Gravity: "instant", Theta: bh.DefaultTheta, GPU: true})
+	if err != nil {
+		panic(err) // built-in scenes
+	}
+	return e
+}
+
+// Start runs the app with its command line options. Screenshots (o.Shot without o.Adapt) ignore the
+// user's settings and keep stars, render scale and θ fixed, so measurements are reproducible.
+func Start(o *Options) (*Engine, error) {
+	fixed := o.Screenshot() && !o.Adapt
+	e := &Engine{settings: prefs.Load(prefs.Path()), hw: perf.Probe(), opts: o}
+	if fixed {
+		e.settings = prefs.Default()
+	}
 	e.profile = perf.ProfileByID(e.settings.Profile)
 	key := e.hw.Key()
 	if c, ok := e.settings.Calibration[key]; ok && c.SecPerNL > 0 {
 		e.cal = c
 	} else {
-		e.cal = perf.Calibrate(e.settings.GPU != prefs.GPUOff)
+		e.cal = perf.Calibrate(e.settings.GPU != prefs.GPUOff && (o.GPU || !o.GPUSet))
 		if e.settings.Calibration == nil {
 			e.settings.Calibration = map[string]prefs.Calibration{}
 		}
 		e.settings.Calibration[key] = e.cal
 	}
-	sp := scene.Presets[max(0, min(len(scene.Presets)-1, preset))].Spec
+	sp, err := o.spec()
+	if err != nil {
+		return nil, err
+	}
+	stars := o.Stars
 	auto := stars <= 0
 	if auto {
 		stars = e.stars(sp)
 	}
 	s, p := sp.Build(stars)
+	if err := o.params(&p); err != nil {
+		return nil, err
+	}
 	gpu := e.gpu()
-	theta := bh.DefaultTheta
-	m := sim.New(s, &bh.Solver{Theta: theta, GPU: gpu}, p)
+	if o.GPUSet {
+		gpu = o.GPU && bh.GPUAvailable() == nil
+	}
+	m := sim.New(s, &bh.Solver{Theta: o.Theta, GPU: gpu}, p)
 	m.Hydro = &sph.Solver{}
 	r := sim.NewRunner(m)
 	ctx, cancel := context.WithCancel(context.Background())
@@ -75,19 +99,30 @@ func New(preset, stars int) *Engine {
 	go r.Run(ctx)
 
 	e.Controller = app.New(r, stars, sp)
-	e.ShowHUD, e.ShowHelp = false, false // the native window has inspector and menus instead
-	e.Theta, e.ThetaUser, e.GPU = theta, theta, gpu
+	e.Theta, e.ThetaUser, e.GPU = o.Theta, o.Theta, gpu
 	e.ApplyPrefs(e.settings)
-	e.PrefsPath = prefs.Path()
+	if !fixed {
+		e.PrefsPath = prefs.Path()
+	}
 	if auto {
 		e.StarsFor = e.stars
 	}
-	if err := e.settings.Save(e.PrefsPath); err != nil { // synchronously: keep the calibration
-		log.Printf("engine: settings: %v", err)
+	if err := o.apply(e); err != nil {
+		cancel()
+		return nil, err
 	}
+	if e.PrefsPath != "" {
+		if err := e.settings.Save(e.PrefsPath); err != nil { // synchronously: keep the calibration
+			log.Printf("engine: settings: %v", err)
+		}
+	}
+	e.Publish()
 	log.Printf("engine: %s, %d stars, GPU %v", e.hw, stars, gpu)
-	return e
+	return e, nil
 }
+
+// Options returns the start options.
+func (e *Engine) Options() *Options { return e.opts }
 
 // Close stops the simulation.
 func (e *Engine) Close() { e.cancel() }
@@ -131,6 +166,13 @@ func (e *Engine) SetProfile(id string) {
 func (e *Engine) Tick(fps, deviceScale float64, thermal int, lowPower bool) {
 	e.Drain()
 	e.FPS = fps
+	if o := e.opts; o.Scale > 0 && (!o.Screenshot() || !o.Adapt) {
+		// A fixed render scale (-scale, screenshots) also keeps θ and the step rate fixed.
+		e.scale, e.RenderScaleNow = o.Scale, o.Scale
+		e.Runner.SetTargetSPS(e.SpeedLimit())
+		e.Publish()
+		return
+	}
 	if e.gov == nil {
 		e.gov = perf.NewGovernor(e.profile.MaxRenderScale, deviceScale, e.ThetaUser)
 		e.scale = e.gov.Current().RenderScale

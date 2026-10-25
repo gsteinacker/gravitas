@@ -81,9 +81,11 @@ struct InspectorView: View {
                 LabeledContent(L("Energiedrift", "Energy drift"), verbatim: driftText)
             }
             Section(L("Physik", "Physics")) {
-                LabeledContent(L("Licht c", "Light c")) {
+                LabeledContent {
                     Slider(value: Binding(get: { log10(max(s.c, 1)) }, set: { engine.set("c", pow(10, $0)) }), in: 0...3)
-                    Text(verbatim: s.c > 0 ? String(format: "%.4g", s.c) : "∞").monospacedDigit().frame(width: 52, alignment: .trailing)
+                    Text(verbatim: s.c > 0 ? String(format: "%.4g", s.c) : "∞").monospacedDigit().lineLimit(1).frame(width: 72, alignment: .trailing)
+                } label: {
+                    Text(verbatim: "c").help(L("Lichtgeschwindigkeit (Simulationseinheiten)", "Speed of light (simulation units)"))
                 }
                 .disabled(s.c <= 0)
                 Picker(L("Loch-Gravitation", "Hole gravity"), selection: Binding(get: { Int(s.gravity) }, set: { engine.set("gravity", Double($0)) })) {

@@ -364,7 +364,7 @@ final class Renderer: NSObject, MTKViewDelegate {
         blit.synchronize(resource: t)
         blit.endEncoding()
         let isShot = shot?.url == url
-        let line = shotLine(url)
+        let line = engine.shotLine(url, fps: fps)
         cmd.addCompletedHandler { _ in
             var pix = [UInt8](repeating: 0, count: w * h * 4)
             t.getBytes(&pix, bytesPerRow: w * 4, from: MTLRegionMake2D(0, 0, w, h), mipmapLevel: 0)
@@ -376,12 +376,6 @@ final class Renderer: NSObject, MTKViewDelegate {
         }
     }
 
-    private func shotLine(_ url: URL) -> String {
-        var s = GalaxyState()
-        galaxy_state(&s)
-        return String(format: "shot %@: bodies=%d fps=%.1f steps_per_s=%.1f substeps=%d gas_substeps=%d t=%.2f scale=%g theta=%.2f variant=swiftui",
-                      url.path, s.bodies, fps, s.sps, s.substeps, s.hydroSubsteps, s.time, s.renderScale, s.theta)
-    }
 }
 
 /// writePNG saves BGRA pixels.

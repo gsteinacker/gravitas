@@ -26,8 +26,8 @@ build:
 run:
 	$(GO) run ./cmd/galaxy
 
-shot: build
-	./bin/galaxy -preset $(or $(PRESET),1) -shot bin/shot.png -shot-after $(or $(AFTER),6)
+shot: swift
+	./bin/swift/GalaxySwift -preset $(or $(PRESET),1) -shot bin/shot.png -shot-after $(or $(AFTER),6)
 	@echo bin/shot.png
 
 plan:

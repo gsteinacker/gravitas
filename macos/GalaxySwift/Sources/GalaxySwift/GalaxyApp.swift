@@ -3,65 +3,29 @@ import CGalaxy
 import SwiftUI
 import UniformTypeIdentifiers
 
-/// Arguments: -preset N (1-based), -n stars, -shot file.png -shot-after seconds (same summary line
-/// as the Go app, for the comparison in T-051).
-struct Arguments {
-    var preset = 1, stars = 0
-    var shot: String?
-    var shotAfter = 6.0
-    var explain = false
-    var fx: Int?
-    var hud = false, help = false
-
-    init() {
-        var it = CommandLine.arguments.dropFirst().makeIterator()
-        while let a = it.next() {
-            switch a {
-            case "-preset": preset = Int(it.next() ?? "") ?? 1
-            case "-n": stars = Int(it.next() ?? "") ?? 0
-            case "-shot": shot = it.next()
-            case "-shot-after": shotAfter = Double(it.next() ?? "") ?? 6
-            case "-explain": explain = true
-            case "-fx": fx = Arguments.effects(it.next() ?? "")
-            case "-hud", "-hud=true": hud = true
-            case "-help": help = true
-            default: break
-            }
-        }
-    }
-}
-
-extension Arguments {
-    /// effects parses a list such as "glow,lens,doppler" into the effect bits of GalaxyState.fx.
-    static func effects(_ list: String) -> Int {
-        let bits = ["glow": 1, "doppler": 2, "lens": 4, "trails": 8, "dark": 16, "gas": 32, "dust": 64]
-        return list.split(separator: ",").reduce(0) { $0 | (bits[$1.trimmingCharacters(in: .whitespaces)] ?? 0) }
-    }
-}
-
 @main
 struct GalaxyApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) var delegate
     @State private var engine: Engine
     private let renderer: Renderer
     @State private var showInspector = true
-    @State private var showLearning = false
+    @State private var showLearning: Bool
     @State private var importing = false
 
     init() {
-        let args = Arguments()
-        let e = Engine(preset: args.preset - 1, stars: args.stars)
+        let e = Engine()
+        if let err = e.startError {
+            FileHandle.standardError.write(("galaxy: " + err + "\n").data(using: .utf8)!)
+            exit(2)
+        }
         _engine = State(initialValue: e)
         guard let r = Renderer(engine: e) else { fatalError("Metal is not available") }
-        if let shot = args.shot {
-            r.shot = (URL(fileURLWithPath: shot), args.shotAfter, CFAbsoluteTimeGetCurrent())
+        if let shot = e.shot {
+            r.shot = (shot.url, shot.after, CFAbsoluteTimeGetCurrent())
         }
         renderer = r
         AppDelegate.engine = e
-        if args.explain { e.set("explain", 1) }
-        if let fx = args.fx { e.set("fx", Double(fx)) }
-        if args.hud { e.action("hud") }
-        if args.help { e.action("help") }
+        _showLearning = State(initialValue: e.state.explain != 0)
     }
 
     var body: some Scene {

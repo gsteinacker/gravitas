@@ -72,6 +72,45 @@ func galaxy_init(preset, stars C.int, lang *C.char) {
 	eng.ToggleFullscreen = func() { fullscreen = true }
 }
 
+// galaxy_start runs the app with its command line (arguments separated by the unit separator
+// \x1f, without the program name); it returns NULL or an error message.
+//
+//export galaxy_start
+func galaxy_start(args *C.char) *C.char {
+	var list []string
+	if a := C.GoString(args); a != "" {
+		list = strings.Split(a, "\x1f")
+	}
+	o, err := engine.ParseOptions(list)
+	if err == nil {
+		if eng != nil {
+			eng.Close()
+		}
+		eng, err = engine.Start(o)
+	}
+	if err != nil {
+		return C.CString(err.Error())
+	}
+	eng.ToggleFullscreen = func() { fullscreen = true }
+	return nil
+}
+
+// galaxy_shot returns the screenshot path (empty for the interactive app) and the delay.
+//
+//export galaxy_shot
+func galaxy_shot(after *C.double) *C.char {
+	o := eng.Options()
+	*after = C.double(o.ShotAfter)
+	return C.CString(o.Shot)
+}
+
+// galaxy_shot_line is the summary printed with a screenshot.
+//
+//export galaxy_shot_line
+func galaxy_shot_line(path *C.char, fps C.double) *C.char {
+	return C.CString(eng.ShotLine(C.GoString(path), float64(fps)))
+}
+
 //export galaxy_tick
 func galaxy_tick(fps, deviceScale C.double, thermal, lowPower C.int) {
 	eng.Tick(float64(fps), float64(deviceScale), int(thermal), lowPower != 0)
@@ -247,6 +286,11 @@ func galaxy_text(what *C.char) *C.char {
 		_, s = eng.Explanation()
 	case "hardware":
 		s = eng.Hardware()
+	case "lang":
+		s = "en"
+		if i18n.Current() == i18n.German {
+			s = "de"
+		}
 	}
 	return C.CString(s)
 }

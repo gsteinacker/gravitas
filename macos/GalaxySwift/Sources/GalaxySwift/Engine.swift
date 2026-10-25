@@ -3,10 +3,12 @@ import Foundation
 import Observation
 import SwiftUI
 
+/// uiGerman is the language of the user interface: the system's, unless -lang chose one. The Go
+/// core decides (i18n), so both sides always agree.
+nonisolated(unsafe) var uiGerman = (Locale.preferredLanguages.first ?? "en").hasPrefix("de")
+
 /// Picks the German or English text, like i18n.T in the Go core.
-func L(_ de: String, _ en: String) -> String {
-    (Locale.preferredLanguages.first ?? "en").hasPrefix("de") ? de : en
-}
+func L(_ de: String, _ en: String) -> String { uiGerman ? de : en }
 
 /// Engine wraps the Go core. All calls happen on the main thread.
 @MainActor
@@ -26,12 +28,39 @@ final class Engine {
     let presets: [String]
     let hardware: String
 
-    init(preset: Int, stars: Int) {
-        let lang = Locale.preferredLanguages.first ?? "en"
-        lang.withCString { galaxy_init(Int32(preset), Int32(stars), UnsafeMutablePointer(mutating: $0)) }
+    /// init starts the Go core with the command line (same flags as the Ebitengine app had);
+    /// startError is set if the arguments were invalid.
+    init() {
+        var args = CommandLine.arguments.dropFirst().joined(separator: "\u{1f}")
+        if !args.contains("-lang") { // the Go core follows the system language like the app
+            args += (args.isEmpty ? "" : "\u{1f}") + "-lang\u{1f}" + (Locale.preferredLanguages.first ?? "en")
+        }
+        if let err = args.withCString({ galaxy_start(UnsafeMutablePointer(mutating: $0)) }) {
+            startError = String(cString: err)
+            galaxy_free(err)
+            _ = "".withCString { galaxy_start(UnsafeMutablePointer(mutating: $0)) }
+        }
+        uiGerman = Engine.text("lang") == "de"
         presets = Engine.text("presets").split(separator: "\n").map(String.init)
         hardware = Engine.text("hardware")
+        var after = 0.0
+        if let p = galaxy_shot(&after) {
+            let path = String(cString: p)
+            galaxy_free(p)
+            if !path.isEmpty { shot = (URL(fileURLWithPath: path), after) }
+        }
         refresh()
+    }
+
+    /// startError describes invalid command line arguments.
+    private(set) var startError: String?
+    /// shot is the screenshot to take (-shot, -shot-after), nil in the interactive app.
+    private(set) var shot: (url: URL, after: Double)?
+
+    func shotLine(_ url: URL, fps: Double) -> String {
+        guard let p = url.path.withCString({ galaxy_shot_line(UnsafeMutablePointer(mutating: $0), fps) }) else { return "" }
+        defer { galaxy_free(p) }
+        return String(cString: p)
     }
 
     static func text(_ what: String) -> String {

@@ -12,5 +12,6 @@
 | M7 | Mac-App | Weitergeben können | .app im DMG, native Menüs/Dialoge/Inspektor, de/en, Leistung passt sich dem Rechner an; SwiftUI-Variante zum Vergleich |
 | M8 | Nur noch SwiftUI | Eine Oberfläche | SwiftUI-App kann alles, was die Ebitengine-App konnte; Ebitengine- und AppKit-Code gelöscht |
 | M9 | Physik vertiefen | Mehr Relativität | Untersuchte Erweiterungen (z. B. rotierende Löcher) entschieden und ggf. umgesetzt |
+| M10 | Erster Eindruck | Neugier wecken | Intro erklärt beim Start, was simuliert wird und was daran besonders ist |
 
 Fortschritt: `make plan`. Die Tasks liegen in `tasks/`, Workflow in [README.md](README.md).
