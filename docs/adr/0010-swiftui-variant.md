@@ -34,8 +34,7 @@ Swift ist damit ein zweiter Stack im Repo. Diese Ausnahme gilt nur auf dem Branc
 - Der Renderer existiert doppelt: Kage/Go und MSL/Swift. Jede Darstellungsänderung müsste zweimal gebaut werden.
 - Nicht portiert sind Staub, Dunkle-Materie- und Gas-Karte sowie die Gravitationsrotverschiebung im Doppler.
   Ebenfalls fehlen „Leistung neu messen“ und die Korrektur der Sternzahl über die gemessene Schrittzeit.
-- **Werkzeuge:**
-  - Mit nur den Command Line Tools fehlen das SwiftUI-Makro-Plugin (`@State`, `@Observable`) und der
-    Metal-Offline-Compiler. Ersatz: `ObservableObject` mit `@Published` und Shader aus Quelltext.
-  - Ein Universal-Build per `swift build` braucht Xcode, deshalb wird nur arm64 gebaut.
-  - Für die Weiterentwicklung wäre Xcode sinnvoll.
+- **Werkzeuge:** Xcode ist seit 2026-10-25 installiert, samt Metal-Toolchain. Damit stehen zur Verfügung:
+  - `@Observable` und `@State`;
+  - vorkompilierte Shader (`Galaxy.metallib` aus `Shaders/Galaxy.metal`);
+  - ein Universal-Build per `swift build --arch arm64 --arch x86_64`, die Go-Bibliothek per `lipo`.
