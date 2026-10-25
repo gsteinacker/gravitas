@@ -26,6 +26,9 @@ final class Engine {
     private(set) var explanationBody = ""
     private(set) var settings = GalaxySettings()
     private(set) var launch = GalaxyLaunch()
+    /// shotInfo is the explanation the screenshot mode shows in the window (-info, T-061): a
+    /// popover is a window of its own, which the screenshot mode does not capture.
+    var shotInfo: SettingInfo?
     let presets: [String]
     let hardware: String
 
@@ -51,6 +54,7 @@ final class Engine {
             if !path.isEmpty { shot = (URL(fileURLWithPath: path), after) }
         }
         refresh()
+        if shot != nil { shotInfo = settingInfo(Engine.text("info")) }
     }
 
     /// startError describes invalid command line arguments.

@@ -27,6 +27,12 @@ struct ContentView: View {
                 if engine.state.showHUD != 0 {
                     StatusOverlay(engine: engine).frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
                 }
+                if let info = engine.shotInfo { // -info in screenshots: the popover, inside the window
+                    InfoPopover(engine: engine, info: info, close: {})
+                        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 10))
+                        .padding(20)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                }
                 if !engine.message.isEmpty {
                     Text(engine.message)
                         .padding(.horizontal, 14).padding(.vertical, 8)
@@ -72,10 +78,13 @@ struct InspectorView: View {
                     Button(L("Schritt", "Step")) { engine.action("step") }
                     Button(L("Neustart", "Restart")) { engine.action("restart") }
                 }
-                Picker(L("Schritte/s", "Steps/s"), selection: Binding(get: { Int(s.speed) }, set: { engine.set("speed", Double($0)) })) {
-                    ForEach(Array(["10", "30", "60", "120", "240", "max"].enumerated()), id: \.offset) { Text($1).tag($0) }
+                HStack {
+                    Picker(L("Schritte/s", "Steps/s"), selection: Binding(get: { Int(s.speed) }, set: { engine.set("speed", Double($0)) })) {
+                        ForEach(Array(["10", "30", "60", "120", "240", "max"].enumerated()), id: \.offset) { Text($1).tag($0) }
+                    }
+                    .pickerStyle(.segmented)
+                    InfoButton(engine, "speed")
                 }
-                .pickerStyle(.segmented)
                 LabeledContent(L("Zeit", "Time"), verbatim: timeText)
                 LabeledContent(L("Leistung", "Performance"),
                                verbatim: String(format: L("%.0f Schritte/s · %.0f FPS", "%.0f steps/s · %.0f FPS"), s.sps, s.fps))
@@ -86,38 +95,49 @@ struct InspectorView: View {
                 LabeledContent {
                     Slider(value: Binding(get: { log10(max(s.c, 1)) }, set: { engine.set("c", pow(10, $0)) }), in: 0...3)
                     Text(verbatim: s.c > 0 ? String(format: "%.4g", s.c) : "∞").monospacedDigit().lineLimit(1).frame(width: 72, alignment: .trailing)
+                    InfoButton(engine, "c")
                 } label: {
                     Text(verbatim: "c").help(L("Lichtgeschwindigkeit (Simulationseinheiten)", "Speed of light (simulation units)"))
                 }
                 .disabled(s.c <= 0)
-                Picker(L("Loch-Gravitation", "Hole gravity"), selection: Binding(get: { Int(s.gravity) }, set: { engine.set("gravity", Double($0)) })) {
-                    Text(L("sofort", "instant")).tag(0)
-                    Text(L("retardiert", "retarded")).tag(1)
-                    Text(L("ret. + v", "ret. + v")).tag(2)
+                HStack {
+                    Picker(L("Loch-Gravitation", "Hole gravity"), selection: Binding(get: { Int(s.gravity) }, set: { engine.set("gravity", Double($0)) })) {
+                        Text(L("sofort", "instant")).tag(0)
+                        Text(L("retardiert", "retarded")).tag(1)
+                        Text(L("ret. + v", "ret. + v")).tag(2)
+                    }
+                    .pickerStyle(.segmented)
+                    InfoButton(engine, "gravity")
                 }
-                .pickerStyle(.segmented)
-                Toggle(L("Dunkle Materie wirkt", "Dark matter gravity"),
-                       isOn: Binding(get: { s.darkOff == 0 }, set: { engine.set("darkOff", $0 ? 0 : 1) }))
-                    .disabled(s.darkBodies == 0)
+                HStack {
+                    Toggle(L("Dunkle Materie wirkt", "Dark matter gravity"),
+                           isOn: Binding(get: { s.darkOff == 0 }, set: { engine.set("darkOff", $0 ? 0 : 1) }))
+                        .disabled(s.darkBodies == 0)
+                    InfoButton(engine, "darkGravity")
+                }
                 LabeledContent {
                     Slider(value: Binding(get: { s.thetaUser }, set: { engine.set("theta", $0) }), in: 0.5...1.0)
                     Text(String(format: "%.2f%@", s.theta, s.theta > s.thetaUser + 1e-9 ? "*" : ""))
                         .monospacedDigit().frame(width: 52, alignment: .trailing)
+                    InfoButton(engine, "theta")
                 } label: {
                     Text(verbatim: "θ").help(L("Öffnungswinkel des Barnes-Hut-Baums: kleiner ist genauer, * = vom Regler angehoben",
                                                "Barnes-Hut opening angle: smaller is more accurate, * = raised by the governor"))
                 }
             }
             Section(L("Werkzeug (Klick)", "Tool (click)")) {
-                Picker("", selection: Binding(get: { Int(s.tool) }, set: { engine.set("tool", Double($0)) })) {
-                    Text(L("Schwarzes Loch", "Black hole")).tag(0)
-                    Text(L("Sternhaufen", "Star cluster")).tag(1)
-                    Text(L("Gaswolke", "Gas cloud")).tag(2)
-                    Text(L("Galaxie", "Galaxy")).tag(3)
+                HStack {
+                    Picker("", selection: Binding(get: { Int(s.tool) }, set: { engine.set("tool", Double($0)) })) {
+                        Text(L("Schwarzes Loch", "Black hole")).tag(0)
+                        Text(L("Sternhaufen", "Star cluster")).tag(1)
+                        Text(L("Gaswolke", "Gas cloud")).tag(2)
+                        Text(L("Galaxie", "Galaxy")).tag(3)
+                    }
+                    .pickerStyle(.segmented)
+                    .labelsHidden()
+                    InfoButton(engine, "tool")
                 }
-                .pickerStyle(.segmented)
-                .labelsHidden()
-                SliderRow(title: L("Masse", "Mass"), value: Binding(get: { log10(s.mass) }, set: { engine.set("mass", pow(10, $0)) }),
+                SliderRow(info: InfoButton(engine, "mass"), title: L("Masse", "Mass"), value: Binding(get: { log10(s.mass) }, set: { engine.set("mass", pow(10, $0)) }),
                           range: log10(max(s.massMin, 1e-12))...log10(20), text: engine.massText(s.mass))
                 if s.resolved != 0 {
                     Text(L("Kleiner als die Auflösung der Szene: auf die doppelte Glättungslänge vergrößert, damit die Eigengravitation wirkt.",
@@ -125,7 +145,7 @@ struct InspectorView: View {
                         .font(.caption).foregroundStyle(.secondary)
                 }
                 if s.tool == 3 {
-                    SliderRow(title: L("Neigung", "Tilt"),
+                    SliderRow(info: InfoButton(engine, "tilt"), title: L("Neigung", "Tilt"),
                               help: L("Winkel der Scheibe gegen die Startebene: 0° dreht mit der Galaxie, 180° gegen sie",
                                       "angle of the disk against the launch plane: 0° spins with the galaxy, 180° against it"),
                               value: Binding(get: { s.galaxyTilt }, set: { engine.set("galaxyTilt", $0) }), range: 0...180,
@@ -136,12 +156,12 @@ struct InspectorView: View {
                     }
                 }
                 if s.tool == 2 {
-                    SliderRow(title: L("Temperatur", "Temperature"),
+                    SliderRow(info: InfoButton(engine, "cloudTemp"), title: L("Temperatur", "Temperature"),
                               help: L("Temperatur des Gases: kalt (10–100 K) kollabiert, heiß (10⁴ K) bleibt aufgebläht",
                                       "gas temperature: cold (10–100 K) collapses, hot (10⁴ K) stays puffed up"),
                               value: Binding(get: { log10(s.cloudK) }, set: { engine.set("cloudK", pow(10, $0)) }), range: 1...4,
                               text: String(format: "%.0f K", s.cloudK))
-                    SliderRow(title: L("Turbulenz", "Turbulence"),
+                    SliderRow(info: InfoButton(engine, "cloudTurb"), title: L("Turbulenz", "Turbulence"),
                               help: L("Wirbelbewegung als Anteil von √(GM/R): unter ~0,6 gebunden (Kollaps, Sternentstehung), darüber zerstreut sie sich",
                                       "turbulent motion as a fraction of √(GM/R): below ~0.6 bound (collapse, star formation), above it disperses"),
                               value: Binding(get: { s.cloudTurb }, set: { engine.set("cloudTurb", $0) }), range: 0...2,
@@ -149,16 +169,23 @@ struct InspectorView: View {
                 }
             }
             Section(L("Darstellung", "View")) {
-                Toggle(L("Leuchten", "Glow"), isOn: engine.fxBinding(Engine.glow))
-                Toggle(L("Spuren", "Trails"), isOn: engine.fxBinding(Engine.trails))
-                Toggle(L("Gravitationslinse", "Lensing"), isOn: engine.fxBinding(Engine.lens))
-                Toggle(L("Doppler-Farben", "Doppler colors"), isOn: engine.fxBinding(Engine.doppler))
-                Toggle(L("Staub", "Dust"), isOn: engine.fxBinding(Engine.dust))
-                Toggle(L("Gas zeigen", "Show gas"), isOn: engine.fxBinding(Engine.gas))
-                Toggle(L("Dunkle Materie zeigen", "Show dark matter"), isOn: engine.fxBinding(Engine.dark))
+                effect(L("Leuchten", "Glow"), Engine.glow, "glow")
+                effect(L("Spuren", "Trails"), Engine.trails, "trails")
+                effect(L("Gravitationslinse", "Lensing"), Engine.lens, "lens")
+                effect(L("Doppler-Farben", "Doppler colors"), Engine.doppler, "doppler")
+                effect(L("Staub", "Dust"), Engine.dust, "dust")
+                effect(L("Gas zeigen", "Show gas"), Engine.gas, "gas")
+                effect(L("Dunkle Materie zeigen", "Show dark matter"), Engine.dark, "dark")
             }
         }
         .formStyle(.grouped)
+    }
+
+    private func effect(_ title: String, _ bit: Int, _ info: String) -> some View {
+        HStack {
+            Toggle(title, isOn: engine.fxBinding(bit))
+            InfoButton(engine, info)
+        }
     }
 
     private var timeText: String {
@@ -178,6 +205,7 @@ struct InspectorView: View {
 /// relative to the galaxy, with the circular and escape speed at the position as references.
 /// SliderRow is a slider with a fixed label column, so labels do not wrap in the narrow inspector.
 struct SliderRow: View {
+    var info: InfoButton?
     let title: String
     var help = ""
     @Binding var value: Double
@@ -189,6 +217,7 @@ struct SliderRow: View {
             Text(title).frame(width: 64, alignment: .leading).help(help)
             Slider(value: $value, in: range)
             Text(verbatim: text).monospacedDigit().lineLimit(1).minimumScaleFactor(0.7).frame(width: 84, alignment: .trailing)
+            if let info { info }
         }
     }
 }
@@ -211,11 +240,14 @@ struct LaunchSection: View {
         let maxSpeed = max(1.6 * l.escape, 1.2 * l.speed, 1e-3)
         let maxHeight = max(1.5 * l.radius, 0.5, abs(l.height))
         Section(L("Start", "Launch")) {
-            Picker(L("Ebene", "Plane"), selection: Binding(get: { Int(l.plane) }, set: { engine.setLaunch("plane", Double($0)) })) {
-                Text(L("Scheibe", "Disk")).tag(0)
-                Text(L("Bildebene", "View plane")).tag(1)
+            HStack {
+                Picker(L("Ebene", "Plane"), selection: Binding(get: { Int(l.plane) }, set: { engine.setLaunch("plane", Double($0)) })) {
+                    Text(L("Scheibe", "Disk")).tag(0)
+                    Text(L("Bildebene", "View plane")).tag(1)
+                }
+                .pickerStyle(.segmented)
+                InfoButton(engine, "launch")
             }
-            .pickerStyle(.segmented)
             row(L("Höhe", "Height"), L("Abstand von der Ebene", "distance from the plane"),
                 value: Binding(get: { l.height }, set: { engine.setLaunch("height", $0) }), range: -maxHeight...maxHeight,
                 text: engine.lengthText(l.height))
@@ -309,18 +341,21 @@ struct SettingsView: View {
                     Text(L("Maximal", "Maximum")).tag("max")
                 }
                 .onChange(of: profile) { _, p in engine.setProfile(p) }
+                .info(engine, "profile")
                 Picker(L("Sterne pro Szene", "Stars per scene"),
                        selection: Binding(get: { Int(engine.settings.stars) }, set: { engine.setStars($0) })) {
                     ForEach(Engine.starChoices, id: \.self) { n in
                         Text(verbatim: n == 0 ? L("Automatisch", "Automatic") : groupDigits(n)).tag(n)
                     }
                 }
+                .info(engine, "stars")
                 Picker(L("Grafikkarte (Metal)", "GPU (Metal)"),
                        selection: Binding(get: { Int(engine.settings.gpu) }, set: { engine.setGPU($0) })) {
                     Text(L("Automatisch", "Automatic")).tag(0)
                     Text(L("Ein", "On")).tag(1)
                     Text(L("Aus", "Off")).tag(2)
                 }
+                .info(engine, "gpu")
                 LabeledContent(L("Aktuell", "Current"),
                                verbatim: String(format: L("%@ Sterne, ab nächster Szene", "%@ stars, from the next scene"), groupDigits(Int(engine.state.stars))))
                 LabeledContent(L("Rechner", "Computer"), verbatim: engine.hardware)
@@ -334,6 +369,7 @@ struct SettingsView: View {
                     Text(L("Interessierte", "Laypeople")).tag(1)
                     Text(L("Physik", "Physics")).tag(2)
                 }
+                .info(engine, "level")
             }
         }
         .formStyle(.grouped)
@@ -419,5 +455,15 @@ struct StatusOverlay: View {
         .foregroundStyle(.white)
         .padding(12)
         .allowsHitTesting(false)
+    }
+}
+
+extension View {
+    /// info puts the (i) explanation of a setting next to a control.
+    func info(_ engine: Engine, _ id: String) -> some View {
+        HStack {
+            self
+            InfoButton(engine, id)
+        }
     }
 }

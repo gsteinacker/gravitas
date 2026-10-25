@@ -59,6 +59,7 @@ typedef struct {
 import "C"
 
 import (
+	"encoding/json"
 	"math"
 	"strings"
 	"unsafe"
@@ -308,6 +309,8 @@ func galaxy_text(what *C.char) *C.char {
 		_, s = eng.Explanation()
 	case "hardware":
 		s = eng.Hardware()
+	case "info":
+		s = eng.Options().Info
 	case "lang":
 		s = "en"
 		if i18n.Current() == i18n.German {
@@ -316,6 +319,24 @@ func galaxy_text(what *C.char) *C.char {
 	}
 	return C.CString(s)
 }
+
+// galaxy_setting returns the (i) explanation of a control as JSON (engine.SettingInfo), "" for
+// unknown ids; freed with galaxy_free.
+//
+//export galaxy_setting
+func galaxy_setting(id *C.char) *C.char {
+	info, ok := eng.SettingInfo(C.GoString(id))
+	if !ok {
+		return C.CString("")
+	}
+	data, _ := json.Marshal(info)
+	return C.CString(string(data))
+}
+
+// galaxy_show_topic opens the learning panel at a topic.
+//
+//export galaxy_show_topic
+func galaxy_show_topic(id *C.char) { eng.OpenExplanation(eng.Level.Key(), C.GoString(id)) }
 
 // galaxy_open opens a scene (.json) or saved state; it returns NULL or an error message.
 //

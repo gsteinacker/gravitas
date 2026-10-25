@@ -57,7 +57,9 @@ App braucht Xcode.
   Swift: nur Apple-Frameworks.
 - Neue Bedienfunktion: `app.Action` (Go), Name in `cmd/libgalaxy` (`actions`), Menü/Inspektor in Swift
   (`GalaxyApp.swift`, `Views.swift`), ggf. Taste (`app.ActionForChar`). Neue C-Funktionen in `cmd/libgalaxy`
-  brauchen `make lib-test` grün. Nutzertexte zweisprachig: Go `i18n.T("deutsch", "english")`, Swift `L(…)`; die
+  brauchen `make lib-test` grün. Jede Einstellung bekommt ein (i) (`InfoButton`/`.info(engine, id)`) mit Text in
+  `internal/learn/settings.json` (drei Stufen, de/en); `TestEverySettingInTheAppIsExplained` prüft das. Screenshot
+  einer Erklärung: `-info <id>`. Nutzertexte zweisprachig: Go `i18n.T("deutsch", "english")`, Swift `L(…)`; die
   Sprache entscheidet der Go-Kern.
 - Simulationseinheiten: G = 1. `c` ist ein Parameter und keine Konstante.
 - Szenen sind Daten (`internal/scene/scenes/*.json`, Format in `docs/scenes.md`). Neue Strukturen als JSON

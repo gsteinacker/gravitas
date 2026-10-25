@@ -97,6 +97,22 @@ func (c *Controller) clusterRadius(mass float64) float64 {
 	return clusterRadius(mass)
 }
 
+// ToolRadius is the radius a cluster or gas cloud of the given mass gets when placed (simulation
+// units, at least the resolution of the scene), 0 for other tools.
+func (c *Controller) ToolRadius(tool Tool, mass float64) float64 {
+	switch tool {
+	case ToolCluster:
+		return c.clusterRadius(mass)
+	case ToolGasCloud:
+		return c.cloudRadius(mass)
+	}
+	return 0
+}
+
+// Units returns solar masses and parsec per simulation unit of the scene; ok is false without
+// physical units.
+func (c *Controller) Units() (msun, pc float64, ok bool) { return c.units() }
+
 // units returns solar masses and parsec per simulation unit of the scene.
 func (c *Controller) units() (msun, pc float64, ok bool) {
 	if c.Scene == nil {

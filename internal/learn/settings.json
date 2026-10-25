@@ -1,0 +1,426 @@
+[
+  {
+    "id": "speed",
+    "topic": "units",
+    "title": {"de": "Schritte pro Sekunde", "en": "Steps per second"},
+    "levels": {
+      "school": {
+        "de": "Die Simulation rechnet in kleinen Zeitschritten, wie ein Daumenkino. Hier stellst du ein, wie viele Bilder pro Sekunde gerechnet werden. Mehr Schritte bedeuten, dass die Zeit schneller vergeht. Genauer wird die Rechnung dadurch nicht.",
+        "en": "The simulation calculates in small time steps, like a flip book. Here you choose how many pages per second are calculated. More steps make time pass faster. They do not make the result more accurate."
+      },
+      "lay": {
+        "de": "Jeder Schritt bringt die Simulation um dasselbe Zeitstück Δt weiter. Bei 30 Schritten pro Sekunde vergehen in der Spirale etwa 30 × 1,3 Millionen Jahre je echter Sekunde. „max“ rechnet so schnell, wie der Rechner kann. Hohe Werte kosten Prozessorzeit und lassen Bild und Bedienung zäher wirken. Der Standard liegt bei 30–60.",
+        "en": "Every step advances the simulation by the same time Δt. At 30 steps per second the spiral galaxy runs about 30 × 1.3 million years per real second. \"max\" runs as fast as the computer can. High values cost CPU time and can make the view and controls sluggish. 30–60 is the default."
+      },
+      "physics": {
+        "de": "Ziel-Schrittrate des Simulationsthreads (Runner.SetTargetSPS). Δt der Szene bleibt fest, nahe Löchern und im Gas wird intern unterteilt (Substeps, Courant-Bedingung). Die Genauigkeit hängt also nicht von dieser Einstellung ab. Erreicht der Rechner die Rate nicht, läuft die Simulation langsamer, und der Regler senkt zuerst die Bildqualität. Physikalische Zeit pro Schritt: Δt · yearsPerUnit.",
+        "en": "Target step rate of the simulation thread (Runner.SetTargetSPS). The scene's Δt is fixed; close to holes and in gas it is subdivided internally (substeps, Courant condition), so accuracy does not depend on this setting. If the computer cannot reach the rate the simulation runs slower, and the governor lowers the image quality first. Physical time per step: Δt · yearsPerUnit."
+      }
+    }
+  },
+  {
+    "id": "c",
+    "topic": "speed-of-light",
+    "chart": "c",
+    "title": {"de": "Lichtgeschwindigkeit c", "en": "Speed of light c"},
+    "levels": {
+      "school": {
+        "de": "Nichts ist schneller als das Licht. In der App kannst du das Licht langsamer machen. Dann werden Schwarze Löcher größer, weil ihr „Rand ohne Wiederkehr“ von c abhängt. Sterne in ihrer Nähe kommen dann nicht über die Lichtgeschwindigkeit hinaus, und Farbverschiebungen werden stärker.",
+        "en": "Nothing is faster than light. In the app you can make light slower. Black holes then grow, because their \"edge of no return\" depends on c. Stars near them cannot exceed the speed of light, and color shifts get stronger."
+      },
+      "lay": {
+        "de": "Der Ereignishorizont eines Schwarzen Lochs hat den Radius r_s = 2GM/c². Halbiert man c, wird er viermal so groß, ebenso die innerste stabile Kreisbahn bei 3 r_s. Die echte Lichtgeschwindigkeit wäre in einer Galaxie so groß, dass Löcher winzig blieben. Die Szenen setzen c deshalb oft herab, damit man die Effekte sieht. Das Diagramm zeigt beide Radien für das größte Loch der Szene.",
+        "en": "A black hole's event horizon has the radius r_s = 2GM/c². Halving c makes it four times larger, and so the innermost stable circular orbit at 3 r_s. With the real speed of light, holes in a galaxy would be tiny, so scenes often lower c to make the effects visible. The chart shows both radii for the scene's largest hole."
+      },
+      "physics": {
+        "de": "c ist ein Parameter (G = 1). Er geht ein in: r_s = 2M/c², ISCO 6M/c², Akkretion innerhalb r_s, post-newtonsche Korrektur der Loch-Bahnen, Geschwindigkeitsbegrenzung |v| < c über u = γv, Retardierung und Doppler/Beaming der Darstellung. Grenzen: kein Kerr-Spin, keine Selbstkonsistenz der Raumzeit, Sterne bleiben newtonsch bis auf die Begrenzung. Sehr kleines c macht die Schritte nahe Löchern teuer (Substeps).",
+        "en": "c is a parameter (G = 1). It enters r_s = 2M/c², ISCO 6M/c², accretion inside r_s, the post-Newtonian correction of hole orbits, the speed limit |v| < c via u = γv, retardation, and Doppler/beaming in the rendering. Limits: no Kerr spin, no self-consistent spacetime; stars stay Newtonian apart from the limit. A very small c makes steps near holes expensive (substeps)."
+      }
+    }
+  },
+  {
+    "id": "gravity",
+    "topic": "retarded-gravity",
+    "chart": "retarded",
+    "title": {"de": "Gravitation der Löcher", "en": "Black hole gravity"},
+    "levels": {
+      "school": {
+        "de": "Auch die Schwerkraft breitet sich mit Lichtgeschwindigkeit aus. „sofort“ tut so, als käme sie ohne Verzögerung an. „retardiert“ lässt jeden Stern das Loch dort spüren, wo es war, als die Schwerkraft losgeschickt wurde.",
+        "en": "Gravity also travels at the speed of light. \"instant\" pretends it arrives without delay. \"retarded\" lets every star feel the hole where it was when the gravity was sent off."
+      },
+      "lay": {
+        "de": "Bei „retardiert“ ziehen Löcher von ihrer früheren Position aus, zur Zeit t − r/c. Bei schnellen Löchern und kleinem c verschieben sich dadurch die Bahnen. „ret. + v“ ergänzt die Geschwindigkeit des Lochs. Dann zeigt die Kraft fast wieder auf die aktuelle Position, so wie es die Allgemeine Relativität für gleichförmig bewegte Massen vorhersagt. Die Skizze zeigt die drei Richtungen.",
+        "en": "With \"retarded\", holes pull from their earlier position at time t − r/c. For fast holes and a small c this shifts orbits. \"ret. + v\" adds the hole's velocity, and the force points almost at the current position again, as general relativity predicts for uniformly moving masses. The sketch shows the three directions."
+      },
+      "physics": {
+        "de": "Retardierte Position aus einer Historie der Lochbahnen. Lösung von |x − x_L(t_r)| = c (t − t_r) für jeden Körper, Liénard-Wiechert-artig. „ret. + v“ extrapoliert linear mit v(t_r), dadurch hebt sich die Aberration in erster Ordnung auf (Carlip 2000). Nur Löcher wirken retardiert, Sterne und DM instantan. Keine Gravitationswellen-Abstrahlung. Kosten: eine Suche pro Körper und Loch.",
+        "en": "Retarded position from a history of hole trajectories, solving |x − x_H(t_r)| = c (t − t_r) per body (Liénard–Wiechert-like). \"ret. + v\" extrapolates linearly with v(t_r), which cancels the aberration to first order (Carlip 2000). Only holes act retarded; stars and DM act instantly. No gravitational wave emission. Cost: one search per body and hole."
+      }
+    }
+  },
+  {
+    "id": "darkGravity",
+    "topic": "dark-matter",
+    "title": {"de": "Dunkle Materie wirkt", "en": "Dark matter gravity"},
+    "levels": {
+      "school": {
+        "de": "Galaxien stecken in einer unsichtbaren Wolke aus Dunkler Materie. Sie hält die Sterne mit ihrer Schwerkraft zusammen. Schalte sie aus, und schau, wie die Galaxie auseinanderfliegt.",
+        "en": "Galaxies sit in an invisible cloud of dark matter. Its gravity holds the stars together. Switch it off and watch the galaxy fly apart."
+      },
+      "lay": {
+        "de": "In den Galaxienszenen machen Halos aus Dunkler Materie etwa 90 % der Masse aus. Ohne ihre Anziehung sind die Sterne viel zu schnell für die sichtbare Masse allein. Die Scheibe dehnt sich dann aus, und die Arme lösen sich auf. Genau dieser Widerspruch, die flachen Rotationskurven, war der erste Hinweis auf Dunkle Materie.",
+        "en": "In the galaxy scenes, dark matter halos make up about 90 % of the mass. Without their pull the stars are far too fast for the visible mass alone; the disk expands and the arms dissolve. This very contradiction, flat rotation curves, was the first evidence for dark matter."
+      },
+      "physics": {
+        "de": "Schaltet die Kraft der DM-Teilchen auf alle Körper ab (Masse 0 im Baum). Die DM-Teilchen selbst bewegen sich weiter. Die Energie ist danach nicht erhalten, das ist ein Gedankenexperiment, kein physikalischer Prozess. Halos sind Hernquist-Profile aus kollisionsfreien Teilchen, schwerer als Sterne. Das führt zu Zweikörper-Aufheizung der Scheibe über Gyr.",
+        "en": "Turns off the force of the DM particles on all bodies (zero mass in the tree); the DM particles keep moving. Energy is not conserved afterwards; this is a thought experiment, not a physical process. Halos are Hernquist profiles of collisionless particles, heavier than stars, which causes two-body heating of the disk over Gyr."
+      }
+    }
+  },
+  {
+    "id": "theta",
+    "topic": "gravity",
+    "chart": "theta",
+    "title": {"de": "Genauigkeit θ", "en": "Accuracy θ"},
+    "levels": {
+      "school": {
+        "de": "Jeder Stern zieht an jedem anderen. Bei 50 000 Sternen wären das über eine Milliarde Paare pro Schritt. Deshalb fasst die App weit entfernte Sterngruppen zu einem Punkt zusammen. θ bestimmt, wie großzügig sie das tut: kleiner heißt genauer, aber langsamer.",
+        "en": "Every star pulls on every other one. With 50,000 stars that would be over a billion pairs per step. So the app combines distant groups of stars into one point. θ decides how generous it is: smaller is more accurate but slower."
+      },
+      "lay": {
+        "de": "Der Barnes-Hut-Algorithmus teilt den Raum in einen Baum aus Würfeln. Ein Würfel der Größe s im Abstand d wird als Ganzes genommen, wenn s/d < θ ist. θ = 0,9 liefert typisch 0,5 % Kraftfehler bei etwa einem Sechstel der Rechenzeit von θ = 0,5. Das Diagramm zeigt die Messung an der Spiralgalaxie. Ein * hinter dem Wert heißt, dass der Leistungsregler θ gerade angehoben hat.",
+        "en": "The Barnes–Hut algorithm divides space into a tree of cubes. A cube of size s at distance d is taken as a whole if s/d < θ. θ = 0.9 typically gives 0.5 % force error at about a sixth of the computing time of θ = 0.5. The chart shows measurements on the spiral galaxy. A * after the value means the performance governor has raised θ."
+      },
+      "physics": {
+        "de": "Öffnungskriterium s/d < θ mit Quadrupol-Momenten (T-028). Fehler: relativer Kraftfehler der Sterne gegen die direkte Summe (perf-log T-034, 150k, CPU). Kosten ~ N log N · θ⁻³. Der Regler hebt θ bis 1,0, wenn die Schrittzeit das Budget reißt. Der Diagnose-θ für die Energie ist getrennt (0,9 mit Quadrupol). Energiedrift wächst mit θ, Impuls bleibt wegen der Asymmetrie der Baumkraft nur näherungsweise erhalten.",
+        "en": "Opening criterion s/d < θ with quadrupole moments (T-028). Error: relative force error of the stars against direct summation (perf-log T-034, 150k, CPU). Cost ~ N log N · θ⁻³. The governor raises θ up to 1.0 when the step time exceeds the budget. The diagnostic θ for the energy is separate (0.9 with quadrupoles). Energy drift grows with θ; momentum is only approximately conserved because tree forces are not symmetric."
+      }
+    }
+  },
+  {
+    "id": "tool",
+    "topic": "orbital-speeds",
+    "title": {"de": "Werkzeug", "en": "Tool"},
+    "levels": {
+      "school": {
+        "de": "Ein Klick in das Bild setzt ein neues Objekt ein: ein Schwarzes Loch, einen Sternhaufen, eine Gaswolke oder eine ganze Galaxie. Mit den Griffen stellst du ein, wohin und wie schnell es fliegt. Dann startest du es.",
+        "en": "A click into the view places a new object: a black hole, a star cluster, a gas cloud or a whole galaxy. With the handles you choose where it flies and how fast, then you launch it."
+      },
+      "lay": {
+        "de": "Jedes Werkzeug hat realistische Startwerte für den Maßstab der Szene: in einer Galaxie ein Loch wie Sgr A* (4 Millionen Sonnenmassen), einen dichten Haufen, einen Gaskomplex und eine Galaxie wie die Große Magellansche Wolke. In Szenen im Parsec-Maßstab sind es ein stellares Loch, ein offener Haufen und eine kleine Wolke. Galaxien lassen sich nur in Galaxienszenen setzen.",
+        "en": "Every tool has realistic starting values for the scene's scale: in a galaxy a hole like Sgr A* (4 million solar masses), a dense cluster, a gas complex and a galaxy like the Large Magellanic Cloud; in parsec-scale scenes a stellar hole, an open cluster and a small cloud. Galaxies can only be placed in galaxy scenes."
+      },
+      "physics": {
+        "de": "Haufen sind Plummer-Kugeln mit r = 3 pc (M/10⁵ M☉)^⅓, Wolken Plummer-Gas mit Larson-Radius 20 pc (M/10⁶ M☉)^½. Galaxien sind skalierte Kopien der Szenenvorlage. Alles unter 2 ε wird auf 2 ε vergrößert, sonst zerfiele es durch die Glättung. Die Startgeschwindigkeit ist relativ zum Bezugskörper, Bahnvorschau im eingefrorenen Feld.",
+        "en": "Clusters are Plummer spheres with r = 3 pc (M/10⁵ M☉)^⅓, clouds Plummer gas with Larson radius 20 pc (M/10⁶ M☉)^½, galaxies scaled copies of the scene template. Anything below 2 ε is enlarged to 2 ε, otherwise softening would dissolve it. Launch velocity is relative to the reference body; the orbit preview uses the frozen field."
+      }
+    }
+  },
+  {
+    "id": "mass",
+    "topic": "black-holes",
+    "chart": "mass",
+    "title": {"de": "Masse", "en": "Mass"},
+    "levels": {
+      "school": {
+        "de": "Wie schwer das nächste Objekt wird. Ein schweres Schwarzes Loch kann eine Galaxie durcheinanderwirbeln, ein leichtes fällt kaum auf. Je schwerer ein Loch, desto größer ist sein schwarzer Rand.",
+        "en": "How heavy the next object is. A heavy black hole can stir up a galaxy, a light one is barely noticed. The heavier a hole, the larger its black edge."
+      },
+      "lay": {
+        "de": "Die Masse bestimmt die Größe des Objekts. Bei einem Schwarzen Loch wächst der Horizont proportional zur Masse (r_s = 2GM/c²). Haufen wachsen mit der Kubikwurzel der Masse, Wolken mit der Quadratwurzel. Das Diagramm zeigt den Radius über der Masse für das gewählte Werkzeug, der Punkt markiert deine Einstellung.",
+        "en": "Mass sets the size of the object. A black hole's horizon grows in proportion to its mass (r_s = 2GM/c²); clusters grow with the cube root of the mass, clouds with the square root. The chart shows radius over mass for the chosen tool; the dot marks your setting."
+      },
+      "physics": {
+        "de": "Masse in Simulationseinheiten (G = 1), Anzeige in M☉ über MassUnit = v²L/G. Untergrenze etwa 1 M☉, Obergrenze 20 Einheiten. Radien: Loch r_s = 2M/c² (mit c = ∞ symbolisch), Haufen und Wolke wie beim Werkzeug, jeweils mindestens 2 ε. Rückstoß bei Doppelsystemen aus Impulserhaltung (Anzeige im Tacho).",
+        "en": "Mass in simulation units (G = 1), shown in M☉ via MassUnit = v²L/G. Lower bound about 1 M☉, upper bound 20 units. Radii: hole r_s = 2M/c² (symbolic for c = ∞), cluster and cloud as for the tool, each at least 2 ε. Recoil in binaries from momentum conservation (shown in the speedometer)."
+      }
+    }
+  },
+  {
+    "id": "tilt",
+    "topic": "tides",
+    "title": {"de": "Neigung der Galaxie", "en": "Galaxy tilt"},
+    "levels": {
+      "school": {
+        "de": "Wie schräg die neue Galaxie zur Bahn steht. Bei 0° dreht sie sich in dieselbe Richtung, in die sie fliegt. Dann reißen bei einer Begegnung lange Arme heraus. Bei 180° dreht sie andersherum und bleibt ruhiger.",
+        "en": "How tilted the new galaxy is against its path. At 0° it spins the same way it flies, and an encounter pulls out long tails. At 180° it spins the other way and stays calmer."
+      },
+      "lay": {
+        "de": "Die Gezeitenschweife bei Galaxienbegegnungen sind am längsten, wenn die Scheibe sich mit der Bahn dreht (prograd). Dann bleiben die Sterne lange in Resonanz mit dem Gegenüber. Retrograde Scheiben (180°) werden kaum gestört. Dazwischen entstehen verdrehte Brücken und Ringe.",
+        "en": "Tidal tails in galaxy encounters are longest when the disk spins with the orbit (prograde): the stars stay in resonance with the partner for a long time. Retrograde disks (180°) are barely disturbed; in between, twisted bridges and rings form."
+      },
+      "physics": {
+        "de": "Winkel zwischen Spin der Scheibe und Normale der Startebene (Bahndrehimpuls), Drehachse in der Ebene. Resonanz der Sternfrequenz Ω − κ/2 mit der Bahnfrequenz (Toomre & Toomre 1972). Vorlage, Profil und Teilchenzahl wie die Szenengalaxie, skaliert auf die Masse.",
+        "en": "Angle between the disk spin and the normal of the launch plane (orbital angular momentum), rotation axis in the plane. Resonance of the stellar frequency Ω − κ/2 with the orbital frequency (Toomre & Toomre 1972). Template, profile and particle count as the scene galaxy, scaled to the mass."
+      }
+    }
+  },
+  {
+    "id": "cloudTemp",
+    "topic": "gas-clouds",
+    "title": {"de": "Temperatur der Wolke", "en": "Cloud temperature"},
+    "levels": {
+      "school": {
+        "de": "Warmes Gas drückt nach außen, kaltes nicht. Eine kalte Wolke fällt durch ihre eigene Schwerkraft in sich zusammen, und es entstehen Sterne. Eine heiße bleibt aufgebläht.",
+        "en": "Warm gas pushes outwards, cold gas does not. A cold cloud collapses under its own gravity and forms stars; a hot one stays puffed up."
+      },
+      "lay": {
+        "de": "Molekülwolken sind 10–20 K kalt, warmes neutrales Gas etwa 10⁴ K. Eine Wolke kollabiert, wenn ihre Masse über der Jeans-Masse liegt, die mit T^(3/2) wächst. Die Anzeige „virial“ unter dem Regler sagt voraus, ob sie kollabiert. In Galaxienszenen hat das Gas eine Mindesttemperatur, weil die Auflösung kältere Strukturen nicht abbilden kann.",
+        "en": "Molecular clouds are 10–20 K cold, warm neutral gas about 10⁴ K. A cloud collapses if its mass exceeds the Jeans mass, which grows as T^(3/2). The virial forecast below the slider predicts whether it collapses. In galaxy scenes the gas has a temperature floor because the resolution cannot represent colder structures."
+      },
+      "physics": {
+        "de": "Spezifische innere Energie u = 3/2 kT/(μ m_H) mit μ ≈ 1,27 neutral, umgerechnet in Szeneneinheiten. Effektive Temperatur max(T, gasFloorK). Virialparameter α = 5σ²R/(GM) mit thermischem und turbulentem σ (Bertoldi & McKee 1992): α < 1 kollabiert, > 2 zerstreut sich. Grenzen: Kühlung nur als Relaxation auf die Untergrenze, kein Strahlungstransport, keine Moleküle.",
+        "en": "Specific internal energy u = 3/2 kT/(μ m_H) with μ ≈ 1.27 neutral, converted to scene units; effective temperature max(T, gasFloorK). Virial parameter α = 5σ²R/(GM) with thermal and turbulent σ (Bertoldi & McKee 1992): α < 1 collapses, > 2 disperses. Limits: cooling only as relaxation to the floor, no radiative transfer, no molecules."
+      }
+    }
+  },
+  {
+    "id": "cloudTurb",
+    "topic": "gas-clouds",
+    "title": {"de": "Turbulenz der Wolke", "en": "Cloud turbulence"},
+    "levels": {
+      "school": {
+        "de": "Gas in Wolken wirbelt wild durcheinander. Viel Wirbeln hält die Wolke auseinander wie Wärme. Wenig Wirbeln lässt sie zusammenfallen.",
+        "en": "Gas in clouds swirls around wildly. Lots of swirling holds the cloud apart like heat; little swirling lets it collapse."
+      },
+      "lay": {
+        "de": "Die Turbulenz ist die zufällige Geschwindigkeit des Gases als Anteil der Kreisbahngeschwindigkeit √(GM/R) am Wolkenrand. Echte Molekülwolken liegen nahe am Gleichgewicht (etwa 0,5–1). Unter etwa 0,6 ist die Wolke gebunden und bildet Sterne, deutlich darüber zerstreut sie sich. Turbulenz zerfällt in Schocks und verlangsamt den Kollaps nur eine Zeit lang.",
+        "en": "Turbulence is the random gas velocity as a fraction of the circular speed √(GM/R) at the cloud edge. Real molecular clouds are close to equilibrium (about 0.5–1). Below about 0.6 the cloud is bound and forms stars; well above it disperses. Turbulence decays in shocks and only delays the collapse for a while."
+      },
+      "physics": {
+        "de": "Gaußsches Geschwindigkeitsfeld je Komponente mit σ = f · √(GM/R), ohne Spektrum (keine Larson-Skalierung innerhalb der Wolke). Zerfall über die SPH-Viskosität in etwa einer Durchquerungszeit. Virialprognose mit σ² = c_s² + σ_turb².",
+        "en": "Gaussian velocity field per component with σ = f · √(GM/R), without a spectrum (no Larson scaling within the cloud). Decay through SPH viscosity in about one crossing time. Virial forecast with σ² = c_s² + σ_turb²."
+      }
+    }
+  },
+  {
+    "id": "launch",
+    "topic": "orbital-speeds",
+    "title": {"de": "Start planen", "en": "Planning a launch"},
+    "levels": {
+      "school": {
+        "de": "Bevor ein Objekt losfliegt, kannst du es verschieben, anheben und mit dem Pfeil zielen. Die Knöpfe setzen typische Geschwindigkeiten: in Ruhe, auf einer Kreisbahn, schnell genug zum Entkommen oder direkt zur Mitte.",
+        "en": "Before an object flies off you can move it, lift it and aim with the arrow. The buttons set typical speeds: at rest, on a circular orbit, fast enough to escape, or straight to the center."
+      },
+      "lay": {
+        "de": "Kreisbahn- und Fluchtgeschwindigkeit hängen vom Ort ab und werden aus dem aktuellen Schwerefeld berechnet. Beim Ziehen rastet die Geschwindigkeit dort ein, ⌘ schaltet das ab. Die gestrichelte Linie ist die vorausberechnete Bahn. „Doppel“ setzt ein neues Loch so neben ein vorhandenes, dass beide umeinander kreisen. Der Tacho zeigt dann auch den Rückstoß.",
+        "en": "Circular and escape speed depend on the location and are computed from the current gravitational field. Dragging snaps to them; ⌘ turns that off. The dashed line is the predicted orbit. \"Binary\" places a new hole next to an existing one so both orbit each other; the speedometer also shows the recoil."
+      },
+      "physics": {
+        "de": "v_K = √(−a·r̂ r), v_F = √(−2Φ), beide relativ zum Bezugszentrum. Feld aus allen Löchern und einer Stichprobe von ≤ 3000 Körpern mit Glättung ε. Vorschau: Testteilchen im statischen Feld (Leapfrog). Doppel: Kreisbahn des Zweikörperproblems mit Impulsaufteilung m₂/(m₁+m₂).",
+        "en": "v_c = √(−a·r̂ r), v_esc = √(−2Φ), both relative to the reference center; field from all holes and a sample of ≤ 3000 bodies with softening ε. Preview: test particle in the static field (leapfrog). Binary: two-body circular orbit with momentum split m₂/(m₁+m₂)."
+      }
+    }
+  },
+  {
+    "id": "glow",
+    "topic": "populations",
+    "title": {"de": "Leuchten", "en": "Glow"},
+    "levels": {
+      "school": {
+        "de": "Helle Sterne bekommen einen weichen Lichtschein, wie auf Fotos durch ein Teleskop.",
+        "en": "Bright stars get a soft halo, like in photos taken through a telescope."
+      },
+      "lay": {
+        "de": "Ein Teil des Lichts wird verschmiert und wieder dazugemischt (Bloom). So wirken helle Gebiete wie Galaxienkerne heller als der Bildschirm eigentlich darstellen kann. Das kostet etwas Grafikleistung, aber keine Rechenzeit der Simulation.",
+        "en": "Part of the light is blurred and added back (bloom). Bright areas like galaxy cores then look brighter than the screen can actually show. It costs a little graphics performance but no simulation time."
+      },
+      "physics": {
+        "de": "Reine Darstellung: Bild in float16 (HDR), auf ein Viertel verkleinert (Boxfilter), zweimal 9-Tap-Gauß, mit 0,9 addiert, danach farbtonerhaltendes Tonemapping 1 − exp(−1,6 I). Beugung und Streuung echter Optiken sind nicht modelliert.",
+        "en": "Rendering only: float16 (HDR) image, downsampled to a quarter (box filter), two 9-tap Gaussian passes, added with weight 0.9, then hue-preserving tone mapping 1 − exp(−1.6 I). Diffraction and scattering of real optics are not modelled."
+      }
+    }
+  },
+  {
+    "id": "trails",
+    "topic": "gravity",
+    "title": {"de": "Spuren", "en": "Trails"},
+    "levels": {
+      "school": {
+        "de": "Sterne ziehen leuchtende Spuren hinter sich her. So siehst du ihre Bahnen.",
+        "en": "Stars leave glowing trails behind them, so you can see their orbits."
+      },
+      "lay": {
+        "de": "Jedes Bild wird über die vorherigen gelegt, die langsam verblassen. Bewegt sich die Kamera, verschmiert das ganze Bild. Spuren eignen sich daher am besten bei ruhender Kamera, etwa um Rosettenbahnen oder Gezeitenschweife zu verfolgen.",
+        "en": "Each frame is laid over the previous ones, which slowly fade. If the camera moves, the whole image smears, so trails work best with a still camera, for example to follow rosette orbits or tidal tails."
+      },
+      "physics": {
+        "de": "Bildschirmraum-Nachleuchten: max(alt · 0,93 − 0,002, neu) pro Pixel und Bild, also bildratenabhängig. Keine echten Bahnaufzeichnungen.",
+        "en": "Screen-space afterglow: max(old · 0.93 − 0.002, new) per pixel and frame, so it depends on the frame rate. Not actual recorded orbits."
+      }
+    }
+  },
+  {
+    "id": "lens",
+    "topic": "lensing",
+    "title": {"de": "Gravitationslinse", "en": "Gravitational lensing"},
+    "levels": {
+      "school": {
+        "de": "Schwarze Löcher verbiegen das Licht von Sternen dahinter. Um ein Loch herum siehst du die Sterne verzerrt, manchmal als Ring.",
+        "en": "Black holes bend the light of stars behind them. Around a hole you see the stars distorted, sometimes as a ring."
+      },
+      "lay": {
+        "de": "Licht, das nahe an einer Masse vorbeiläuft, wird abgelenkt. Liegt ein Stern genau hinter dem Loch, erscheint er als Einstein-Ring. Die Stärke hängt von Masse und c ab: Mit kleinerem c wird der Ring größer.",
+        "en": "Light passing close to a mass is deflected. If a star lies exactly behind the hole it appears as an Einstein ring. The strength depends on mass and c; with a smaller c the ring grows."
+      },
+      "physics": {
+        "de": "Punktlinse in dünner Näherung im Bildraum: β = θ − θ_E²/θ, θ_E² = 4GM/c² · D_ls/(D_l D_s), summiert über bis zu 16 Löcher. Grenzen: Linse wirkt auf das ganze Bild (auch Vordergrund), kein starkes Feld nahe r_s, keine Mehrfachbilder über die Gleichung hinaus.",
+        "en": "Thin point lens in image space: β = θ − θ_E²/θ, θ_E² = 4GM/c² · D_ls/(D_l D_s), summed over up to 16 holes. Limits: applies to the whole image (foreground too), no strong-field optics near r_s, no multiple images beyond the equation."
+      }
+    }
+  },
+  {
+    "id": "doppler",
+    "topic": "doppler",
+    "title": {"de": "Doppler-Farben", "en": "Doppler colors"},
+    "levels": {
+      "school": {
+        "de": "Sterne, die auf dich zufliegen, werden bläulicher. Sterne, die sich entfernen, werden rötlicher. Bei echter Lichtgeschwindigkeit sieht man das nur mit Messgeräten, hier mit langsamem Licht auch mit bloßem Auge.",
+        "en": "Stars flying towards you turn bluish, stars moving away turn reddish. With the real speed of light only instruments see this; here, with slow light, your eyes do."
+      },
+      "lay": {
+        "de": "Die Farbe folgt dem Frequenzverhältnis ν/ν₀ = 1/(γ(1 − v·n/c)). Dazu kommt Beaming: Entgegenkommende Quellen leuchten heller. Nahe Schwarzer Löcher kommt die gravitative Rotverschiebung hinzu. Wird c verkleinert, nehmen alle Effekte zu.",
+        "en": "The color follows the frequency ratio ν/ν₀ = 1/(γ(1 − v·n/c)). Beaming adds brightness for approaching sources, and near black holes gravitational redshift adds to it. Lowering c increases all effects."
+      },
+      "physics": {
+        "de": "Relativistischer Doppler mit γ und gravitativem Faktor √(1 − r_s/r) je Loch (Schwarzschild, multiplikativ genähert). Farbe als Mischung zu Blau oder Rot bei |2 log₂ f| ≤ 1, Helligkeit ∝ f³ (begrenzt auf 0,25–2,5). Keine Spektren, keine Lichtlaufzeit-Effekte.",
+        "en": "Relativistic Doppler with γ and a gravitational factor √(1 − r_s/r) per hole (Schwarzschild, multiplied as an approximation). Color as a blend toward blue or red for |2 log₂ f| ≤ 1, brightness ∝ f³ (clamped to 0.25–2.5). No spectra, no light-travel-time effects."
+      }
+    }
+  },
+  {
+    "id": "dust",
+    "topic": "dust",
+    "chart": "dust",
+    "title": {"de": "Staub", "en": "Dust"},
+    "levels": {
+      "school": {
+        "de": "Zwischen den Sternen schwebt feiner Staub. Er verschluckt Licht und färbt Sterne dahinter rötlich, wie die Sonne beim Untergang. So entstehen die dunklen Bänder in Galaxien.",
+        "en": "Fine dust floats between the stars. It swallows light and turns stars behind it reddish, like the setting Sun. This makes the dark lanes in galaxies."
+      },
+      "lay": {
+        "de": "Staub sitzt im kalten, neutralen Gas. Er schluckt blaues Licht stärker als rotes, deshalb werden Sterne dahinter röter und dunkler. Das Diagramm zeigt, wie viel Licht jeder Farbkanal bei wachsender optischer Tiefe τ durchlässt. Der Staub kostet etwas Rechenzeit für die Staubkarte.",
+        "en": "Dust sits in cold, neutral gas. It absorbs blue light more than red, so stars behind it get redder and dimmer. The chart shows how much light each color channel lets through as the optical depth τ grows. Dust costs some time for the dust map."
+      },
+      "physics": {
+        "de": "τ = κ Σ_neutral aus dem Gas, Transmission exp(−τ k) mit k = 0,75/1,0/1,3 für R/G/B (etwa Cardelli et al. 1989, R_V = 3,1). Anteil vor dem Stern über eine Gaußnäherung der Staubtiefe je Bildpunkt. κ aus der Szene oder automatisch normiert. Grenzen: keine Streuung, keine Emission im Infraroten, Staub-zu-Gas fest.",
+        "en": "τ = κ Σ_neutral from the gas, transmission exp(−τ k) with k = 0.75/1.0/1.3 for R/G/B (roughly Cardelli et al. 1989, R_V = 3.1). Part in front of a star from a Gaussian approximation of the dust depth per pixel. κ from the scene or normalized automatically. Limits: no scattering, no infrared emission, fixed dust-to-gas ratio."
+      }
+    }
+  },
+  {
+    "id": "gas",
+    "topic": "gas",
+    "title": {"de": "Gas zeigen", "en": "Show gas"},
+    "levels": {
+      "school": {
+        "de": "Färbt das Gas zwischen den Sternen ein: blau, wo es kalt und neutral ist, grün im Übergang, rot, wo junge Sterne es aufgeheizt haben.",
+        "en": "Colors the gas between the stars: blue where it is cold and neutral, green in between, red where young stars have heated it."
+      },
+      "lay": {
+        "de": "Das ist eine Falschfarbenkarte wie in der Radioastronomie, kein echtes Aussehen. Die Helligkeit folgt der Säulendichte, also wie viel Gas in Blickrichtung liegt. Dichte Arme und Wolken stechen hervor. So sieht man, wo Sterne entstehen können und wo Gas von Strahlung ionisiert wird.",
+        "en": "This is a false-color map as in radio astronomy, not a real appearance. Brightness follows the column density, how much gas lies along the line of sight; dense arms and clouds stand out. It shows where stars can form and where radiation ionizes the gas."
+      },
+      "physics": {
+        "de": "SPH-Teilchen als Kern (1 − d²)³ mit Durchmesser 2h, Deckkraft ∝ m/(2h)², normiert auf das 90. Perzentil der Bildzellen. Farbe aus dem Ionisationsgrad (Strömgren-Näherung um junge Sterne). Nur Darstellung.",
+        "en": "SPH particles as a kernel (1 − d²)³ of diameter 2h, opacity ∝ m/(2h)², normalized to the 90th percentile of the image cells. Color from the ionized fraction (Strömgren approximation around young stars). Rendering only."
+      }
+    }
+  },
+  {
+    "id": "dark",
+    "topic": "dark-matter",
+    "title": {"de": "Dunkle Materie zeigen", "en": "Show dark matter"},
+    "levels": {
+      "school": {
+        "de": "Macht die unsichtbare Dunkle Materie als violetten Nebel sichtbar. In Wirklichkeit kann man sie nicht sehen, nur ihre Schwerkraft spüren.",
+        "en": "Shows the invisible dark matter as a violet fog. In reality it cannot be seen, only its gravity can be felt."
+      },
+      "lay": {
+        "de": "Der Halo ist viel größer als die sichtbare Galaxie und überall ungefähr kugelförmig. Bei Galaxienkollisionen bleiben die Halos länger getrennt als das Gas. Ein Bild wie beim Bullet-Cluster, das als starker Beleg für Dunkle Materie gilt.",
+        "en": "The halo is much larger than the visible galaxy and roughly spherical. In galaxy collisions the halos stay separate longer than the gas, an image like the Bullet Cluster, which is strong evidence for dark matter."
+      },
+      "physics": {
+        "de": "Projizierte Dichte der DM-Teilchen in Viertelauflösung, geglättet und gesättigt (1 − exp(−1,2 d)), gedeckelt, damit Sterne sichtbar bleiben. Keine Physik, nur Darstellung.",
+        "en": "Projected density of the DM particles at quarter resolution, blurred and saturated (1 − exp(−1.2 d)) and capped so stars stay visible. Rendering only."
+      }
+    }
+  },
+  {
+    "id": "level",
+    "topic": "",
+    "title": {"de": "Zielgruppe des Lernmodus", "en": "Learning mode audience"},
+    "levels": {
+      "school": {
+        "de": "Wähle, wie die Erklärungen geschrieben sind: einfach, mit Zusammenhängen oder mit Formeln.",
+        "en": "Choose how explanations are written: simple, with connections, or with formulas."
+      },
+      "lay": {
+        "de": "„Schüler“ erklärt mit Bildern aus dem Alltag, „Interessierte“ mit Größenordnungen und Zusammenhängen, „Physik“ mit Gleichungen, Annahmen und Grenzen des Modells. Die Einstellung gilt für den Lernmodus und für diese (i)-Erklärungen.",
+        "en": "\"Pupils\" explains with everyday images, \"laypeople\" with orders of magnitude and connections, \"physics\" with equations, assumptions and model limits. The setting applies to the learning mode and to these (i) explanations."
+      },
+      "physics": {
+        "de": "Die Physik-Stufe nennt Gleichungen in Simulationseinheiten (G = 1), Literatur und die Vereinfachungen der Simulation. Details zur Umsetzung stehen in docs/physics.md.",
+        "en": "The physics level gives equations in simulation units (G = 1), references and the simplifications of the simulation. Implementation details are in docs/physics.md."
+      }
+    }
+  },
+  {
+    "id": "profile",
+    "topic": "",
+    "chart": "profile",
+    "title": {"de": "Leistungsprofil", "en": "Performance profile"},
+    "levels": {
+      "school": {
+        "de": "Bestimmt, wie viele Sterne die App für deinen Rechner auswählt. „Niedrig“ ist flüssig mit weniger Sternen, „Maximal“ hat viele Sterne, läuft aber langsamer.",
+        "en": "Decides how many stars the app chooses for your computer. \"Low\" is smooth with fewer stars, \"Maximum\" has many stars but runs slower."
+      },
+      "lay": {
+        "de": "Beim ersten Start misst die App, wie schnell dein Rechner Schwerkraft berechnet. Jedes Profil zielt auf eine Schrittrate: Niedrig 60, Mittel 45, Hoch und Automatisch 30, Maximal 12 Schritte pro Sekunde. Daraus folgt die Sternzahl, die das Diagramm für diesen Rechner zeigt. „Automatisch“ passt zusätzlich laufend Bildauflösung und θ an.",
+        "en": "On first start the app measures how fast your computer computes gravity. Each profile aims at a step rate: Low 60, Medium 45, High and Automatic 30, Maximum 12 steps per second. That gives the star count the chart shows for this computer. \"Automatic\" also adapts resolution and θ continuously."
+      },
+      "physics": {
+        "de": "Kalibrierung: Schrittzeit bei N₀ auf CPU und GPU, Hochrechnung T(N) ∝ N log N auf das Budget 1/SPS, Gasanteil mit gemessenem Kostenfaktor. Der Regler (Hysterese, gleitendes Mittel, Thermalstatus) senkt Renderfaktor, Effektqualität, dann θ ≤ 1,0. Die Sternzahl ändert sich erst mit der nächsten Szene.",
+        "en": "Calibration: step time at N₀ on CPU and GPU, extrapolated with T(N) ∝ N log N to the budget 1/SPS, gas share with a measured cost factor. The governor (hysteresis, moving average, thermal state) lowers render scale, effect quality, then θ ≤ 1.0. The star count changes with the next scene."
+      }
+    }
+  },
+  {
+    "id": "stars",
+    "topic": "populations",
+    "title": {"de": "Sterne pro Szene", "en": "Stars per scene"},
+    "levels": {
+      "school": {
+        "de": "Wie viele Punkte die Simulation berechnet. Mehr Punkte sehen voller aus, brauchen aber mehr Rechenzeit. Jeder Punkt steht für viele echte Sterne.",
+        "en": "How many points the simulation computes. More points look fuller but need more time. Each point stands for many real stars."
+      },
+      "lay": {
+        "de": "„Automatisch“ nimmt die Zahl aus dem Leistungsprofil. Eine feste Zahl gilt für jede Szene, auch wenn der Rechner dann langsamer wird. Mehr Teilchen verringern das Rauschen, also zufällige Klumpen und Aufheizung. Die Rechenzeit wächst etwas stärker als die Teilchenzahl.",
+        "en": "\"Automatic\" takes the number from the performance profile. A fixed number applies to every scene, even if the computer gets slower. More particles reduce noise (random clumps and heating); computing time grows a little faster than the particle count."
+      },
+      "physics": {
+        "de": "Teilchenzahl N der Sterne, Gas und DM werden im Verhältnis der Szene skaliert. Zweikörper-Relaxationszeit ∝ N/ln N, Barnes-Hut-Kosten ∝ N log N. Die Glättungslänge ε ist pro Szene fest, sie wird nicht mit N verändert.",
+        "en": "Particle count N of the stars; gas and DM scale with the scene's ratios. Two-body relaxation time ∝ N/ln N, Barnes–Hut cost ∝ N log N. The softening ε is fixed per scene, not adapted to N."
+      }
+    }
+  },
+  {
+    "id": "gpu",
+    "topic": "",
+    "title": {"de": "Grafikkarte (Metal)", "en": "GPU (Metal)"},
+    "levels": {
+      "school": {
+        "de": "Lässt die Grafikkarte beim Rechnen der Schwerkraft helfen. Meist ist das schneller.",
+        "en": "Lets the graphics card help compute gravity. Usually that is faster."
+      },
+      "lay": {
+        "de": "Der Baum wird auf dem Prozessor gebaut, die Kräfte rechnet bei „Ein“ die Grafikkarte. „Automatisch“ nimmt, was bei der Messung schneller war. Die Ergebnisse stimmen bis auf Rundung überein. Ausschalten hilft, wenn die Grafikkarte für das Bild gebraucht wird.",
+        "en": "The tree is built on the CPU; with \"On\" the GPU computes the forces. \"Automatic\" uses whatever was faster in the measurement. Results agree up to rounding. Turning it off can help when the GPU is busy with the image."
+      },
+      "physics": {
+        "de": "Baumdurchlauf in Metal (float32-Akkumulation, Quadrupol), Ergebnis gegen CPU getestet (TestGPUWalkMatchesCPU). Gas-SPH, Löcher und Integration bleiben auf der CPU.",
+        "en": "Tree walk in Metal (float32 accumulation, quadrupoles), tested against the CPU (TestGPUWalkMatchesCPU). Gas SPH, holes and integration stay on the CPU."
+      }
+    }
+  }
+]
