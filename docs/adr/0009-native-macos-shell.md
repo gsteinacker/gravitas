@@ -1,6 +1,6 @@
 # ADR-0009: Native macOS-Hülle über cgo und Objective-C (`internal/mac`)
 
-- Status: accepted
+- Status: superseded by ADR-0011
 - Datum: 2026-10-24
 - Tasks: T-043, T-044, T-047, T-048
 

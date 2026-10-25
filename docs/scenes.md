@@ -1,7 +1,7 @@
 # Szenen
 
 Szenen sind **Rezepte als JSON**. Die eingebauten liegen in `internal/scene/scenes/` (eingebettet, Tasten 1–9 in
-Dateinamen-Reihenfolge). Eigene startet man mit `go run ./cmd/galaxy -scene meine.json -n 100000`.
+Dateinamen-Reihenfolge). Eigene startet man über *Ablage → Öffnen …* oder mit `make run ARGS="-scene $PWD/meine.json -n 100000"`.
 Spielstände (F5/F9, `-load`) sind dagegen **exakte Abzüge** eines laufenden Zustands, siehe unten.
 
 ## Aufbau

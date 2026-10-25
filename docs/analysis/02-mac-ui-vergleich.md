@@ -76,5 +76,5 @@ nativen Anbauten. Der Lernmodus ist der größte Unterschied.
   Danach entfällt der Ebitengine-Renderer. Physik, Kalibrierung, Regler und Lerntexte bleiben in Go und werden
   von B unverändert genutzt.
 
-Die Entscheidung liegt beim Nutzer. Bis dahin bleibt B auf dem Branch, der von `main` regelmäßig nachgezogen
-werden kann.
+**Entscheidung (2026-10-25, ADR-0011):** Nur B wird weiterverfolgt. Nach Staub, Schleier, Bedienung,
+Kommandozeile und Paketierung (T-052 bis T-057) ist A gelöscht (T-058).

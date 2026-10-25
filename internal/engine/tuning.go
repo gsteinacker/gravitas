@@ -9,7 +9,7 @@ import (
 	"galaxy/internal/scene"
 )
 
-// Settings of the performance (ported from cmd/galaxy/tuning.go).
+// Performance settings and the correction of star counts by measured step times (T-046, T-047).
 
 // StarChoices are the star counts offered in the settings; 0 = from the profile.
 var StarChoices = []int{0, 10_000, 25_000, 50_000, 100_000, 200_000, 500_000, 1_000_000}

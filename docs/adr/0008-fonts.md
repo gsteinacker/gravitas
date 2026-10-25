@@ -1,6 +1,6 @@
 # ADR-0008: Go-Schriften für Lerntexte
 
-- Status: accepted
+- Status: accepted (Oberfläche ersetzt durch ADR-0011)
 - Datum: 2026-10-24
 - Tasks: T-039
 

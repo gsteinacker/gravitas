@@ -123,7 +123,7 @@ final class Renderer: NSObject, MTKViewDelegate {
         sky = makeSky(w, h)
     }
 
-    /// makeSky is the static background with faint stars (render/post.go: starfield).
+    /// makeSky is the static background with faint stars.
     private func makeSky(_ w: Int, _ h: Int) -> MTLTexture {
         var pix = [UInt8](repeating: 0, count: w * h * 4)
         for i in stride(from: 0, to: pix.count, by: 4) { pix[i] = 2; pix[i + 1] = 2; pix[i + 2] = 8; pix[i + 3] = 255 }
@@ -340,7 +340,7 @@ final class Renderer: NSObject, MTKViewDelegate {
         lensHoles.removeAll(keepingCapacity: true)
         for h in raw.prefix(Int(look.holes)) {
             holes.append(SIMD4(h.x, h.y, h.r, h.rings))
-            let e = 5 * h.physR // Einstein radius on screen: 5 horizon radii (render/post.go: lensFactor)
+            let e = 5 * h.physR // Einstein radius on screen: 5 horizon radii
             lensHoles.append(SIMD4(h.x, h.y, e * e, 0))
         }
     }

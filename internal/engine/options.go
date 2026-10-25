@@ -15,8 +15,7 @@ import (
 	"galaxy/internal/view"
 )
 
-// Options are the start parameters of the app, parsed from its command line with the flags the
-// Ebitengine app had (CLAUDE.md, docs).
+// Options are the start parameters of the app, parsed from its command line (CLAUDE.md, docs).
 type Options struct {
 	Preset    int    // built-in scene, 1-based
 	Stars     int    // 0 = from the performance profile (screenshots: 50000)
@@ -150,8 +149,7 @@ func (o *Options) params(p *sim.Params) error {
 	return nil
 }
 
-// ShotLine is the machine-readable summary printed with a screenshot (same as the Ebitengine
-// app, CLAUDE.md).
+// ShotLine is the machine-readable summary printed with a screenshot (CLAUDE.md).
 func (e *Engine) ShotLine(path string, fps float64) string {
 	s := e.State()
 	profile := e.settings.Profile

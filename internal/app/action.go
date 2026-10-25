@@ -1,6 +1,6 @@
 // Package app is the front-end independent core of the interactive app: the actions a user can
 // trigger (by key, menu or widget) and the controller that executes them on the simulation. It
-// never imports Ebitengine, so native shells and other renderers can drive it.
+// has no user interface, so any front end (the SwiftUI app through internal/engine) can drive it.
 package app
 
 import "galaxy/internal/scene"

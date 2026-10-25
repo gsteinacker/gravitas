@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"galaxy/internal/app"
+	"galaxy/internal/perf"
 	"galaxy/internal/scene"
 	"galaxy/internal/sim"
 	"galaxy/internal/view"
@@ -188,7 +189,8 @@ func TestStarSettingsAndCorrection(t *testing.T) {
 	}
 	// A scene that ran twice as slow as predicted gets fewer stars next time.
 	e.correction = map[*scene.Spec]float64{e.Scene: 2}
-	if slow := e.stars(e.Scene); slow >= auto && auto < 1_000_000 {
+	// (Unless the count is clamped: under the race detector the calibration may already give the minimum.)
+	if slow := e.stars(e.Scene); slow >= auto && auto > perf.MinStars && auto < perf.MaxStars {
 		t.Errorf("corrected stars %d, uncorrected %d", slow, auto)
 	}
 	if s := e.LaunchSpeed(100, 100, 100, 100); s != 0 {

@@ -1,6 +1,6 @@
 # ADR-0001: Go + Ebitengine, Physik auf der CPU
 
-- Status: accepted
+- Status: accepted (Oberfläche ersetzt durch ADR-0011)
 - Datum: 2026-10-23
 - Tasks: T-001
 

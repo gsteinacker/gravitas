@@ -1,6 +1,6 @@
 # ADR-0010: SwiftUI-Variante mit Go-Kern als Bibliothek (Versuch auf Branch `swiftui-app`)
 
-- Status: proposed (Vergleichsversuch, Entscheidung in T-051)
+- Status: accepted (bestätigt durch ADR-0011)
 - Datum: 2026-10-24
 - Tasks: T-049, T-050, T-051
 

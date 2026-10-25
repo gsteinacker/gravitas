@@ -1,6 +1,6 @@
 // Package perf adapts the app to the machine: it describes the hardware, measures how fast the
 // force calculation runs (calibration), derives performance profiles and, at run time, governs
-// quality so the app stays fluid (T-046, T-047). It is headless and never imports Ebitengine.
+// quality so the app stays fluid (T-046, T-047). It is headless.
 package perf
 
 import (

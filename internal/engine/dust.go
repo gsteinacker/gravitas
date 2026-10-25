@@ -8,7 +8,7 @@ import (
 	"galaxy/internal/view"
 )
 
-// Dust absorption of stars and emission (T-035, T-040; ported from render/dust.go for T-053). Every gas body deposits the optical depth of
+// Dust absorption of stars and emission (T-035, T-040, T-053). Every gas body deposits the optical depth of
 // its neutral column, τ = κ m / A (A its footprint in world units at its depth), onto a screen map,
 // together with the τ-weighted first and second moments of its depth. A star at depth d sees the
 // part of the column in front of it, τ_front = τ · Φ((d − μ)/σ), with μ and σ the mean and spread of
@@ -121,7 +121,7 @@ func resizeFloats(s []float64, n int) []float64 {
 	return s[:n]
 }
 
-// Dust constants of render/stars.go and render/post.go.
+// Dust constants.
 const (
 	dustPercentile = 0.9
 	dustAutoTau    = 1.5

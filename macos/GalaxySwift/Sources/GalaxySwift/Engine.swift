@@ -28,7 +28,7 @@ final class Engine {
     let presets: [String]
     let hardware: String
 
-    /// init starts the Go core with the command line (same flags as the Ebitengine app had);
+    /// init starts the Go core with the command line (flags: engine/options.go, CLAUDE.md);
     /// startError is set if the arguments were invalid.
     init() {
         var args = CommandLine.arguments.dropFirst().joined(separator: "\u{1f}")

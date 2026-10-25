@@ -1,5 +1,5 @@
 // Metal shaders of the SwiftUI app, compiled to Galaxy.metallib by `make app` (xcrun metal). They
-// port internal/render: projection (view.Camera), star colors, Doppler shift, Hα emission, trails,
+// draw what the Go core prepares: projection (view.Camera), star colors, Doppler shift, Hα emission, trails,
 // gravitational lens, bloom and the black holes. Rendering is in float16 (HDR) and tone mapped at
 // the end instead of clipping in 8 bits.
 #include <metal_stdlib>
@@ -49,7 +49,7 @@ float gravShift(float r, float rs) {
 }
 
 // frequencyShift is ν_observed/ν_emitted for velocity v seen from direction n at speed of light c,
-// times the gravitational redshift grav of the holes (render/shift.go).
+// times the gravitational redshift grav of the holes.
 float frequencyShift(float3 v, float3 n, float c, float grav) {
     if (c <= 0) return grav;
     float3 b = v / c;
@@ -116,7 +116,7 @@ vertex Sprite spriteVertex(uint vid [[vertex_id]], uint iid [[instance_id]],
             col = sc.xyz;
             alpha *= sc.w;
         }
-        if (dusty) { // dust in front (computed in the Go core): reddened and dimmed (render/stars.go)
+        if (dusty) { // dust in front (computed in the Go core): reddened and dimmed
             float4 t = attn[iid];
             col *= t.rgb;
             alpha *= t.g;
@@ -148,7 +148,7 @@ vertex Sprite spriteVertex(uint vid [[vertex_id]], uint iid [[instance_id]],
 }
 
 // dustVertex draws the neutral gas as column density into the dust image: alpha accumulates
-// "over", the background is attenuated by exp(−alpha · DustStrength · k) (render/stars.go DrawDust).
+// "over", the background is attenuated by exp(−alpha · DustStrength · k).
 vertex Sprite dustVertex(uint vid [[vertex_id]], uint iid [[instance_id]],
                          const device Body *bodies [[buffer(0)]], constant Uniforms &u [[buffer(1)]]) {
     Body b = bodies[iid];
@@ -184,7 +184,7 @@ vertex Screen screenVertex(uint vid [[vertex_id]]) {
 
 constexpr sampler linearSampler(filter::linear, address::clamp_to_edge);
 
-// trailFragment keeps a fading history that is never brighter than the stars (render/post.go).
+// trailFragment keeps a fading history that is never brighter than the stars.
 fragment float4 trailFragment(Screen in [[stage_in]], texture2d<float> stars [[texture(0)]],
                               texture2d<float> previous [[texture(1)]]) {
     float4 p = previous.sample(linearSampler, in.uv);

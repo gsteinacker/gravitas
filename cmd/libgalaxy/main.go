@@ -323,7 +323,7 @@ func galaxy_topic_index() C.int { return C.int(eng.TopicIdx) }
 //export galaxy_free
 func galaxy_free(s *C.char) { C.free(unsafe.Pointer(s)) }
 
-// galaxy_key runs the action bound to a typed character (same bindings as the Ebitengine app);
+// galaxy_key runs the action bound to a typed character (app.ActionForChar);
 // it returns 0 if the character is not bound.
 //
 //export galaxy_key

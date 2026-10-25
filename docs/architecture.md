@@ -2,30 +2,35 @@
 
 > Lebendes Dokument. Beschreibt den **Soll-Zustand**. Abweichungen werden hier oder per ADR nachgezogen.
 
-## Paketstruktur (geplant)
+## Paketstruktur
 
 ```
-cmd/galaxy/          Einstiegspunkt der interaktiven App (Ebitengine)
-internal/vec/        Vec3, minimal, inline-freundlich
-internal/sim/        Zustand (Struct-of-Arrays), Integrator, Diagnose, Solver-Interface
+cmd/libgalaxy/       Der Go-Kern als C-Bibliothek (c-archive) für die App: Start, Aktionen, Zustand, Bilddaten
+internal/engine/     Kern ohne Oberfläche: Start mit Kommandozeile, Regler, Kalibrierung, Bildstatistik
+                     (Belichtung, Emission, Schleier, Staubkarte, Löcher: engine.Prepare)
+internal/app/        Aktionen und Controller: Zustand der Bedienung, Szenen, Speichern, Lernmodus
+internal/perf/       Hardware, Kalibrierung, Leistungsprofile, Laufzeit-Regler
+internal/view/       Kamera und Effektauswahl
+internal/prefs/      Einstellungen (JSON in Application Support)
+internal/i18n/       Deutsch/Englisch
+internal/learn/      Lerntexte (topics/*.json)
+internal/scene/      Anfangsbedingungen und Szenen (scenes/*.json)
+internal/save/       Speicherstände (.galaxy)
+internal/sim/        Zustand (Struct-of-Arrays), Integrator, Relativität, Akkretion, Diagnose
 internal/sim/direct/ Referenzlöser O(N²) (Tests, kleine N)
-internal/sim/bh/     Barnes-Hut-Octree, parallel
-internal/sim/        … inkl. relativity.go (u = γv) und accrete.go (Horizont, Verschmelzung).
-                     Kein eigenes Paket: Drift und Kick sind Hot Loops und gehören zum Integrator.
-internal/scene/      Anfangsbedingungen: Plummer-Kugel, Scheibengalaxie, Kollision, Presets
-internal/view/       Kamera und Effektauswahl, grafikfrei (von allen Oberflächen genutzt)
-internal/render/     Punkt-Batching, Shader (Kage)
-internal/app/        Aktionen und Controller: Zustand der Bedienung, Szenen, Speichern, Lernmodus.
-                     Ohne Ebitengine, damit Tasten, natives Menü, Inspektor und andere Oberflächen dieselben
-                     Wege nutzen (T-042).
-internal/ui/         Ebitengine-Oberfläche: übersetzt Tasten und Maus in Aktionen, zeichnet HUD und Panels
-tools/plan/          Projektplanungs-CLI (Backlog in planning/)
+internal/sim/bh/     Barnes-Hut-Octree, parallel, Baumdurchlauf optional auf Metal
+internal/sph/        Gas (SPH)
+internal/vec/        Vec3
+macos/GalaxySwift/   SwiftUI-App: Fenster, Menü, Inspektor, Einstellungen, Lern-Seitenleiste, Eingabe;
+                     Metal-Renderer (Shaders/Galaxy.metal)
+tools/               plan (Backlog), evolve (Szenen vorrechnen), icon (App-Icon), gpubench
 ```
 
-Abhängigkeiten zeigen nur nach unten: `cmd → ui → app, render → view, scene → sim → vec`.
-**`sim`, `app` und `view` kennen Ebitengine nicht.** Aktionen aus anderen Goroutinen (z. B. dem
-Main-Thread nativer Menüs) gehen über `Controller.Post` und laufen in `Game.Update`; Lesen geht über den
-veröffentlichten `Controller.State()`. Die Physik ist headless test- und benchmarkbar.
+Abhängigkeiten zeigen nur nach unten: `libgalaxy → engine → app, perf, view → scene → sim → vec`. Kein Go-Paket
+hat eine Oberfläche (ADR-0011). Die Swift-App ruft den Kern nur aus dem Main-Thread auf: einmal pro Bild
+`galaxy_tick` (führt eingereihte Arbeit aus, regelt, veröffentlicht den Zustand), dann `galaxy_frame` (kopiert den
+neuesten Stand in einen Metal-Puffer) und `galaxy_prepare` (Bildstatistik, Staubabschwächung pro Körper, Löcher).
+Die Physik läuft in eigenen Goroutinen und ist headless test- und benchmarkbar.
 
 ## GPU (ADR-0004)
 
@@ -34,18 +39,21 @@ der CPU und ist vollständig parallelisiert: Sammeln, Morton-Keys, stabiler para
 sortierte Kopien und die Knoten (Teilbäume parallel, T-029). Das Ergebnis ist bitidentisch zum seriellen
 Aufbau.
 
-## Rendering (M4)
+## Rendering
 
-Die Belichtung ist automatisch: Während die Quads entstehen, wird das Licht in einem 96×60-Raster gesammelt,
-und die hellsten 10 % der belegten Zellen werden gerade weiß (wirkt ab dem nächsten Frame, geglättet).
-Additive 8-Bit-Bilder würden sonst sättigen und Dichtekontraste wie Spiralarme verschlucken.
+Metal in der Swift-App, in float16 (HDR) mit weichem Tonemapping am Ende. Pro Bild:
+1. Staubbild aus den Gas-Sprites;
+2. Sterne und Hα-Emission additiv (Farbe nach Masse, Doppler und Gravitationsrotverschiebung, Abschwächung durch
+   Staub pro Körper aus dem Go-Kern);
+3. optional Spuren;
+4. über den Sternhimmel, der durch das Staubbild abgeschwächt wird;
+5. optional Gravitationslinse;
+6. optional Bloom;
+7. Tonemapping und Löcher.
 
-`render.Pipeline` pro Frame (das Sternbild wird nur bei neuer Snapshot-Version, Kamera- oder Doppler-Änderung
-neu gezeichnet): Sterne additiv in ein Offscreen-Bild (Farbe nach Masse, optional Doppler-Verschiebung)
-→ optional Spuren (max-Blending mit verblassendem Vorbild) → über opaken Sternhimmel → optional
-Gravitationslinse (Kage-Shader, Punktlinse) → Bildschirm → optional Bloom (Downsample, 2× Gauß, additiv)
-→ Löcher, Ringe, HUD. Effekte per Taste (`g t l d`) oder `-fx`. Shader-Ausgaben verwenden `BlendCopy`,
-der Hintergrund ist opak. Sonst akkumulieren Bilder über Frames.
+Die Belichtung ist automatisch (`engine.Prepare`): Das Licht wird in einem 96×60-Raster gesammelt, und die hellsten
+10 % der belegten Zellen erreichen den Zielwert, geglättet über die Bilder. Effekte per Menü, Inspektor, Taste oder
+`-fx`.
 
 ## Kern-Datenmodell
 
@@ -71,7 +79,8 @@ type Solver interface {
 ## Threading
 
 - Die Simulation läuft in einer eigenen Goroutine mit fester Schrittweite (`sim.Runner`), das Rendering im
-  Ebitengine-Loop.
+  Draw-Callback der `MTKView` auf dem Main-Thread der Swift-App, der den Kern per `galaxy_tick`/`galaxy_frame`
+  aufruft.
 - Übergabe per **Triple-Buffer-Snapshot** (`float32`-Positionen): Die Simulation füllt `writing`, der
   Renderer liest `reading`, und `latest` ist der neueste fertige Stand. Das Lock schützt nur Zeigertausche,
   keine Seite wartet je auf die Arbeit der anderen (T-024).
@@ -90,7 +99,7 @@ type Solver interface {
 | Ganzer Schritt inkl. Loch-Unterschritte | ≤ 33 ms | 28 ms ✓ | `bh.BenchmarkStep` |
 | Energie-Diagnose (alle 2 s) | ≤ 5 % | 20 ms / 2 s = 1 % ✓ | `bh.BenchmarkPotentialEnergy` |
 | Integration | ≤ 2 ms | < 1 % im Profil ✓ | – |
-| Rendern (Ebitengine-Thread) | ≤ 16 ms | ~60 FPS ✓ | Profil der App |
+| Rendern (Metal) | ≤ 16 ms | ~60 FPS ✓ | Profil der App |
 
 **Wichtig:** Die Kosten wachsen, während sich die Galaxie entwickelt, weil ihr Kern dichter wird
 (t = 0: 13 ms, t = 2,4: 21 ms). Performance-Aussagen immer auch am entwickelten Zustand prüfen.

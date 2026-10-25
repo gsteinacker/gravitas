@@ -9,7 +9,7 @@ import (
 )
 
 // Look is everything about a frame's appearance that is not drawing: the normalizations that make
-// the picture adapt to the scene (ported from render/stars.go, T-033/T-037) and the black holes on
+// the picture adapt to the scene (T-033/T-037) and the black holes on
 // screen. The front end draws with it; the rules stay in Go.
 type Look struct {
 	Exposure  float64 // star brightness factor (auto exposure)
@@ -33,7 +33,7 @@ type Hole struct {
 	Rings bool    // large enough to draw the ISCO ring
 }
 
-// Constants of render/stars.go.
+// Constants of the auto exposure (T-033), the emission (T-037) and the haze.
 const (
 	gridW, gridH       = 96, 60
 	exposurePercentile = 0.9

@@ -1,7 +1,7 @@
 // Package engine runs the simulation and the app controller without any user interface, for front
 // ends in other languages (the SwiftUI app, T-049/T-050). The front end calls every method from one
 // thread (its main thread), renders the bodies Frame copies out and feeds back the measured frame
-// rate, from which the governor adapts quality like in the Ebitengine app.
+// rate, from which the governor adapts quality (perf.Governor).
 package engine
 
 import (
