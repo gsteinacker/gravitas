@@ -123,18 +123,13 @@ vertex Sprite spriteVertex(uint vid [[vertex_id]], uint iid [[instance_id]],
         }
         return makeSprite(s, size / 2, float4(col * alpha * u.eye.w, 0), vid, u);
     }
-    if ((kind == 2 && (fx & 16) != 0) || (kind == 3 && (fx & 32) != 0)) {
-        // Haze: dark matter violet, the gas map in false colors (neutral blue, partly ionized
-        // green, ionized red); opacity from the projected density (Go core).
+    if (kind == 3 && (fx & 32) != 0) {
+        // Gas map in false colors (neutral blue, partly ionized green, ionized red); opacity from
+        // the projected density (Go core).
         float size = clamp(0.12 * focal / s.z, 6 * ps, 48 * ps);
-        float3 tint = float3(0.55, 0.35, 1.0);
-        float alpha = u.haze.x;
-        if (kind == 3) {
-            float ion = b.gas.y;
-            tint = float3(0.25 + 0.75 * ion, 0.45 + 0.5 * (1 - 2 * fabs(ion - 0.5)), 1 - 0.8 * ion);
-            alpha = u.haze.y;
-        }
-        return makeSprite(s, size / 2, float4(tint * alpha, 0), vid, u);
+        float ion = b.gas.y;
+        float3 tint = float3(0.25 + 0.75 * ion, 0.45 + 0.5 * (1 - 2 * fabs(ion - 0.5)), 1 - 0.8 * ion);
+        return makeSprite(s, size / 2, float4(tint * u.haze.y, 0), vid, u);
     }
     if (kind == 3 && b.gas.y > 0.2) { // photoionized gas: Hα emission
         float size = clamp(3 * b.gas.z * focal / s.z, 3 * ps, 120 * ps);
@@ -161,6 +156,21 @@ vertex Sprite dustVertex(uint vid [[vertex_id]], uint iid [[instance_id]],
     float tauArea = u.misc.w * b.pos.w * (1 - b.gas.y) * k * k;
     float a = min(1.0, tauArea / (0.10972 * size * size) / 2.5);
     return makeSprite(s, size / 2, float4(a), vid, u);
+}
+
+// fogVertex draws dark matter as projected density into a quarter-resolution image with large,
+// soft sprites; the compose pass blurs and saturates it into a faint fog behind the stars.
+vertex Sprite fogVertex(uint vid [[vertex_id]], uint iid [[instance_id]],
+                        const device Body *bodies [[buffer(0)]], constant Uniforms &u [[buffer(1)]]) {
+    Body b = bodies[iid];
+    if (int(b.vel.w + 0.5) != 2) return culled();
+    float3 s = project(b.pos.xyz, u);
+    if (s.z < 0.05) return culled();
+    float ps = u.view.w;
+    // Three times the haze sprite of the Go core's statistics: nine times the area, so a ninth of the
+    // opacity keeps the same projected density (smoother, without particle noise).
+    float size = clamp(0.36 * u.view.z / s.z, 18 * ps, 144 * ps);
+    return makeSprite(s, size / 2, float4(u.haze.x / 9), vid, u);
 }
 
 fragment float4 spriteFragment(Sprite in [[stage_in]]) {
@@ -194,11 +204,19 @@ fragment float4 trailFragment(Screen in [[stage_in]], texture2d<float> stars [[t
 
 // composeFragment puts the stars over the static sky, which the dust in front attenuates per
 // color channel (interstellar reddening; the stars were attenuated individually).
+// The dark matter fog (blurred density, 1 at the densest 10 % of the covered screen) is saturated
+// and capped, so it shows where the halo is without hiding the stars.
 fragment float4 composeFragment(Screen in [[stage_in]], texture2d<float> stars [[texture(0)]],
-                                texture2d<float> sky [[texture(1)]], texture2d<float> dust [[texture(2)]]) {
+                                texture2d<float> sky [[texture(1)]], texture2d<float> dust [[texture(2)]],
+                                texture2d<float> fog [[texture(3)]], constant float &fogOn [[buffer(0)]]) {
     float tau = dust.sample(linearSampler, in.uv).a * 2.5;
     float4 c = sky.sample(linearSampler, in.uv);
-    return float4(c.rgb * exp(-tau * float3(0.55, 0.75, 1.0)), c.a) + stars.sample(linearSampler, in.uv);
+    float4 out = float4(c.rgb * exp(-tau * float3(0.55, 0.75, 1.0)), c.a) + stars.sample(linearSampler, in.uv);
+    if (fogOn > 0) {
+        float d = fog.sample(linearSampler, in.uv).r;
+        out.rgb += float3(0.55, 0.35, 1.0) * 0.4 * (1 - exp(-1.2 * d));
+    }
+    return out;
 }
 
 struct Lens { float4 holes[16]; float4 info; }; // x, y, θ_E² | count, width, height

@@ -36,8 +36,8 @@ final class Renderer: NSObject, MTKViewDelegate {
     let device: MTLDevice
     let queue: MTLCommandQueue
     let engine: Engine
-    private var sprite, dust, trail, compose, lens, copy, blur, final, hole: MTLRenderPipelineState!
-    private var stars, dustImage, trailA, trailB, scene, lensed, small, blurA, blurB, sky: MTLTexture?
+    private var sprite, dust, fog, trail, compose, lens, copy, blur, final, hole: MTLRenderPipelineState!
+    private var stars, dustImage, fogA, fogB, trailA, trailB, scene, lensed, small, blurA, blurB, sky: MTLTexture?
     private var bodies: [MTLBuffer] = []
     private var attn: [MTLBuffer] = [] // dust transmission per body, one per frame in flight
     private var slot = 0
@@ -81,6 +81,7 @@ final class Renderer: NSObject, MTKViewDelegate {
             let hdr = MTLPixelFormat.rgba16Float
             sprite = try pipe("spriteVertex", "spriteFragment", hdr, blend: (.one, .one))
             dust = try pipe("dustVertex", "spriteFragment", hdr, blend: (.one, .oneMinusSourceAlpha))
+            fog = try pipe("fogVertex", "spriteFragment", hdr, blend: (.one, .one))
             trail = try pipe("screenVertex", "trailFragment", hdr)
             compose = try pipe("screenVertex", "composeFragment", hdr)
             lens = try pipe("screenVertex", "lensFragment", hdr)
@@ -120,6 +121,7 @@ final class Renderer: NSObject, MTKViewDelegate {
         // The bloom works at a quarter of the window resolution at every render scale.
         let div = max(1, Int((4 * scale).rounded()))
         small = texture(w / div, h / div); blurA = texture(w / div, h / div); blurB = texture(w / div, h / div)
+        fogA = texture(w / div, h / div); fogB = texture(w / div, h / div)
         sky = makeSky(w, h)
     }
 
@@ -271,10 +273,46 @@ final class Renderer: NSObject, MTKViewDelegate {
             swap(&trailA, &trailB)
             starImage = trailA!
         }
+        var fogOn: Float = 0
+        if fx & Engine.dark != 0, look.darkAlpha > 0, filled > 0 {
+            // Dark matter as a soft fog: density sprites at quarter resolution, blurred.
+            let fd = MTLRenderPassDescriptor()
+            fd.colorAttachments[0].texture = fogA
+            fd.colorAttachments[0].loadAction = .clear
+            fd.colorAttachments[0].clearColor = MTLClearColor(red: 0, green: 0, blue: 0, alpha: 0)
+            fd.colorAttachments[0].storeAction = .store
+            let fe = cmd.makeRenderCommandEncoder(descriptor: fd)!
+            fe.setRenderPipelineState(fog)
+            fe.setVertexBuffer(bodies[current], offset: 0, index: 0)
+            fe.setVertexBytes(&u, length: MemoryLayout<Uniforms>.stride, index: 1)
+            fe.drawPrimitives(type: .triangleStrip, vertexStart: 0, vertexCount: 4, instanceCount: filled)
+            fe.endEncoding()
+            var h = SIMD2<Float>(1, 0), v = SIMD2<Float>(0, 1)
+            screenPass(cmd, fogB!, blur) { e in
+                e.setFragmentTexture(fogA, index: 0)
+                e.setFragmentBytes(&h, length: 8, index: 0)
+            }
+            screenPass(cmd, fogA!, blur) { e in
+                e.setFragmentTexture(fogB, index: 0)
+                e.setFragmentBytes(&v, length: 8, index: 0)
+            }
+            var h2 = SIMD2<Float>(2.5, 0), v2 = SIMD2<Float>(0, 2.5) // a second, wider pass
+            screenPass(cmd, fogB!, blur) { e in
+                e.setFragmentTexture(fogA, index: 0)
+                e.setFragmentBytes(&h2, length: 8, index: 0)
+            }
+            screenPass(cmd, fogA!, blur) { e in
+                e.setFragmentTexture(fogB, index: 0)
+                e.setFragmentBytes(&v2, length: 8, index: 0)
+            }
+            fogOn = 1
+        }
         screenPass(cmd, scene!, compose) { e in
             e.setFragmentTexture(starImage, index: 0)
             e.setFragmentTexture(sky, index: 1)
             e.setFragmentTexture(dustImage, index: 2)
+            e.setFragmentTexture(fogA, index: 3)
+            e.setFragmentBytes(&fogOn, length: 4, index: 0)
         }
         var out = scene!
         if fx & Engine.lens != 0, !lensHoles.isEmpty {
