@@ -1,0 +1,50 @@
+{
+  "name": "Structure formation",
+  "intro": {
+    "school": "Kurz nach dem Urknall war das Weltall fast völlig gleichmäßig gefüllt. Schau zu, wie die Schwerkraft aus winzigen Unterschieden in 13 Milliarden Jahren das kosmische Netz formt: Fäden, Knoten und leere Blasen. Gleichzeitig dehnt sich der Raum aus. Der Würfel wächst mit, deshalb sieht er immer gleich groß aus.",
+    "lay": "Ein Würfel von 100 Mpc/h, der sich mit dem Universum ausdehnt (mitbewegte Koordinaten). Start bei Rotverschiebung z = 50, etwa 50 Millionen Jahre nach dem Urknall, Ende heute bei z = 0. Die Schwerkraft verstärkt die Dichteschwankungen, die Ausdehnung bremst sie, und seit etwa fünf Milliarden Jahren bremst die Dunkle Energie das Wachstum zusätzlich. Im Inspektor steht statt der Zeit die Rotverschiebung z.",
+    "physics": "Kosmologische N-Körper-Rechnung (ADR-0014): mitbewegte Koordinaten mit u = a² dx/dt, dx/dt = u/a², du/dt = −∇φ/a, ∇²φ = 4πG(ρ − ρ̄), Leapfrog in Schritten Δ ln a = 0,01 mit exakten Kick- und Drift-Faktoren ∫dt/a, ∫dt/a² (flaches ΛCDM, Planck 2018). Kräfte periodisch per Particle-Mesh (CIC, FFT, Gitter etwa ein Punkt je Teilchen, CIC-Fenster entfaltet). Anfangsbedingungen Zel'dovich bei z = 50. Geprüft: Wachstum einer Einzelmode gegen D(a) (2 %), Layzer-Irvine-Gleichung, Impulserhaltung. Grenzen: Auflösung etwa zwei Gitterzellen (≈ 3 Mpc/h bei 64³), daher keine Halos unterhalb von ~10¹³ M☉, keine Galaxien, kein Gas."
+  },
+  "topics": [
+    "cosmic-web",
+    "expansion",
+    "dark-matter",
+    "gravity"
+  ],
+  "info": "comoving ΛCDM box of 100 Mpc/h from z = 50 to 0, particle-mesh gravity; 1 unit = 1 Mpc (comoving)",
+  "yearsPerUnit": 9.778e9,
+  "velocityUnit": 100,
+  "params": {
+    "dt": 0.01,
+    "softening": 0.5,
+    "c": 0,
+    "cosmology": {
+      "omegaM": 0.31,
+      "h0": 0.677,
+      "box": 147.7,
+      "aStart": 0.0196,
+      "aEnd": 1
+    }
+  },
+  "camera": {
+    "target": [0, 0, 0],
+    "distance": 260,
+    "pitch": 30,
+    "yaw": 20
+  },
+  "effects": "dark,glow",
+  "components": [
+    {
+      "type": "cosmicweb",
+      "name": "ΛCDM box",
+      "note": "Same realization as the cosmic web scene, started at z = 50 with Zel'dovich velocities. The cosmology block is filled in from the component (box, Ω_m, H₀, start); the values here are the Planck 2018 defaults for reference.",
+      "weight": 1,
+      "mass": 0,
+      "box": 100,
+      "redshift": 50,
+      "position": [0, 0, 0],
+      "velocity": [0, 0, 0],
+      "seed": 42
+    }
+  ]
+}

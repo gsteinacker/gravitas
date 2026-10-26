@@ -166,3 +166,41 @@ func TestCosmicWebMass(t *testing.T) {
 		t.Errorf("total mass %.4g Msun, want %.4g", got, want)
 	}
 }
+
+// TestStructureFormationGrows: the comoving scene sets up its periodic box and its clustering grows
+// (the rms of the displacement from the lattice increases with a).
+func TestStructureFormationGrows(t *testing.T) {
+	sp, err := LoadSpec("scenes/13-structure.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	s, p := sp.Build(4096)
+	cp := p.Cosmology
+	if cp == nil || cp.AStart > 0.02 || math.Abs(cp.H0/0.677-1) > 1e-4 || math.Abs(cp.Box/(100/0.677)-1) > 1e-4 {
+		t.Fatalf("cosmology %+v", cp)
+	}
+	if sp.Params.Cosmology.AStart != 0.0196 {
+		t.Error("Build changed the spec")
+	}
+	speed := func() float64 {
+		var v float64
+		for i := range s.Len() {
+			v += s.VelX[i]*s.VelX[i] + s.VelY[i]*s.VelY[i] + s.VelZ[i]*s.VelZ[i]
+		}
+		return math.Sqrt(v / float64(s.Len()))
+	}
+	v0 := speed()
+	m := sim.New(s, &bh.Solver{}, p)
+	for m.ScaleFactor < 0.1 {
+		m.Step()
+	}
+	// u = a² ẋ grows like a² D f H ∝ a^{3/2} in the matter era: much faster than before.
+	if v1 := speed(); v1 < 5*v0 {
+		t.Errorf("rms u grew from %.3g to %.3g only", v0, v1)
+	}
+	for i := range s.Len() {
+		if math.Abs(s.PosX[i]) > cp.Box/2 || math.Abs(s.PosY[i]) > cp.Box/2 || math.Abs(s.PosZ[i]) > cp.Box/2 {
+			t.Fatalf("body %d left the periodic box", i)
+		}
+	}
+}

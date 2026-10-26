@@ -107,6 +107,13 @@ Rotverschiebung g⁴, die Rückseite über eine Ablenkung 4 r_g/b und der Schatt
 Scheibe selbst löst das SPH-Gas nicht auf (Glättung ≫ r_g). Entschieden in T-065: Darstellung statt Dynamik,
 weil eine α-Scheibe auf r_g-Skalen Auflösungen und Zeitschritte weit unter denen der Szenen bräuchte.
 
+## Kosmologischer Modus (ADR-0014)
+
+Szenen mit `params.cosmology` rechnen mitbewegt im periodischen Würfel: u = a² ẋ, ẋ = u/a², u̇ = −∇φ/a,
+∇²φ = 4πG(ρ − ρ̄), KDK in Δ ln a mit exakten Faktoren, Kräfte per Particle-Mesh (`internal/cosmo/pm.go`).
+Invarianten: Layzer-Irvine (`TestComovingConservesMomentumAndLayzerIrvine`) und lineares Wachstum einer Mode
+gegen D(a) (`TestPlaneWaveGrowsLinearly`). Statt der Energiedrift gibt es keine Anzeige, statt t wird z gezeigt.
+
 ## Gas (ADR-0007)
 
 SPH-Gas mit Druck, Viskosität, Kühlung auf eine Untergrenze und Sternentstehung in dichtem, kaltem,

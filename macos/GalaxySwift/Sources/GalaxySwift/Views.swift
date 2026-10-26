@@ -197,6 +197,9 @@ struct InspectorView: View {
     }
 
     private var timeText: String {
+        if s.scaleFactor > 0 { // comoving mode: redshift and cosmic time since the start
+            return String(format: "z = %.2f · a = %.3f", 1 / s.scaleFactor - 1, s.scaleFactor)
+        }
         guard s.yearsPer > 0 else { return String(format: "t = %.2f", s.time) }
         let y = s.time * s.yearsPer
         let (v, unit) = y >= 1e9 ? (y / 1e9, "Gyr") : y >= 1e6 ? (y / 1e6, "Myr") : y >= 1e3 ? (y / 1e3, "kyr") : (y, "yr")

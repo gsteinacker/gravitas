@@ -21,7 +21,8 @@ type Snapshot struct {
 	Spins          []HoleSpin // angular momentum of every black hole
 	YoungAge       float64    // stars younger than this are drawn young
 	StarsFormed    int
-	HolesFormed    int // black holes formed by collapse (collapse.go)
+	HolesFormed    int     // black holes formed by collapse (collapse.go)
+	ScaleFactor    float64 // a in the comoving mode (comoving.go), 0 otherwise
 	Kind           []Kind
 	Time           float64
 	Steps          int
@@ -52,6 +53,10 @@ func (sn *Snapshot) fill(m *Simulation) {
 	sn.Age, sn.GasU, sn.GasRho = resize(sn.Age, n), resize(sn.GasU, n), resize(sn.GasRho, n)
 	sn.GasH, sn.GasIon = resize(sn.GasH, n), resize(sn.GasIon, n)
 	sn.YoungAge, sn.StarsFormed, sn.HolesFormed = m.Params.Gas.YoungAge, m.StarsFormed, m.HolesFormed
+	sn.ScaleFactor = m.ScaleFactor
+	if sn.ScaleFactor == 0 && m.Params.Cosmology != nil {
+		sn.ScaleFactor = m.Params.Cosmology.AStart
+	}
 	if sn.YoungAge == 0 {
 		sn.YoungAge = defaultYoungAge
 	}
@@ -203,6 +208,11 @@ func (r *Runner) Run(ctx context.Context) {
 }
 
 func (r *Runner) measureEnergy() {
+	if r.sim.Params.Cosmology != nil { // the Newtonian energy does not apply in an expanding box
+		r.quality.Store(int32(EnergyUnknown))
+		r.drift.Store(math.Float64bits(math.NaN()))
+		return
+	}
 	r.lastMeasure = time.Now()
 	defer func() { r.measureCost = time.Since(r.lastMeasure) }()
 	e, q := TotalEnergy(r.sim)

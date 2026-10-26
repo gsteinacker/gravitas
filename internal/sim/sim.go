@@ -16,6 +16,8 @@ type Params struct {
 	// DarkMatterOff switches off the gravity of dark matter: it still moves as test particles, so
 	// switching it back on finds the halos (roughly) where they were.
 	DarkMatterOff bool `json:"darkMatterOff,omitempty"`
+	// Cosmology switches to comoving integration in an expanding, periodic box (comoving.go).
+	Cosmology *Cosmology `json:"cosmology,omitempty"`
 }
 
 // GasParams configure the gas model (ADR-0007). Energies are specific (per unit mass).
@@ -78,6 +80,9 @@ type Simulation struct {
 	StarsFormed int
 	// HolesFormed counts black holes formed by collapse since Reset (collapse.go).
 	HolesFormed int
+	// ScaleFactor is a in the comoving mode (comoving.go), 0 otherwise.
+	ScaleFactor float64
+	comoving    Solver // periodic force solver of the comoving mode
 	// Substeps is the number of inner substeps used near black holes in the last step.
 	Substeps int
 	// HydroSubsteps is the number of parts the last step was split into for the gas.
@@ -110,6 +115,7 @@ func (m *Simulation) Reset(s *State, p Params) {
 	m.State, m.Params, m.Time, m.Steps, m.accValid, m.ExternalEnergy = s, p, 0, 0, false, 0
 	m.StarsFormed, m.HolesFormed, m.hydroDt = 0, 0, 0
 	m.accretion = nil
+	m.ScaleFactor, m.comoving = 0, nil
 	m.Epoch++
 	m.histories = nil
 }
@@ -198,6 +204,11 @@ func (m *Simulation) Step() {
 }
 
 func (m *Simulation) step() {
+	if m.Params.Cosmology != nil {
+		m.stepComoving()
+		m.Steps++
+		return
+	}
 	s, dt := m.State, m.Params.Dt
 	m.collectHoles()
 	if len(m.holes) > 0 {

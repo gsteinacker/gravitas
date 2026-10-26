@@ -250,6 +250,7 @@ type Note struct {
 type SimState struct {
 	Bodies, BlackHoles, Dark, Gas, StarsFormed int
 	HolesFormed                                int
+	ScaleFactor                                float64 // comoving mode: a (redshift z = 1/a − 1), else 0
 	Time, C                                    float64
 	Substeps, HydroSubsteps                    int
 	Gravity                                    sim.GravityMode
@@ -599,7 +600,7 @@ func (c *Controller) Observe(sn *sim.Snapshot) {
 	s := SimState{
 		Bodies: sn.Len(), Time: sn.Time, C: sn.C, Substeps: sn.Substeps, HydroSubsteps: sn.HydroSubsteps,
 		Gravity: sn.Gravity, DarkMatterOff: sn.DarkMatterOff, StarsFormed: sn.StarsFormed,
-		HolesFormed: sn.HolesFormed,
+		HolesFormed: sn.HolesFormed, ScaleFactor: sn.ScaleFactor,
 	}
 	if s.HolesFormed > c.sim.HolesFormed && s.Time >= c.sim.Time { // not after a restart (T-067)
 		c.Notify(i18n.T("Ein Schwarzes Loch ist entstanden: die Masse passte in ihren eigenen Schwarzschild-Radius.",

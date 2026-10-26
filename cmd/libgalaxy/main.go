@@ -29,6 +29,7 @@ typedef struct {
 	double massMin;         // smallest sensible mass (about 1 solar mass), simulation units
 	int galaxyScale;        // galaxies can be placed in this scene
 	int resolved;           // the next object is enlarged to the scene's resolution (2 × softening)
+	double scaleFactor;      // comoving mode (cosmic web): a = 1/(1 + z), else 0
 } GalaxyState;
 
 typedef struct {
@@ -185,7 +186,7 @@ func galaxy_state(out *C.GalaxyState) {
 		substeps: C.int(s.Sim.Substeps), hydroSubsteps: C.int(s.Sim.HydroSubsteps), gpu: b(s.GPU),
 		showHUD: b(s.ShowHUD), showHelp: b(s.ShowHelp), starsFormed: C.int(s.Sim.StarsFormed), fx: fxBits(s.FX),
 		c: C.double(s.C), mass: C.double(s.Mass), theta: C.double(s.Theta), thetaUser: C.double(s.ThetaUser),
-		sps: C.double(s.StepsPerSec), fps: C.double(s.FPS), time: C.double(s.Sim.Time),
+		sps: C.double(s.StepsPerSec), fps: C.double(s.FPS), time: C.double(s.Sim.Time), scaleFactor: C.double(s.Sim.ScaleFactor),
 		yearsPer: C.double(s.YearsPer), drift: C.double(s.Drift), renderScale: C.double(s.RenderScale),
 		cloudK: C.double(s.CloudK), cloudTurb: C.double(s.CloudTurb),
 		cloudAlpha: C.double(alpha), cloudFloorK: C.double(floorK), galaxyTilt: C.double(eng.GalaxyTilt), holeSpin: C.double(eng.HoleSpin),

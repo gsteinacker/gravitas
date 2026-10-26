@@ -165,6 +165,10 @@ func (sp *Spec) Build(n int) (*sim.State, sim.Params) {
 	if sp.IonK > 0 {
 		p.Gas.UIon = sp.specificEnergy(sp.IonK)
 	}
+	if p.Cosmology != nil { // the cosmic web fills in the box; keep the spec unchanged
+		cp := *p.Cosmology
+		p.Cosmology = &cp
+	}
 	counts := sp.counts(n)
 	s := sim.NewState(n + len(sp.Components))
 	for i, c := range sp.Components {
@@ -183,7 +187,7 @@ func (sp *Spec) Build(n int) (*sim.State, sim.Params) {
 		case "gasbox", "gasclump":
 			addGasCloud(s, c, counts[i], sp.specificEnergy(c.GasK), c.Turbulence/math.Max(sp.KmPerS, 1e-30))
 		case "cosmicweb":
-			sp.addCosmicWeb(s, c, counts[i])
+			sp.addCosmicWeb(s, c, counts[i], &p)
 		}
 	}
 	if sp.BulkRest {

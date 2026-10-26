@@ -3,6 +3,18 @@
 Chronologisches Log relevanter Benchmark-Ergebnisse. Neueste oben. Format: `## Datum · Task · Thema`, dann
 Maschine und Last, die Zahlen in einem Codeblock und eine kurze Einordnung.
 
+## 2026-10-26 · T-074 · Particle-Mesh im kosmologischen Modus
+
+Szene 13 (100 Mpc/h, z = 50), M4 Pro, keine Fremdlast, 20 Schritte nach einem Aufwärmschritt:
+
+```
+50 000 Teilchen, Gitter 64³     12,4 ms/Schritt
+262 144 Teilchen, Gitter 64³    29,3 ms/Schritt
+```
+
+Vier FFTs (Dichte hin, drei Gradienten zurück), parallel über die Zeilen jeder Achse. z = 50 → 0 sind etwa 390
+Schritte, also Sekunden bis Minuten.
+
 ## 2026-10-26 · T-072 · Frame-Dragging
 
 Szene 4 (Doppel-Loch im Haufen), 50k, M4 Pro, keine Fremdlast, je 30 Schritte nach einem Aufwärmschritt, zwei

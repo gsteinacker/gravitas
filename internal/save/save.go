@@ -49,6 +49,7 @@ type File struct {
 	Forces           *sim.Forces // since format 3: last force evaluation, for an exact continuation
 	SpinX, SpinY     []float64   // since format 4: angular momentum of black holes
 	SpinZ            []float64
+	ScaleFactor      float64 // since format 4: a of the comoving mode, 0 otherwise
 }
 
 // Capture copies the simulation. Call it on the simulation goroutine (sim.Runner.Do).
@@ -56,7 +57,7 @@ func Capture(m *sim.Simulation, sp *scene.Spec, cam Camera) *File {
 	s := m.State
 	return &File{
 		Format: Format, Saved: time.Now(), Scene: *sp, Params: m.Params,
-		Time: m.Time, Steps: m.Steps, External: m.ExternalEnergy, Formed: m.StarsFormed, Camera: cam,
+		Time: m.Time, Steps: m.Steps, ScaleFactor: m.ScaleFactor, External: m.ExternalEnergy, Formed: m.StarsFormed, Camera: cam,
 		PosX: slices.Clone(s.PosX), PosY: slices.Clone(s.PosY), PosZ: slices.Clone(s.PosZ),
 		VelX: slices.Clone(s.VelX), VelY: slices.Clone(s.VelY), VelZ: slices.Clone(s.VelZ),
 		Mass: slices.Clone(s.Mass), Kind: slices.Clone(s.Kind),
@@ -101,6 +102,7 @@ func (f *File) Restore(m *sim.Simulation) {
 	m.Restore(f.State(), f.Params, f.Time, f.Steps, f.External)
 	m.RestoreForces(f.Forces)
 	m.StarsFormed = f.Formed
+	m.ScaleFactor = f.ScaleFactor
 }
 
 // Write stores f at path atomically (temporary file, then rename).
