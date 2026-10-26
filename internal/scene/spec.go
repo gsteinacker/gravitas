@@ -33,6 +33,7 @@ type Spec struct {
 	Params     sim.Params        `json:"params"`
 	Camera     *CameraSpec       `json:"camera,omitempty"`
 	Effects    string            `json:"effects,omitempty"` // render effects to switch on, e.g. "glow,trails"
+	Paused     bool              `json:"paused,omitempty"`  // start paused (a static scene, e.g. the cosmic web)
 	BulkRest   bool              `json:"removeBulkMotion,omitempty"`
 	Components []Component       `json:"components"`
 }
@@ -102,6 +103,11 @@ type Component struct {
 	BackMass   float64    `json:"backgroundMass,omitempty"` // mass of background stars (0: StarMass)
 	Background int        `json:"background,omitempty"`     // additional random orbits (capped by the budget)
 	BackA      [2]float64 `json:"backgroundA,omitempty"`    // their semi-major axis range (log-uniform)
+
+	// cosmicweb: Zel'dovich realization of the ΛCDM matter distribution (T-073) in a cube of Box
+	// Mpc/h at Redshift, as dark matter; mass from Ω_m ρ_crit (Mass is ignored)
+	Box      float64 `json:"box,omitempty"`
+	Redshift float64 `json:"redshift,omitempty"`
 }
 
 // Orbit holds Keplerian elements; angles in degrees, Anomaly is the mean anomaly.
@@ -130,7 +136,7 @@ func ParseSpec(data []byte) (*Spec, error) {
 	}
 	for i, c := range s.Components {
 		switch c.Type {
-		case "galaxy", "plummer", "hole", "orbits", "star", "gasbox", "gasclump":
+		case "galaxy", "plummer", "hole", "orbits", "star", "gasbox", "gasclump", "cosmicweb":
 			if p := c.HaloProfile; p != "" && p != "plummer" && p != "hernquist" {
 				return nil, fmt.Errorf("scene %q: component %d: unknown halo profile %q", s.Name, i, p)
 			}
@@ -176,6 +182,8 @@ func (sp *Spec) Build(n int) (*sim.State, sim.Params) {
 			s.Add(sim.Body{Pos: v3(c.Position), Vel: v3(c.Velocity), Mass: c.Mass, Lum: c.Luminosity})
 		case "gasbox", "gasclump":
 			addGasCloud(s, c, counts[i], sp.specificEnergy(c.GasK), c.Turbulence/math.Max(sp.KmPerS, 1e-30))
+		case "cosmicweb":
+			sp.addCosmicWeb(s, c, counts[i])
 		}
 	}
 	if sp.BulkRest {

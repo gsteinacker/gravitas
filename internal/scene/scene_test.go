@@ -141,3 +141,28 @@ func TestBuiltinScenesFormNoHoles(t *testing.T) {
 		}
 	}
 }
+
+// TestCosmicWebMass: the cosmic web holds Ω_m ρ_crit V of dark matter in exactly n particles.
+func TestCosmicWebMass(t *testing.T) {
+	sp, err := LoadSpec("scenes/12-cosmic-web.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	s, _ := sp.Build(5000)
+	if s.Len() != 5000 {
+		t.Fatalf("%d bodies, want 5000", s.Len())
+	}
+	msun, _ := sp.MassUnit()
+	var m float64
+	for i := range s.Len() {
+		if s.Kind[i] != sim.DarkMatter {
+			t.Fatalf("body %d is %v, want dark matter", i, s.Kind[i])
+		}
+		m += s.Mass[i]
+	}
+	const h, om = 0.677, 0.31
+	want := om * 2.775e11 * h * h * math.Pow(100/h, 3)
+	if got := m * msun; math.Abs(got/want-1) > 1e-9 {
+		t.Errorf("total mass %.4g Msun, want %.4g", got, want)
+	}
+}

@@ -533,6 +533,9 @@ func (c *Controller) applyScene(sp *scene.Spec) {
 			c.FX = fx
 		}
 	}
+	if sp.Paused { // a static scene: shown, not stepped (Space starts it)
+		c.Runner.SetPaused(true)
+	}
 	if c.SceneLoaded != nil {
 		c.SceneLoaded(sp)
 	}

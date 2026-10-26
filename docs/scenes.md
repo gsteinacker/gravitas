@@ -29,6 +29,7 @@ Spielstände (F5/F9, `-load`) sind dagegen **exakte Abzüge** eines laufenden Zu
 - Gas: `velocityUnit` und `gasFloorK` auf Szenenebene, in `params.gas`
   `coolTime`, `sfDensity`, `sfEfficiency`, `youngAge` (Simulationseinheiten). Siehe ADR-0007.
 - `note` ist freier Text für Quellen und Annahmen und wird nicht ausgewertet.
+- `paused: true` startet die Szene angehalten (statische Szenen wie das kosmische Netz).
 
 ## Komponenten
 
@@ -38,6 +39,7 @@ Spielstände (F5/F9, `-load`) sind dagegen **exakte Abzüge** eines laufenden Zu
 | `plummer` | `mass`, `scale`, `position`, `velocity`, `seed` | Sternhaufen im Virialgleichgewicht |
 | `hole` | `mass`, `position`, `velocity`, `spin` (a*, 0–0,998), `spinAxis` (Standard +z) | einzelnes Schwarzes Loch, mit `spin` rotierend (Kerr, nur mit c) |
 | `orbits` | `mass` (zentrales Loch), `aScale`, `orbits[]` (`a`, `e`, `i`, `node`, `peri`, `anomaly`), `starMass`, `background`, `backgroundA`, `backgroundMass`, `seed` | Kepler-Bahnen um ein Loch, z. B. aus Bahnelementen der Literatur |
+| `cosmicweb` | `box` (Mpc/h), `redshift`, `position`, `seed` | kosmisches Netz: Zel'dovich-Realisierung von ΛCDM (Planck 2018) als Dunkle Materie, Masse Ω_m ρ_krit L³ (T-073) |
 
 ## Eingebaute Szenen
 
@@ -48,11 +50,15 @@ Spielstände (F5/F9, `-load`) sind dagegen **exakte Abzüge** eines laufenden Zu
 | 6 | Antennen-Galaxien | 2,5 kpc | Toomre & Toomre (1972): gleich schwere Scheiben, parabolisch, prograd |
 | 7 | Whirlpool (M51) | 2,5 kpc | angelehnt an M51/NGC 5195, nicht angepasst |
 | 8 | S-Sterne um Sgr A* | 1000 AE, 4,3·10⁶ M☉, **echtes c** | Bahnelemente gerundet nach Gillessen et al. 2017, Phasen illustrativ |
+| 9 | Pferdekopfnebel | 1 pc, 100 M☉ | Photoverdampfung einer Wolkenkante, siehe `note` |
+| Menü | 10 Direkter Kollaps | 1 pc, 10⁴ M☉, c = 15 | 10⁵ M☉ Gas bei 8000 K kollabiert zum Loch (T-067, ADR-0012) |
+| Menü | 11 Akkretionsscheibe | 1 pc, 10⁵ M☉, c = 3 | Gaswolke füttert ein Loch, Scheibe als Darstellung (T-065) |
+| Menü | 12 Kosmisches Netz | 1 Mpc, Würfel 100 Mpc/h | Zel'dovich, ΛCDM Planck 2018, statisch (T-073) |
 
 ## Spielstände
 
-`F5` schreibt `~/Library/Application Support/Galaxy/saves/galaxy-<Zeit>.galaxy` (`os.UserConfigDir`) (gob + gzip, Format-Version 3; 1 und 2 bleiben lesbar): alle Körper in float64 samt Gasgrößen
-(u, h, Ionisation, Leuchtkraft, Geburtszeit), die letzte Kraftauswertung, Parameter, Zeit,
+`F5` schreibt `~/Library/Application Support/Galaxy/saves/galaxy-<Zeit>.galaxy` (`os.UserConfigDir`) (gob + gzip, Format-Version 4; 1 bis 3 bleiben lesbar): alle Körper in float64 samt Gasgrößen
+(u, h, Ionisation, Leuchtkraft, Geburtszeit) und dem Spin der Löcher, die letzte Kraftauswertung, Parameter, Zeit,
 Akkretions-Buchhaltung, Zahl entstandener Sterne, Kamera und die Szenen-Metadaten. `F9` lädt den neuesten,
 `-load datei.galaxy` startet damit; `go run ./tools/evolve -preset 9 -t 0.5 -o x.galaxy` rechnet eine Szene headless vor. Ein geladener Stand rechnet bitidentisch weiter (Test). Nicht gespeichert
 wird die Bahngeschichte der retardierten Gravitation: Löcher gelten nach dem Laden als schon immer vorhanden.
