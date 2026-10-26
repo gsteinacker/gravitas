@@ -1,7 +1,7 @@
 ---
 id: T-073
 title: Kosmisches Netz Etappe 1: Zel'dovich-Szene mit Dichtefärbung
-status: doing
+status: done
 milestone: M11
 priority: 2
 estimate: M
@@ -18,7 +18,9 @@ Eine Szene zeigt das kosmische Netz, also Filamente, Knoten und Voids, als Zel'd
 - [x] Szenen-Komponente `cosmicweb`: Würfel L (Mpc/h), Teilchen n³, Rotverschiebung z, Seed; P(k) nach Eisenstein &
       Hu 1998, normiert auf σ₈; Zel'dovich-Verschiebung per eigener 3D-FFT (Stdlib)
 - [x] Test: Varianz des Dichtefelds folgt dem Wachstumsfaktor D(z); Spektrum der ICs reproduziert P(k)
-- [ ] Darstellung: Dunkle Materie dichtegefärbt (log ρ), Szene mit Mpc-Einheiten und Hinweis „ohne Expansion“
+- [x] Darstellung: Dunkle Materie dichtegefärbt (log ρ), Szene mit Mpc-Einheiten und Hinweis „ohne Expansion“
+      Umgesetzt als additive Punkte (Look.WebAlpha), deren Summe das Tonemapping logarithmisch staucht; der
+      Halo-Schleier verwischte die Filamente.
 - [x] Lernmodus-Thema „Kosmisches Netz“ (drei Stufen, Modellgrenze: Zel'dovich schmiert bei z = 0, kein Expansion)
 
 ## Notizen

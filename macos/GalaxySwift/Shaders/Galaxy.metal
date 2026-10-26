@@ -471,6 +471,9 @@ fragment float4 holeFragment(HoleOut in [[stage_in]]) {
         if (d < 1) return float4(disk.rgb, 1);
         if (any(col > 0) || shadow) return disk;
     }
+    if (in.disk > 0 && in.rings == 0) { // too small to resolve (real c): the disk is a bright point
+        return float4(float3(1.0, 0.85, 0.65) * in.disk * exp(-d * d / 4), 0);
+    }
     if (d < 1) return float4(0, 0, 0, 1);
     float sinI = min(1.0, length(in.axis.xy));
     float side = 0; // −1 prograde side … +1 retrograde side

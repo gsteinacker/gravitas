@@ -70,7 +70,7 @@ const (
 	minEmissionIon     = 0.2
 	hazePercentile     = 0.9
 	hazeTarget         = 0.5
-	webTarget          = 0.6 // brightness of the densest 10 % of the cosmic web
+	webTarget          = 0.2 // brightness of the densest 10 % of the cosmic web
 	webPixels          = 3   // size of a cosmic web point in pixels
 	minHolePixels      = 3
 	spriteMean         = 0.10972 // mean of the glow sprite over its 16×16 quad (render.spriteMean)

@@ -51,6 +51,19 @@ func (c *Cosmology) factor(a0, a1 float64, k int) float64 {
 // package that provides it (internal/cosmo), since sim must not depend on it.
 var ComovingSolver func(p Params, n int) Solver
 
+// Finished reports whether a comoving run has reached its end (today): further steps do nothing.
+func (m *Simulation) Finished() bool {
+	cp := m.Params.Cosmology
+	if cp == nil {
+		return false
+	}
+	end := cp.AEnd
+	if end == 0 {
+		end = 1
+	}
+	return m.ScaleFactor >= end
+}
+
 // stepComoving advances the scale factor by Δ ln a = Params.Dt (stopping at AEnd).
 func (m *Simulation) stepComoving() {
 	cp, s := m.Params.Cosmology, m.State

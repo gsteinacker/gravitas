@@ -184,6 +184,9 @@ func (r *Runner) Run(ctx context.Context) {
 			r.measureEnergy() // baseline before the first step of a new epoch
 		}
 		r.sim.Step()
+		if r.sim.Finished() { // a comoving run that reached today: stop instead of spinning
+			r.paused.Store(true)
+		}
 		if time.Since(r.lastMeasure) > max(energyInterval, time.Duration(float64(r.measureCost)/energyBudget)) {
 			r.measureEnergy()
 		}

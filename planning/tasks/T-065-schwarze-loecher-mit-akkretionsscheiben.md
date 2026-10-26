@@ -1,7 +1,7 @@
 ---
 id: T-065
 title: Schwarze Löcher mit Akkretionsscheiben
-status: doing
+status: done
 milestone: M9
 priority: 2
 estimate: L
@@ -23,9 +23,13 @@ Gravitationsrotverschiebung nach innen, durch die Linse über und unter das Loch
       - Dynamik: Gas (SPH, T-036) mit Drehimpulstransport (α-Viskosität), Akkretion über den Horizont, Rückwirkung
         (Strahlung/Eddington-Grenze, Jets ausdrücklich nur als Ausblick)
 - [x] Akkretionsrate aus der Simulation (Masse, die das Loch pro Zeit schluckt) treibt Helligkeit und Größe
-- [ ] Metal-Darstellung: Temperaturfarbe, Doppler-Beaming (∝ D³…⁴) und Rotverschiebung in der Scheibe, Linse biegt die
+- [x] Metal-Darstellung: Temperaturfarbe, Doppler-Beaming (∝ D³…⁴) und Rotverschiebung in der Scheibe, Linse biegt die
       Rückseite sichtbar über das Loch (Abgleich mit Schwarzschild-Raytracing-Bildern, mindestens qualitativ)
-- [ ] Wirkt mit reduziertem c (größere Horizonte → große, gut sichtbare Scheiben) und realem c (punktförmig hell)
+      Geprüft per Screenshot: von oben Ring wie EHT/M87, von der Seite heller Bogen über dem Schatten wie bei
+      Luminet (1979)/Interstellar. Helligkeit als √I gestaucht, sonst bliebe außerhalb des Schattens alles schwarz.
+- [x] Wirkt mit reduziertem c (größere Horizonte → große, gut sichtbare Scheiben) und realem c (punktförmig hell)
+      Unaufgelöste Löcher (kleiner als 3 Pixel) mit Akkretion leuchten als heller Punkt. In Szene 11 mit echtem c
+      fängt das Loch nichts ein (r_s ≈ 10⁻⁹ pc) und bleibt dunkel, wie es sein soll.
 - [x] Szene oder Startoption, die eine Scheibe gut zeigt (z. B. Loch mit Gaswolke/zerrissenem Stern, T-063)
 - [x] Lernmodus: Thema „Akkretionsscheiben“ in drei Stufen mit Modellgrenzen; Bezug zu ISCO und Kerr (T-059)
 - [x] Physik-Invarianten (Energie/Impuls) unverändert, wenn nur Darstellung; sonst Test der Massen- und

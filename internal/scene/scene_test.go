@@ -204,3 +204,19 @@ func TestStructureFormationGrows(t *testing.T) {
 		}
 	}
 }
+
+// TestStructureFormationStopsToday: the comoving run ends at a = 1 and says so.
+func TestStructureFormationStopsToday(t *testing.T) {
+	sp, err := LoadSpec("scenes/13-structure.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	s, p := sp.Build(512)
+	m := sim.New(s, &bh.Solver{}, p)
+	for i := 0; i < 100000 && !m.Finished(); i++ {
+		m.Step()
+	}
+	if !m.Finished() || m.ScaleFactor != 1 {
+		t.Errorf("a = %g, finished %v", m.ScaleFactor, m.Finished())
+	}
+}

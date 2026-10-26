@@ -1,7 +1,7 @@
 ---
 id: T-074
 title: Kosmisches Netz Etappe 2: Expansion und Particle-Mesh
-status: doing
+status: done
 milestone: M11
 priority: 3
 estimate: L
