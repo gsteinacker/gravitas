@@ -75,3 +75,16 @@ func TestYoungBoost(t *testing.T) {
 		t.Errorf("newborn: light factor %v", a*s*s)
 	}
 }
+
+func TestDiskBrightness(t *testing.T) {
+	if diskBrightness(0, 1) != 0 {
+		t.Error("no accretion, no disk")
+	}
+	low, high := diskBrightness(1e-4, 1), diskBrightness(1e-2, 1)
+	if !(low > 0 && low < high && high <= 1) {
+		t.Errorf("brightness %v (low) %v (high)", low, high)
+	}
+	if diskBrightness(1e-3, 1) != diskBrightness(2e-3, 2) {
+		t.Error("brightness depends on Ṁ/M only")
+	}
+}

@@ -97,6 +97,13 @@ Rotierende Löcher (T-071, `sim/kerr.go`): Jedes Loch trägt seinen Drehimpuls J
 addieren Spins und Bahndrehimpuls, begrenzt auf a* = 0,998. Gezeichnet werden r₊, die ISCO und der Photonenring
 nach Kerr; die Bahnen bleiben Paczyński-Wiita (`docs/analysis/03-kerr.md`).
 
+Akkretionsscheiben (T-065) sind reine Darstellung. Jedes Loch merkt sich seine Akkretionsrate (gleitend über 50
+Schritte, `sim/accrete.go`), die Helligkeit 1 − exp(−Ṁ/M/10⁻³) treibt. Gezeichnet wird eine dünne
+Novikov-Thorne-Scheibe von der ISCO bis 30 r_g in der Ebene senkrecht zum Spin. Dazu kommen Doppler und
+Rotverschiebung g⁴, die Rückseite über eine Ablenkung 4 r_g/b und der Schatten b < √27 r_g. Die Dynamik der
+Scheibe selbst löst das SPH-Gas nicht auf (Glättung ≫ r_g). Entschieden in T-065: Darstellung statt Dynamik,
+weil eine α-Scheibe auf r_g-Skalen Auflösungen und Zeitschritte weit unter denen der Szenen bräuchte.
+
 ## Gas (ADR-0007)
 
 SPH-Gas mit Druck, Viskosität, Kühlung auf eine Untergrenze und Sternentstehung in dichtem, kaltem,

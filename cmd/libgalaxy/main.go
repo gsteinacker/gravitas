@@ -55,7 +55,8 @@ typedef struct {
 
 typedef struct {
 	float x, y, r, physR, rings; // render pixels; rings: 1 if the ISCO ring is drawn
-	float spin, axisX, axisY;    // Kerr spin a* and the projected spin axis (engine.Hole)
+	float spin, axisX, axisY, axisZ; // Kerr spin a* and the spin axis in screen space (engine.Hole)
+	float disk;                      // brightness of the accretion disk, 0–1
 } GalaxyHole;
 */
 import "C"
@@ -422,7 +423,7 @@ func galaxy_prepare(buf *C.float, attnBuf *C.float, capacity C.int, w, h, ps C.d
 			rings = 1
 		}
 		dst[i] = C.GalaxyHole{x: C.float(hl.X), y: C.float(hl.Y), r: C.float(hl.R), physR: C.float(hl.PhysR), rings: rings,
-			spin: C.float(hl.Spin), axisX: C.float(hl.AxisX), axisY: C.float(hl.AxisY)}
+			spin: C.float(hl.Spin), axisX: C.float(hl.AxisX), axisY: C.float(hl.AxisY), axisZ: C.float(hl.AxisZ), disk: C.float(hl.Disk)}
 	}
 	wd := unsafe.Slice((*float32)(unsafe.Pointer(world)), int(maxWorld)*4)
 	nw := min(len(look.World), int(maxWorld))

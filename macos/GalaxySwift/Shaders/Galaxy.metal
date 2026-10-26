@@ -24,6 +24,9 @@ struct Sprite {
     float gas;     // 1: smooth SPH-like kernel (gas), 0: star glow
 };
 
+// DISK_OUTER is the outer radius of accretion disks in r_g (T-065).
+constant float DISK_OUTER = 30;
+
 // KERNEL_MEAN is the mean of the gas kernel (1 − d²)³ over its quad: π/16 (engine.kernelMean).
 constant float KERNEL_MEAN = 0.19635;
 
@@ -371,15 +374,16 @@ fragment float4 finalFragment(Screen in [[stage_in]], texture2d<float> scene [[t
 
 // ---- black holes ----
 
-struct HoleOut { float4 position [[position]]; float2 uv; float r; float rings; float spin; float2 axis; };
+struct HoleOut { float4 position [[position]]; float2 uv; float r; float rings; float spin; float3 axis; float disk; };
 
-// Hole instances, two float4 each: x, y (render pixels), drawn horizon radius R, ISCO ring flag |
-// spin a*, projected spin axis (length sin of its inclination), unused (engine.Hole).
+// Hole instances, three float4 each (engine.Hole): x, y (render pixels), drawn horizon radius R,
+// ISCO ring flag | spin a*, spin axis in screen space (x, y down, z toward the camera) | disk
+// brightness, unused.
 vertex HoleOut holeVertex(uint vid [[vertex_id]], uint iid [[instance_id]], const device float4 *holes [[buffer(0)]],
                           constant Uniforms &u [[buffer(1)]]) {
-    float4 h = holes[2 * iid], k = holes[2 * iid + 1];
+    float4 h = holes[3 * iid], k = holes[3 * iid + 1], q = holes[3 * iid + 2];
     float rg = 1 / (1 + sqrt(max(0.0, 1 - k.x * k.x))); // r_g in units of R = r₊
-    float ext = max(3.2, 9.6 * rg) * h.z;                // out to the retrograde ISCO (9 r_g)
+    float ext = max(3.2, (q.x > 0 ? DISK_OUTER + 2 : 9.6) * rg) * h.z; // the disk or the retrograde ISCO
     float2 c = corners[vid];
     float2 p = h.xy + c * ext;
     HoleOut o;
@@ -388,7 +392,8 @@ vertex HoleOut holeVertex(uint vid [[vertex_id]], uint iid [[instance_id]], cons
     o.r = h.z;
     o.rings = h.w;
     o.spin = k.x;
-    o.axis = k.yz;
+    o.axis = k.yzw;
+    o.disk = q.x;
     return o;
 }
 
@@ -402,16 +407,61 @@ float kerrISCO(float a, bool prograde) {
 
 float kerrPhoton(float a, bool prograde) { return 2 * (1 + cos(2.0 / 3 * acos(prograde ? -a : a))); }
 
+// diskEmission returns the observed color of the thin disk at point p (units of r_g, x right, y up,
+// z toward the camera) with normal n, inner edge rin, or 0 off the disk (T-065): Novikov–Thorne
+// flux F ∝ (1 − √(rin/r))/r³, Keplerian speed β = √(r_g/r), shift g = √(1 − 3r_g/r)/(1 − β_los)
+// (gravitational redshift and Doppler), observed intensity ∝ g⁴ F and temperature ∝ g F^¼.
+float3 diskEmission(float3 p, float3 n, float rin) {
+    float r = length(p);
+    if (r < rin || r > DISK_OUTER) return 0;
+    float x = r / rin;
+    float f = (1 - rsqrt(x)) / (x * x * x) / 0.0567; // normalized to 1 at its maximum (x = 49/36)
+    float beta = min(0.7, rsqrt(r));
+    float3 phi = normalize(cross(n, p));
+    float g = sqrt(max(0.05, 1 - 3 / r)) / (1 - beta * phi.z);
+    float t = clamp(pow(max(f, 0.0), 0.25) * g, 0.0, 1.6); // temperature relative to the hottest ring
+    float3 col = t < 0.5 ? mix(float3(0.5, 0.08, 0.02), float3(1.0, 0.45, 0.1), t * 2)
+               : t < 1.0 ? mix(float3(1.0, 0.45, 0.1), float3(1.0, 0.9, 0.7), (t - 0.5) * 2)
+                         : mix(float3(1.0, 0.9, 0.7), float3(0.75, 0.85, 1.0), min(1.0, (t - 1) * 1.6));
+    float fade = smoothstep(DISK_OUTER, 0.6 * DISK_OUTER, r); // soft outer edge
+    return col * f * g * g * g * g * fade;
+}
+
 // holeFragment: glow out to the shadow edge, ISCO ring, photon ring and the black horizon
 // (premultiplied; glow has alpha 0, so it adds light). For a rotating hole the rings are drawn
 // smaller on the side whose orbits run with the spin and larger on the other side, by how much the
-// spin axis is tilted across the line of sight (T-071).
+// spin axis is tilted across the line of sight (T-071). An accreting hole shows its disk, traced
+// with one deflection: rays that pass the hole bend by 4 r_g/b and show the back of the disk above
+// and below the shadow; rays inside b_c = √27 r_g fall in (T-065).
 fragment float4 holeFragment(HoleOut in [[stage_in]]) {
     float d = length(in.uv);
     float px = 1 / max(in.r, 1e-3); // one pixel in units of R
-    if (d < 1) return float4(0, 0, 0, 1);
     float rg = 1 / (1 + sqrt(max(0.0, 1 - in.spin * in.spin)));
-    float sinI = min(1.0, length(in.axis));
+    float4 disk = 0;
+    if (in.disk > 0 && in.rings > 0) {
+        float2 th = float2(in.uv.x, -in.uv.y) / rg; // image position in r_g, y up
+        float3 n = normalize(float3(in.axis.x, -in.axis.y, in.axis.z) + float3(0, 0, 1e-4));
+        float rin = kerrISCO(in.spin, true);
+        float b = length(th);
+        float3 col = 0;
+        float nz = abs(n.z) < 1e-3 ? 1e-3 : n.z;
+        float zf = -dot(n.xy, th) / nz; // straight ray: where it crosses the disk plane
+        if (zf >= 0) col = diskEmission(float3(th, zf), n, rin);
+        bool shadow = b < 5.196;
+        if (all(col == 0) && !shadow) {
+            float alpha = min(3.0, 4 / b);
+            float2 dir = th / b;
+            float den = alpha * dot(n.xy, dir) + nz;
+            float sb = dot(n.xy, th) / (abs(den) < 1e-4 ? 1e-4 : den);
+            if (sb > 0) col = diskEmission(float3(th - alpha * dir * sb, -sb), n, rin);
+        }
+        float ring = exp(-pow((b - 5.196) / 0.25, 2.0)) * 0.6; // photon ring at the shadow edge
+        disk = float4((col * 2.5 + ring * float3(1.0, 0.8, 0.6)) * in.disk, shadow && all(col == 0) ? in.disk : 0);
+        if (d < 1) return float4(disk.rgb, 1);
+        if (any(col > 0) || shadow) return disk;
+    }
+    if (d < 1) return float4(0, 0, 0, 1);
+    float sinI = min(1.0, length(in.axis.xy));
     float side = 0; // −1 prograde side … +1 retrograde side
     if (in.spin > 0 && sinI > 1e-3) {
         float2 across = float2(-in.axis.y, in.axis.x) / sinI;
@@ -419,7 +469,7 @@ fragment float4 holeFragment(HoleOut in [[stage_in]]) {
     }
     float ph = mix(kerrPhoton(in.spin, true), kerrPhoton(in.spin, false), 0.5 + 0.5 * side) * rg;
     float isco = mix(kerrISCO(in.spin, true), kerrISCO(in.spin, false), 0.5 + 0.5 * side) * rg;
-    float4 c = 0;
+    float4 c = disk;
     if (d < 5.2 * rg) c += float4(18, 7, 2, 0) / 255; // shadow edge ≈ √27 r_g
     float ring = max(1.5 * px, 0.25);
     float a = 1 - smoothstep(ring / 2, ring / 2 + px, fabs(d - ph));

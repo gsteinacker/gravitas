@@ -34,9 +34,25 @@ type Hole struct {
 	R     float32 // drawn horizon radius r₊ (at least minHolePixels)
 	PhysR float32 // Schwarzschild radius 2GM/c², for the lens (spin does not change it to first order)
 	Rings bool    // large enough to draw the ISCO ring
-	// Spin a* (0: Schwarzschild) and the spin axis projected on the screen, of length sin(inclination):
-	// the shader draws the horizon, photon ring and ISCO of a Kerr hole from them (T-071).
-	Spin, AxisX, AxisY float32
+	// Spin a* (0: Schwarzschild) and the spin axis in screen space (x, y projected, z toward the
+	// camera): the shader draws the horizon, photon ring and ISCO of a Kerr hole (T-071) and the
+	// accretion disk in the plane perpendicular to it (T-065).
+	Spin, AxisX, AxisY, AxisZ float32
+	// Disk is the brightness of the accretion disk, 0 (none) to 1 (diskBrightness).
+	Disk float32
+}
+
+// diskReference is the accretion rate, in hole masses per time unit, at which the disk shines with
+// 63 % of its full brightness: a hole swallowing one star particle lights up for a few dozen steps.
+const diskReference = 1e-3
+
+// diskBrightness maps the recent accretion rate mdot of a hole of mass m to the brightness of
+// its disk (0–1, saturating): the luminosity of a thin disk is ∝ Ṁ (T-065).
+func diskBrightness(mdot, m float64) float64 {
+	if mdot <= 0 || m <= 0 {
+		return 0
+	}
+	return 1 - math.Exp(-mdot/m/diskReference)
 }
 
 // Constants of the auto exposure (T-033), the emission (T-037) and the haze.
@@ -126,18 +142,24 @@ func (e *Engine) Prepare(bodies, attn []float32, info FrameInfo, w, h, ps float6
 		}
 		if kind == sim.BlackHole {
 			hl := hole(float64(b[3]), info.C, sx, sy, focal/depth, ps)
+			m := float64(b[3])
 			j := vec.Vec3{X: float64(b[8]), Y: float64(b[9]), Z: float64(b[10])}
-			if a := sim.SpinParameter(j, float64(b[3]), info.C); a > 0 {
-				// The spin axis on screen: its projection, as long as sin of its inclination.
-				e := 0.01 * depth
-				d := j.Scale(e / j.Len())
-				ax, ay, _, ok := vw.Project(float64(b[0])+d.X, float64(b[1])+d.Y, float64(b[2])+d.Z)
-				if ok {
-					k := e * focal / depth
-					hl.Spin, hl.AxisX, hl.AxisY = float32(a), float32((ax-sx)/k), float32((ay-sy)/k)
-				}
-				hl.R = float32(math.Max(minHolePixels*ps, sim.KerrHorizon(float64(b[3]), a, info.C)*focal/depth))
+			a := sim.SpinParameter(j, m, info.C)
+			n := vec.Vec3{Z: 1} // spin axis, which is also the disk normal: the spin grows from what falls in
+			if j.Len2() > 0 {
+				n = j.Scale(1 / j.Len())
+			}
+			// The axis on screen: x, y projected (length sin of the inclination), z toward the camera.
+			e := 0.01 * depth
+			if ax, ay, d2, ok := vw.Project(float64(b[0])+e*n.X, float64(b[1])+e*n.Y, float64(b[2])+e*n.Z); ok {
+				k := e * focal / depth
+				hl.AxisX, hl.AxisY, hl.AxisZ = float32((ax-sx)/k), float32((ay-sy)/k), float32((depth-d2)/e)
+			}
+			hl.Spin = float32(a)
+			if info.C > 0 {
+				hl.R = float32(math.Max(minHolePixels*ps, sim.KerrHorizon(m, a, info.C)*focal/depth))
 				hl.Rings = float64(hl.R) > minHolePixels*ps
+				hl.Disk = float32(diskBrightness(float64(b[11]), m))
 			}
 			l.look.Holes = append(l.look.Holes, hl)
 			continue

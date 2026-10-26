@@ -1,0 +1,11 @@
+{
+  "id": "accretion-disks",
+  "title": "Akkretionsscheiben",
+  "keys": "",
+  "short": "Gas, das in ein Schwarzes Loch fällt, kreist erst in einer heißen, hell leuchtenden Scheibe.",
+  "levels": {
+    "school": "Gas fällt fast nie direkt in ein Schwarzes Loch. Es kreist darum, wie Wasser um einen Abfluss, und reibt dabei an sich selbst. Dadurch wird es Millionen Grad heiß und leuchtet heller als ganze Galaxien. Das ist die Akkretionsscheibe.\n\nIm Bild siehst du drei Effekte: Die Seite, die auf dich zukommt, ist heller und bläulicher (Doppler-Effekt). Innen wird das Licht röter, weil es gegen die Schwerkraft herausklettern muss. Und die Rückseite der Scheibe erscheint über und unter dem Loch, weil das Loch ihr Licht um sich herum biegt. Das ist ein Bild wie vom Event Horizon Telescope.",
+    "lay": "Gas mit Drehimpuls kann nicht direkt hineinfallen. Es bildet eine Scheibe, in der Reibung (Turbulenz durch Magnetfelder) Drehimpuls nach außen und Masse nach innen schafft. Die Scheibe endet innen an der innersten stabilen Bahn (ISCO). Bis dorthin wird ein großer Teil der Ruheenergie als Strahlung frei: 6 % beim nicht rotierenden, bis 42 % beim schnell rotierenden Loch, viel mehr als bei der Kernfusion (0,7 %). Innen ist die Scheibe am heißesten.\n\nIn der App leuchtet die Scheibe, sobald das Loch tatsächlich Masse schluckt. Ihre Helligkeit folgt der gemessenen Akkretionsrate, ihre Ebene der Drehachse des Lochs, die den Drehimpuls des Verschluckten aufnimmt.",
+    "physics": "Dünne Scheibe nach Novikov-Thorne/Shakura-Sunyaev, newtonsch genähert: Fluss F(r) ∝ Ṁ (1 − √(r_in/r)) / r³, T ∝ F^¼ ∝ r^(−3/4) außen, Innenkante r_in = ISCO (prograd, Kerr), Außenkante 30 r_g. Beobachtete Intensität ∝ g⁴ F mit g = √(1 − 3r_g/r) / (1 − β·n̂), β = √(r_g/r) (Keplergeschwindigkeit). Strahlenverlauf mit einer Ablenkung α = 4r_g/b im Linsenpunkt; Strahlen mit b < √27 r_g enden im Loch (Schatten).\n\nModellgrenzen: Die Scheibe ist Darstellung, nicht simuliert. Das SPH-Gas wird mit der Glättungslänge ≫ r_g aufgelöst und fällt bei d < r_s hinein. Keine α-Viskosität auf Scheibenskala, keine Strahlungsrückwirkung (Eddington-Grenze), keine Jets. Die Lichtablenkung ist schwachfeld-genähert (unterschätzt sie nahe der Photonensphäre), höhere Bilder fehlen. Helligkeit 1 − exp(−Ṁ/M/10⁻³) statt absoluter Leuchtkraft."
+  }
+}

@@ -1,6 +1,9 @@
 package sim
 
-import "sync"
+import (
+	"math"
+	"sync"
+)
 
 // accrete lets black holes swallow every star inside their Schwarzschild radius and merges
 // black holes whose horizons touch. Rest mass and momentum m·u are conserved; the position is
@@ -104,6 +107,10 @@ func (m *Simulation) merge(h, i int) {
 	s.SpinZ[h] += s.SpinZ[i] + lz + mz
 	s.SpinX[i], s.SpinY[i], s.SpinZ[i] = 0, 0, 0
 
+	if s.Kind[h] == BlackHole {
+		m.recordAccretion(h, i)
+	}
+
 	s.PosX[h], s.PosY[h], s.PosZ[h] = xn, yn, zn
 	s.VelX[h], s.VelY[h], s.VelZ[h] = ux, uy, uz
 	s.Mass[h] = mn
@@ -117,3 +124,40 @@ func sq(dx, dy, dz float64) float64 { return dx*dx + dy*dy + dz*dz }
 func cross(m, rx, ry, rz, vx, vy, vz float64) (x, y, z float64) {
 	return m * (ry*vz - rz*vy), m * (rz*vx - rx*vz), m * (rx*vy - ry*vx)
 }
+
+// accretionTime is the memory of the accretion rate in steps: a hole that swallows Ṁ per time
+// unit steadily shows Ṁ, and the rate fades over this many steps after the last meal.
+const accretionTime = 50
+
+// recordAccretion adds what hole h swallows with body i to its recent accretion rate (T-065: it
+// makes the accretion disk shine). Holes merging combine their rates.
+func (m *Simulation) recordAccretion(h, i int) {
+	if m.accretion == nil {
+		m.accretion = map[uint64]float64{}
+	}
+	s := m.State
+	if s.Kind[i] == BlackHole {
+		m.accretion[s.ID[h]] += m.accretion[s.ID[i]]
+		delete(m.accretion, s.ID[i])
+		return
+	}
+	m.accretion[s.ID[h]] += s.Mass[i] / (accretionTime * m.Params.Dt)
+}
+
+// decayAccretion lets the recent accretion rates fade (exponentially over accretionTime steps).
+func (m *Simulation) decayAccretion(dt float64) {
+	if len(m.accretion) == 0 {
+		return
+	}
+	f := math.Exp(-dt / (accretionTime * m.Params.Dt))
+	for id, r := range m.accretion {
+		if r *= f; r < 1e-30 {
+			delete(m.accretion, id)
+		} else {
+			m.accretion[id] = r
+		}
+	}
+}
+
+// AccretionRate returns the recent accretion rate (mass per time) of the body with this ID.
+func (m *Simulation) AccretionRate(id uint64) float64 { return m.accretion[id] }

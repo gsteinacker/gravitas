@@ -76,3 +76,30 @@ func TestSpinIsCappedAtTheThorneLimit(t *testing.T) {
 		t.Errorf("a* = %v, want %v", a, MaxSpin)
 	}
 }
+
+// TestAccretionRateTracksSteadyFeeding: a hole swallowing q per step shows Ṁ = q/dt after a while
+// and the rate fades once the feeding stops (T-065).
+func TestAccretionRateTracksSteadyFeeding(t *testing.T) {
+	p := Params{Dt: 0.01, Softening: 0.05, C: 5}
+	s := NewState(1)
+	h := s.Add(Body{Mass: 1, Kind: BlackHole})
+	m := New(s, pairSolver{}, p)
+	id := s.ID[h]
+	const q = 1e-4
+	for range 500 {
+		i := s.Add(Body{Pos: vec.Vec3{X: 1e-3}, Mass: q})
+		m.recordAccretion(h, i)
+		s.Alive[i] = false
+		s.Compact()
+		m.decayAccretion(p.Dt)
+	}
+	if got, want := m.AccretionRate(id), q/p.Dt; math.Abs(got/want-1) > 0.05 {
+		t.Errorf("steady rate %.4g, want %.4g", got, want)
+	}
+	for range 500 {
+		m.decayAccretion(p.Dt)
+	}
+	if r := m.AccretionRate(id); r > 1e-3*q/p.Dt {
+		t.Errorf("rate did not fade: %.3g", r)
+	}
+}

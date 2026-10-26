@@ -36,10 +36,12 @@ type Snapshot struct {
 
 func (sn *Snapshot) Len() int { return len(sn.Mass) }
 
-// HoleSpin is the angular momentum J of the black hole with body index Index.
+// HoleSpin is the angular momentum J and the recent accretion rate Mdot (mass per time) of the
+// black hole with body index Index.
 type HoleSpin struct {
 	Index int
 	J     vec.Vec3
+	Mdot  float64
 }
 
 func (sn *Snapshot) fill(m *Simulation) {
@@ -73,7 +75,7 @@ func (sn *Snapshot) fill(m *Simulation) {
 	sn.Spins = sn.Spins[:0]
 	for i, k := range s.Kind {
 		if k == BlackHole {
-			sn.Spins = append(sn.Spins, HoleSpin{Index: i, J: s.Spin(i)})
+			sn.Spins = append(sn.Spins, HoleSpin{Index: i, J: s.Spin(i), Mdot: m.AccretionRate(s.ID[i])})
 		}
 	}
 	sn.Time, sn.Steps, sn.C, sn.Substeps, sn.Gravity = m.Time, m.Steps, m.Params.C, m.Substeps, m.Params.Gravity

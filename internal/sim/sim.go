@@ -94,6 +94,7 @@ type Simulation struct {
 	fastX, fastY, fastZ []float64
 
 	histories  map[uint64]*holeHistory // past positions of black holes by ID (retarded.go)
+	accretion  map[uint64]float64      // recent accretion rate of black holes by ID (accrete.go)
 	dudt, divv []float64               // gas: du/dt and velocity divergence (gas.go)
 	ion        ionizer                 // photoionization grid (ionize.go)
 	holeHists  []*holeHistory          // histories of m.holes, bound once per step
@@ -107,6 +108,7 @@ func New(s *State, solver Solver, p Params) *Simulation {
 func (m *Simulation) Reset(s *State, p Params) {
 	m.State, m.Params, m.Time, m.Steps, m.accValid, m.ExternalEnergy = s, p, 0, 0, false, 0
 	m.StarsFormed, m.HolesFormed, m.hydroDt = 0, 0, 0
+	m.accretion = nil
 	m.Epoch++
 	m.histories = nil
 }
@@ -215,6 +217,7 @@ func (m *Simulation) step() {
 	}
 	m.updateGas(dt)
 	m.collapse()
+	m.decayAccretion(dt)
 	m.Time += dt
 	m.Steps++
 	m.recordHoles()
