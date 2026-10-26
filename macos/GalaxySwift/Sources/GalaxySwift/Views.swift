@@ -86,11 +86,7 @@ struct InspectorView: View {
                     .pickerStyle(.segmented)
                     InfoButton(engine, "speed")
                 }
-                LabeledContent(L("Zeit", "Time"), verbatim: timeText)
-                LabeledContent(L("Leistung", "Performance"),
-                               verbatim: String(format: L("%.0f Schritte/s · %.0f FPS", "%.0f steps/s · %.0f FPS"), s.sps, s.fps))
-                LabeledContent(L("Körper", "Bodies"), verbatim: "\(s.bodies) · " + String(format: L("Auflösung %g×", "resolution %g×"), s.renderScale))
-                LabeledContent(L("Energiedrift", "Energy drift"), verbatim: driftText)
+                LiveStats(engine: engine)
             }
             Section(L("Physik", "Physics")) {
                 LabeledContent {
@@ -118,8 +114,7 @@ struct InspectorView: View {
                 }
                 LabeledContent {
                     Slider(value: Binding(get: { s.thetaUser }, set: { engine.set("theta", $0) }), in: 0.5...1.0)
-                    Text(String(format: "%.2f%@", s.theta, s.theta > s.thetaUser + 1e-9 ? "*" : ""))
-                        .monospacedDigit().frame(width: 52, alignment: .trailing)
+                    ThetaValue(engine: engine)
                     InfoButton(engine, "theta")
                 } label: {
                     Text(verbatim: "θ").help(L("Öffnungswinkel des Barnes-Hut-Baums: kleiner ist genauer, * = vom Regler angehoben",
@@ -195,6 +190,22 @@ struct InspectorView: View {
             InfoButton(engine, info)
         }
     }
+}
+
+/// LiveStats shows the values that change every frame. They are read from engine.live in this
+/// view only, so their updates do not rebuild the inspector's pickers and menus.
+struct LiveStats: View {
+    var engine: Engine
+
+    private var s: GalaxyState { engine.live }
+
+    var body: some View {
+        LabeledContent(L("Zeit", "Time"), verbatim: timeText)
+        LabeledContent(L("Leistung", "Performance"),
+                       verbatim: String(format: L("%.0f Schritte/s · %.0f FPS", "%.0f steps/s · %.0f FPS"), s.sps, s.fps))
+        LabeledContent(L("Körper", "Bodies"), verbatim: "\(s.bodies) · " + String(format: L("Auflösung %g×", "resolution %g×"), s.renderScale))
+        LabeledContent(L("Energiedrift", "Energy drift"), verbatim: driftText)
+    }
 
     private var timeText: String {
         if s.scaleFactor > 0 { // comoving mode: redshift and cosmic time since the start
@@ -209,6 +220,17 @@ struct InspectorView: View {
     private var driftText: String {
         if s.driftQuality == 0 || s.drift.isNaN { return L("wird gemessen …", "measuring…") }
         return String(format: s.driftQuality == 1 ? "≈ %+.0e" : "%+.1e", s.drift)
+    }
+}
+
+/// ThetaValue shows the opening angle in use (* = raised by the governor), from engine.live.
+struct ThetaValue: View {
+    var engine: Engine
+
+    var body: some View {
+        let s = engine.live
+        Text(String(format: "%.2f%@", s.theta, s.theta > s.thetaUser + 1e-9 ? "*" : ""))
+            .monospacedDigit().frame(width: 52, alignment: .trailing)
     }
 }
 
@@ -453,7 +475,7 @@ struct StatusOverlay: View {
     var engine: Engine
 
     var body: some View {
-        let s = engine.state
+        let s = engine.live
         VStack(alignment: .leading, spacing: 3) {
             Text(verbatim: engine.sceneName + (s.paused != 0 ? L("   [PAUSE]", "   [PAUSED]") : "")).bold()
             if !engine.sceneInfo.isEmpty { Text(verbatim: engine.sceneInfo) }

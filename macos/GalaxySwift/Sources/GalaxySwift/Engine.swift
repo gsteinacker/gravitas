@@ -16,7 +16,12 @@ func L(_ de: String, _ en: String) -> String { uiGerman ? de : en }
 final class Engine {
     static let floatsPerBody = 12
 
+    /// state is the slowly changing part of the core's state (settings, modes, counts), assigned
+    /// only when it changes: menus, pickers and the menu bar read it, and SwiftUI rebuilds what reads
+    /// a changed property, which closes an open menu. Values that change every frame are in live.
     private(set) var state = GalaxyState()
+    /// live is the full state including time, rates and drift, for the small views that show them.
+    private(set) var live = GalaxyState()
     private(set) var sceneName = ""
     private(set) var sceneInfo = ""
     private(set) var message = ""
@@ -88,25 +93,39 @@ final class Engine {
     func refresh() {
         var s = GalaxyState()
         galaxy_state(&s)
-        state = s
+        live = s
+        var slow = s // without the values that change all the time
+        slow.sps = 0; slow.fps = 0; slow.time = 0; slow.drift = 0; slow.driftQuality = 0
+        slow.substeps = 0; slow.hydroSubsteps = 0; slow.starsFormed = 0; slow.bodies = 0
+        slow.theta = 0; slow.renderScale = 0; slow.scaleFactor = 0
+        slow.darkBodies = min(slow.darkBodies, 1); slow.gasBodies = min(slow.gasBodies, 1) // only whether there are any
+        slow.blackHoles = min(slow.blackHoles, 1)
+        if !same(slow, state) { state = slow }
         let name = Engine.text("sceneName")
         if name != sceneName {
             sceneName = name
             sceneInfo = Engine.text("sceneInfo")
         }
-        message = Engine.text("message")
+        let m = Engine.text("message")
+        if m != message { message = m }
         let t = Engine.text("topics").split(separator: "\n", omittingEmptySubsequences: false).map(String.init)
         if t != topics { topics = t }
-        topicIndex = Int(galaxy_topic_index())
+        let ti = Int(galaxy_topic_index())
+        if ti != topicIndex { topicIndex = ti }
         var la = GalaxyLaunch()
         galaxy_launch(&la)
-        launch = la
+        if !same(la, launch) { launch = la }
         var st = GalaxySettings()
         galaxy_settings(&st)
         if st.stars != settings.stars || st.gpu != settings.gpu || st.capacity != settings.capacity { settings = st }
         let title = Engine.text("title"), body = Engine.text("body")
         if title != explanationTitle { explanationTitle = title }
         if body != explanationBody { explanationBody = body }
+    }
+
+    /// same compares two C structs byte by byte (NaN-safe; Observable notifies on every assignment).
+    private func same<T>(_ a: T, _ b: T) -> Bool {
+        withUnsafeBytes(of: a) { x in withUnsafeBytes(of: b) { y in x.elementsEqual(y) } }
     }
 
     func action(_ name: String) {
