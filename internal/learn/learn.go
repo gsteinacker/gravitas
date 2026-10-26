@@ -48,7 +48,7 @@ func (t *Topic) Text(l Level) string { return t.Levels[l.Key()] }
 
 // Order is the order in which topics are listed.
 var Order = []string{
-	"gravity", "dark-matter", "black-holes", "isco", "kerr", "speed-of-light", "doppler", "lensing",
+	"gravity", "dark-matter", "black-holes", "hole-formation", "isco", "kerr", "speed-of-light", "doppler", "lensing",
 	"retarded-gravity", "spiral-arms", "tides", "gas", "cooling", "star-formation", "ionization", "dust", "energy", "units",
 }
 

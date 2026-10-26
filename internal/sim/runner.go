@@ -21,6 +21,7 @@ type Snapshot struct {
 	Spins          []HoleSpin // angular momentum of every black hole
 	YoungAge       float64    // stars younger than this are drawn young
 	StarsFormed    int
+	HolesFormed    int // black holes formed by collapse (collapse.go)
 	Kind           []Kind
 	Time           float64
 	Steps          int
@@ -48,7 +49,7 @@ func (sn *Snapshot) fill(m *Simulation) {
 	sn.VX, sn.VY, sn.VZ = resize(sn.VX, n), resize(sn.VY, n), resize(sn.VZ, n)
 	sn.Age, sn.GasU, sn.GasRho = resize(sn.Age, n), resize(sn.GasU, n), resize(sn.GasRho, n)
 	sn.GasH, sn.GasIon = resize(sn.GasH, n), resize(sn.GasIon, n)
-	sn.YoungAge, sn.StarsFormed = m.Params.Gas.YoungAge, m.StarsFormed
+	sn.YoungAge, sn.StarsFormed, sn.HolesFormed = m.Params.Gas.YoungAge, m.StarsFormed, m.HolesFormed
 	if sn.YoungAge == 0 {
 		sn.YoungAge = defaultYoungAge
 	}

@@ -76,6 +76,8 @@ type Simulation struct {
 
 	// StarsFormed counts stars born from gas since Reset.
 	StarsFormed int
+	// HolesFormed counts black holes formed by collapse since Reset (collapse.go).
+	HolesFormed int
 	// Substeps is the number of inner substeps used near black holes in the last step.
 	Substeps int
 	// HydroSubsteps is the number of parts the last step was split into for the gas.
@@ -104,7 +106,7 @@ func New(s *State, solver Solver, p Params) *Simulation {
 // Reset replaces the state and restarts the clock.
 func (m *Simulation) Reset(s *State, p Params) {
 	m.State, m.Params, m.Time, m.Steps, m.accValid, m.ExternalEnergy = s, p, 0, 0, false, 0
-	m.StarsFormed, m.hydroDt = 0, 0
+	m.StarsFormed, m.HolesFormed, m.hydroDt = 0, 0, 0
 	m.Epoch++
 	m.histories = nil
 }
@@ -212,6 +214,7 @@ func (m *Simulation) step() {
 		m.Substeps = 1
 	}
 	m.updateGas(dt)
+	m.collapse()
 	m.Time += dt
 	m.Steps++
 	m.recordHoles()

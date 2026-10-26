@@ -86,6 +86,17 @@ Milchstraßen-Verhältnis); Szenen ohne `velocityUnit` normieren automatisch. Je
 mit dem Staub vor ihm geschwächt, τ · Φ((d − μ)/σ) aus Mittelwert und Streuung der Staubtiefe je Bildpunkt
 (`internal/render/dust.go`); der Himmelshintergrund liegt hinter allem Staub.
 
+## Entstehung Schwarzer Löcher (ADR-0012)
+
+Hoop-Kriterium auf der kleinsten aufgelösten Kugel: Steckt in R = 2ε die Masse M ≥ R c²/2 in mindestens 20
+Teilchen, werden diese zu einem Loch (`sim/collapse.go`, alle 10 Schritte). Dabei bleiben Masse, Impuls und
+Drehimpuls erhalten (Drehimpuls als Spin), die Energie wird bilanziert. Mit dem echten c geschieht das in keiner
+Szene. Die Szene „Direct collapse“ zeigt es mit verkleinertem c.
+
+Rotierende Löcher (T-071, `sim/kerr.go`): Jedes Loch trägt seinen Drehimpuls J. Akkretion und Verschmelzung
+addieren Spins und Bahndrehimpuls, begrenzt auf a* = 0,998. Gezeichnet werden r₊, die ISCO und der Photonenring
+nach Kerr; die Bahnen bleiben Paczyński-Wiita (`docs/analysis/03-kerr.md`).
+
 ## Gas (ADR-0007)
 
 SPH-Gas mit Druck, Viskosität, Kühlung auf eine Untergrenze und Sternentstehung in dichtem, kaltem,

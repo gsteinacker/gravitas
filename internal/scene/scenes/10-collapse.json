@@ -1,0 +1,48 @@
+{
+  "name": "Direct collapse",
+  "intro": {
+    "school": "Eine riesige, warme Gaswolke fällt unter ihrer eigenen Schwerkraft in sich zusammen. Im Zentrum wird das Gas so dicht, dass nicht einmal Licht mehr entkommen kann: Ein Schwarzes Loch entsteht. Damit du das in kurzer Zeit siehst, ist das Licht hier sehr langsam.",
+    "lay": "So könnten im frühen Universum die ersten großen Schwarzen Löcher entstanden sein: Eine Wolke aus 100 000 Sonnenmassen, die kaum abkühlt (etwa 8000 K) und deshalb nicht in viele Sterne zerfällt, sondern als Ganzes kollabiert. Sobald die Masse im Zentrum in ihren eigenen Schwarzschild-Radius passt, wird sie zum Loch. Die Lichtgeschwindigkeit ist stark verkleinert, sonst bräuchte das viel dichtere Zustände, als die Simulation auflösen kann.",
+    "physics": "Plummer-Gaswolke 10⁵ M☉ mit Skala 0,5 pc, 8000 K (atomare Kühlung, kein H₂), schwache Turbulenz; Jeans-instabil. Hoop-Kriterium auf der aufgelösten Skala: Masse in R = 2ε mindestens Rc²/2 → Loch (Masse, Impuls, Drehimpuls erhalten, Energie bilanziert). c = 15 statt 45 700 (Szeneneinheiten): r_s wird damit um den Faktor 10⁷ überhöht. Grenzen: kein Strahlungsdruck, keine Rückkopplung, keine allgemein-relativistische Instabilität supermassiver Sterne."
+  },
+  "topics": [
+    "hole-formation",
+    "gas-clouds",
+    "black-holes",
+    "speed-of-light"
+  ],
+  "info": "1 unit = 1 pc, 1e4 Msun (6.56 km/s); 1e5 Msun cloud at 8000 K; c reduced to 15 (real ~45700)",
+  "yearsPerUnit": 149000.0,
+  "velocityUnit": 6.56,
+  "gasFloorK": 8000,
+  "params": {
+    "dt": 0.002,
+    "softening": 0.01,
+    "c": 15,
+    "gas": {
+      "coolTime": 0.05
+    }
+  },
+  "camera": {
+    "target": [0, 0, 0],
+    "distance": 4,
+    "pitch": 50,
+    "yaw": 0
+  },
+  "effects": "glow,gas",
+  "components": [
+    {
+      "type": "gasclump",
+      "name": "atomic cooling cloud",
+      "note": "Direct-collapse scenario (Bromm & Loeb 2003; Latif & Ferrara 2016): 1e5 Msun of metal-free gas at ~8000 K that cannot cool further without H2, so it does not fragment. Scaled down from the real 1e5-1e6 Msun within ~1-10 pc.",
+      "weight": 1,
+      "mass": 10,
+      "scale": 0.5,
+      "gasTemperature": 8000,
+      "turbulence": 0.5,
+      "position": [0, 0, 0],
+      "velocity": [0, 0, 0],
+      "seed": 3
+    }
+  ]
+}

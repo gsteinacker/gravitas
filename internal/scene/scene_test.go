@@ -122,3 +122,22 @@ func TestDustOpacityFromUnits(t *testing.T) {
 		t.Error("without units the opacity must be 0 (automatic)")
 	}
 }
+
+// TestBuiltinScenesFormNoHoles: no built-in scene collapses into a black hole by itself at its
+// own speed of light (T-067).
+func TestBuiltinScenesFormNoHoles(t *testing.T) {
+	specs, err := Builtin()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, sp := range specs {
+		s, p := sp.Build(4000)
+		m := sim.New(s, &bh.Solver{}, p)
+		for range 30 {
+			m.Step()
+		}
+		if m.HolesFormed != 0 {
+			t.Errorf("%s: %d holes formed by collapse", sp.Name, m.HolesFormed)
+		}
+	}
+}

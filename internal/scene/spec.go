@@ -1,6 +1,7 @@
 package scene
 
 import (
+	"cmp"
 	"embed"
 	"encoding/json"
 	"fmt"
@@ -10,6 +11,8 @@ import (
 	"os"
 	"path"
 	"slices"
+	"strconv"
+	"strings"
 
 	"galaxy/internal/sim"
 	"galaxy/internal/vec"
@@ -427,13 +430,18 @@ func keplerState(m, a, e, inc, node, peri, meanAnomaly float64) (vec.Vec3, vec.V
 	return rot(p), rot(v)
 }
 
-// Builtin returns the scenes embedded in the binary, ordered by file name.
+// Builtin returns the scenes embedded in the binary, ordered by the number their file name starts
+// with (1-…, 2-…, …, 10-…).
 func Builtin() ([]*Spec, error) {
 	names, err := fs.Glob(builtinFS, "scenes/*.json")
 	if err != nil {
 		return nil, err
 	}
-	slices.Sort(names)
+	number := func(name string) int {
+		n, _ := strconv.Atoi(strings.SplitN(path.Base(name), "-", 2)[0])
+		return n
+	}
+	slices.SortFunc(names, func(a, b string) int { return cmp.Or(cmp.Compare(number(a), number(b)), strings.Compare(a, b)) })
 	var specs []*Spec
 	for _, name := range names {
 		data, err := builtinFS.ReadFile(name)

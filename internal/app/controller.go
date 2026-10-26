@@ -249,6 +249,7 @@ type Note struct {
 // SimState is what the controller last saw of the simulation (from a snapshot).
 type SimState struct {
 	Bodies, BlackHoles, Dark, Gas, StarsFormed int
+	HolesFormed                                int
 	Time, C                                    float64
 	Substeps, HydroSubsteps                    int
 	Gravity                                    sim.GravityMode
@@ -595,6 +596,12 @@ func (c *Controller) Observe(sn *sim.Snapshot) {
 	s := SimState{
 		Bodies: sn.Len(), Time: sn.Time, C: sn.C, Substeps: sn.Substeps, HydroSubsteps: sn.HydroSubsteps,
 		Gravity: sn.Gravity, DarkMatterOff: sn.DarkMatterOff, StarsFormed: sn.StarsFormed,
+		HolesFormed: sn.HolesFormed,
+	}
+	if s.HolesFormed > c.sim.HolesFormed && s.Time >= c.sim.Time { // not after a restart (T-067)
+		c.Notify(i18n.T("Ein Schwarzes Loch ist entstanden: die Masse passte in ihren eigenen Schwarzschild-Radius.",
+			"A black hole has formed: the mass fit inside its own Schwarzschild radius."))
+		c.focus("hole-formation")
 	}
 	for _, k := range sn.Kind {
 		switch k {
