@@ -11,7 +11,7 @@ struct Uniforms {
     float4 cam;    // pitch, distance, mean star mass, speed of light (0 = Newtonian)
     float4 eye;    // camera position xyz, exposure
     float4 misc;   // effect bits, young age, emission normalization, dust opacity κ
-    float4 haze;   // dark matter alpha, gas map alpha, number of world holes, unused
+    float4 haze;   // dark matter alpha, gas map alpha, number of world holes, cosmic web point brightness
     float4 pop;    // population radius (0: particles are stars), star formation density, its light, unused
 };
 
@@ -217,6 +217,12 @@ vertex Sprite spriteVertex(uint vid [[vertex_id]], uint iid [[instance_id]],
         return makeSprite(s, min(g, 240 * ps) / 2, float4(c.rgb * a, 0), vid, u);
     }
     if (sub != 0) return culled();
+    if (kind == 2 && u.haze.w > 0) {
+        // Cosmic web (engine.Look.WebAlpha): dark matter is all there is, so every particle is a
+        // faint point and their sum shows filaments, halos and voids; the tone map compresses it.
+        float3 col = float3(0.62, 0.5, 1.0);
+        return makeSprite(s, 1.5 * ps, float4(col * u.haze.w, 0), vid, u);
+    }
     if (kind == 3 && (fx & 32) != 0) {
         // Gas map in false colors (neutral blue, partly ionized green, ionized red): column density
         // of a kernel of diameter 2h, normalized by the Go core (engine.gasMapSize).
@@ -410,7 +416,9 @@ float kerrPhoton(float a, bool prograde) { return 2 * (1 + cos(2.0 / 3 * acos(pr
 // diskEmission returns the observed color of the thin disk at point p (units of r_g, x right, y up,
 // z toward the camera) with normal n, inner edge rin, or 0 off the disk (T-065): Novikov–Thorne
 // flux F ∝ (1 − √(rin/r))/r³, Keplerian speed β = √(r_g/r), shift g = √(1 − 3r_g/r)/(1 − β_los)
-// (gravitational redshift and Doppler), observed intensity ∝ g⁴ F and temperature ∝ g F^¼.
+// (gravitational redshift and Doppler), observed intensity I ∝ g⁴ F and temperature ∝ g F^¼.
+// Drawn as √I, like the compressed scales of disk images: linear, F falls as r⁻³ and everything
+// outside the shadow of a fast spinning hole (ISCO near r_g) would be black.
 float3 diskEmission(float3 p, float3 n, float rin) {
     float r = length(p);
     if (r < rin || r > DISK_OUTER) return 0;
@@ -423,8 +431,8 @@ float3 diskEmission(float3 p, float3 n, float rin) {
     float3 col = t < 0.5 ? mix(float3(0.5, 0.08, 0.02), float3(1.0, 0.45, 0.1), t * 2)
                : t < 1.0 ? mix(float3(1.0, 0.45, 0.1), float3(1.0, 0.9, 0.7), (t - 0.5) * 2)
                          : mix(float3(1.0, 0.9, 0.7), float3(0.75, 0.85, 1.0), min(1.0, (t - 1) * 1.6));
-    float fade = smoothstep(DISK_OUTER, 0.6 * DISK_OUTER, r); // soft outer edge
-    return col * f * g * g * g * g * fade;
+    float fade = 1 - smoothstep(0.6 * DISK_OUTER, DISK_OUTER, r); // soft outer edge (edge0 < edge1 in Metal)
+    return col * sqrt(max(f, 0.0)) * g * g * fade;
 }
 
 // holeFragment: glow out to the shadow edge, ISCO ring, photon ring and the black horizon
@@ -446,8 +454,10 @@ fragment float4 holeFragment(HoleOut in [[stage_in]]) {
         float3 col = 0;
         float nz = abs(n.z) < 1e-3 ? 1e-3 : n.z;
         float zf = -dot(n.xy, th) / nz; // straight ray: where it crosses the disk plane
-        if (zf >= 0) col = diskEmission(float3(th, zf), n, rin);
         bool shadow = b < 5.196;
+        // A ray inside the shadow still crosses the disk on its way in if the plane lies in front
+        // of the photon orbit (z > −3 r_g); otherwise the near side of the disk is in front.
+        if (zf >= (shadow ? -3.0 : 0.0)) col = diskEmission(float3(th, zf), n, rin);
         if (all(col == 0) && !shadow) {
             float alpha = min(3.0, 4 / b);
             float2 dir = th / b;
@@ -456,7 +466,8 @@ fragment float4 holeFragment(HoleOut in [[stage_in]]) {
             if (sb > 0) col = diskEmission(float3(th - alpha * dir * sb, -sb), n, rin);
         }
         float ring = exp(-pow((b - 5.196) / 0.25, 2.0)) * 0.6; // photon ring at the shadow edge
-        disk = float4((col * 2.5 + ring * float3(1.0, 0.8, 0.6)) * in.disk, shadow && all(col == 0) ? in.disk : 0);
+        // The shadow stays dark behind the near side of the disk, which crosses it in front.
+        disk = float4((col * 2.5 + ring * float3(1.0, 0.8, 0.6)) * in.disk, shadow ? in.disk : 0);
         if (d < 1) return float4(disk.rgb, 1);
         if (any(col > 0) || shadow) return disk;
     }

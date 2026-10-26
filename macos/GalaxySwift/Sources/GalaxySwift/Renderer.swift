@@ -224,7 +224,7 @@ final class Renderer: NSObject, MTKViewDelegate {
             cam: SIMD4(Float(info.pitch), Float(info.distance), Float(info.meanStarMass), Float(info.c)),
             eye: SIMD4(Float(eye.x), Float(eye.y), Float(eye.z), Float(look.exposure)),
             misc: SIMD4(Float(fx), Float(info.youngAge), Float(look.emNorm), Float(look.dustKappa)),
-            haze: SIMD4(look.darkAlpha, look.gasAlpha, Float(look.worldHoles), 0),
+            haze: SIMD4(look.darkAlpha, look.gasAlpha, Float(look.worldHoles), look.webAlpha),
             pop: SIMD4(look.popRadius, look.sfDensity, look.sfLight, 0))
     }
 

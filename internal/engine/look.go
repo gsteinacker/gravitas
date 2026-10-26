@@ -16,7 +16,11 @@ type Look struct {
 	Exposure  float64 // star brightness factor (auto exposure)
 	EmNorm    float64 // normalization of the Hα emission
 	DarkAlpha float32 // opacity per dark matter sprite (haze), 0 if hidden
-	GasAlpha  float32 // opacity per gas sprite of the gas map, 0 if hidden
+	// WebAlpha is the brightness of a dark matter point when a scene holds nothing else (the
+	// cosmic web, T-073/T-074): the particles themselves are drawn, and their sum shows the
+	// filaments, halos and voids. 0 otherwise; the haze is off then.
+	WebAlpha float32
+	GasAlpha float32 // opacity per gas sprite of the gas map, 0 if hidden
 	// DustKappa is the dust opacity (V-band optical depth per unit column) for the dust image of
 	// the background; 0 without dust. The attenuation of the bodies is in Prepare's attn buffer.
 	DustKappa float64
@@ -66,6 +70,8 @@ const (
 	minEmissionIon     = 0.2
 	hazePercentile     = 0.9
 	hazeTarget         = 0.5
+	webTarget          = 0.6 // brightness of the densest 10 % of the cosmic web
+	webPixels          = 3   // size of a cosmic web point in pixels
 	minHolePixels      = 3
 	spriteMean         = 0.10972 // mean of the glow sprite over its 16×16 quad (render.spriteMean)
 	// kernelMean is the mean of the gas kernel (1 − d²)³ over its quad, π/16 (Galaxy.metal KERNEL_MEAN).
@@ -83,6 +89,7 @@ type looker struct {
 	adapting        bool
 	light, emLight  [gridW * gridH]float32
 	darkGrid, gasGr [gridW * gridH]float32
+	webGrid         [gridW * gridH]float32
 	sortBuf         []float32
 	dust            dustMap
 	dustNorm        float64   // automatic dust opacity, 0 before the first frame
@@ -113,6 +120,8 @@ func (e *Engine) Prepare(bodies, attn []float32, info FrameInfo, w, h, ps float6
 	clear(l.emLight[:])
 	clear(l.darkGrid[:])
 	clear(l.gasGr[:])
+	clear(l.webGrid[:])
+	others := 0 // bodies other than dark matter and holes
 	l.look.Holes = l.look.Holes[:0]
 	l.look.World = l.look.World[:0]
 	mean := math.Max(info.MeanStarMass, 1e-12)
@@ -173,6 +182,9 @@ func (e *Engine) Prepare(bodies, attn []float32, info FrameInfo, w, h, ps float6
 			continue
 		}
 		cell := cy*gridW + cx
+		if kind != sim.DarkMatter {
+			others++
+		}
 		switch kind {
 		case sim.Star:
 			alpha, size := starSprite(float64(b[3])/mean, depth)
@@ -207,6 +219,7 @@ func (e *Engine) Prepare(bodies, attn []float32, info FrameInfo, w, h, ps float6
 				l.emLight[cell] += float32(brightness * kernelMean * size * size)
 			}
 		case sim.DarkMatter:
+			l.webGrid[cell] += float32(spriteMean * webPixels * webPixels * ps * ps / (cw * ch))
 			if fx.Dark {
 				s := hazeSize(depth)
 				l.darkGrid[cell] += float32(spriteMean * s * s / (cw * ch))
@@ -232,8 +245,10 @@ func (e *Engine) Prepare(bodies, attn []float32, info FrameInfo, w, h, ps float6
 			l.look.EmNorm += smoothing * (target - l.look.EmNorm)
 		}
 	}
-	l.look.DarkAlpha, l.look.GasAlpha = 0, 0
-	if fx.Dark {
+	l.look.DarkAlpha, l.look.GasAlpha, l.look.WebAlpha = 0, 0, 0
+	if p, ok := l.percentile(l.webGrid[:], 1, hazePercentile); ok && others == 0 && info.Stars == 0 {
+		l.look.WebAlpha = float32(webTarget / p) // dark matter is all there is: draw it, not a haze
+	} else if fx.Dark {
 		l.look.DarkAlpha = l.hazeAlpha(l.darkGrid[:])
 	}
 	if fx.Gas {

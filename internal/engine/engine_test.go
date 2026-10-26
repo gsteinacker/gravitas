@@ -194,3 +194,29 @@ func TestStarSettingsAndCorrection(t *testing.T) {
 		t.Errorf("corrected stars %d, uncorrected %d", slow, auto)
 	}
 }
+
+// TestCosmicWebDrawsDarkMatterPoints: a scene of dark matter only draws its particles as points
+// (no haze); a galaxy keeps the haze (T-073).
+func TestCosmicWebDrawsDarkMatterPoints(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+	for _, c := range []struct {
+		preset int
+		web    bool
+	}{{11, true}, {0, false}} {
+		e := New(c.preset, 3000)
+		e.Runner.SetPaused(true)
+		buf := make([]float32, 10000*FloatsPerBody)
+		var info FrameInfo
+		deadline := time.Now().Add(5 * time.Second)
+		for info.Bodies == 0 && time.Now().Before(deadline) {
+			e.Tick(60, 1, 0, false)
+			info, _ = e.Frame(buf, true)
+			time.Sleep(5 * time.Millisecond)
+		}
+		look := e.Prepare(buf, nil, info, 1440, 900, 1, view.Effects{Glow: true, Dark: true})
+		if web := look.WebAlpha > 0; web != c.web || (web && look.DarkAlpha != 0) {
+			t.Errorf("preset %d: web alpha %g, dark alpha %g", c.preset+1, look.WebAlpha, look.DarkAlpha)
+		}
+		e.Close()
+	}
+}

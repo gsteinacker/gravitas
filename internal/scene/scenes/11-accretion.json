@@ -3,7 +3,7 @@
   "intro": {
     "school": "Eine Gaswolke fällt auf ein Schwarzes Loch. Sie wird in die Länge gezogen und umkreist das Loch, bevor sie hineinstürzt. Dabei wird das Gas sehr heiß und leuchtet: eine Akkretionsscheibe. Auf der Seite, die auf dich zukommt, leuchtet sie heller, und die Rückseite der Scheibe siehst du über und unter dem Loch, weil das Loch das Licht verbiegt.",
     "lay": "Ein Loch von 10 000 Sonnenmassen in einem Sternhaufen, dazu eine Gaswolke auf einer Bahn, die knapp am Loch vorbeiführt. Die Gezeiten zerreißen sie, ein Teil wird verschluckt. Die Helligkeit der Scheibe folgt der Rate, mit der das Loch gerade Masse schluckt. Die Lichtgeschwindigkeit ist stark verkleinert, damit Horizont und Scheibe groß genug zu sehen sind. Probier verschiedene Blickwinkel: von oben wirkt die Scheibe gleichmäßig, von der Seite einseitig hell, mit der gebogenen Rückseite.",
-    "physics": "Loch 10⁴ M☉, c = 3 statt ~14 500 (r_s = 0,022 pc), Plummer-Haufen 10⁵ M☉ und Gaswolke 5 · 10³ M☉ (100 K) auf exzentrischer Bahn. Die Scheibe ist eine Darstellung: dünne Novikov-Thorne-Scheibe ab der ISCO bis 30 r_g in der Ebene des Lochspins, der den Drehimpuls des Verschluckten aufnimmt. Helligkeit 1 − exp(−Ṁ/M/10⁻³) aus der gemessenen Akkretionsrate, Doppler und Rotverschiebung g⁴, Rückseite mit einer Ablenkung 4r_g/b. Die Gasdynamik löst die Scheibe selbst nicht auf (Glättung ≫ r_g)."
+    "physics": "Loch 10⁴ M☉, c = 3 statt ~14 500 (r_s = 0,022 pc), Plummer-Haufen 10⁵ M☉ und Gaswolke 5 · 10³ M☉ (8000 K, warm genug, um nicht schon vorher unter ihrer eigenen Schwere zu kollabieren) auf exzentrischer Bahn. Bei c = 3 fängt das Loch auch Sterne ein (Einfangquerschnitt ∝ (GM/cv)²), die die Scheibe mit füttern. Die Scheibe ist eine Darstellung: dünne Novikov-Thorne-Scheibe ab der ISCO bis 30 r_g in der Ebene des Lochspins, der den Drehimpuls des Verschluckten aufnimmt. Helligkeit 1 − exp(−Ṁ/M/10⁻³) aus der gemessenen Akkretionsrate, Doppler und Rotverschiebung g⁴, Rückseite mit einer Ablenkung 4r_g/b, Helligkeit als √I gestaucht wie in Bildern von Scheiben-Simulationen. Die Gasdynamik löst die Scheibe selbst nicht auf (Glättung ≫ r_g)."
   },
   "topics": [
     "accretion-disks",
@@ -15,7 +15,7 @@
   "info": "1 unit = 1 pc, 1e5 Msun (20.7 km/s): 1e4 Msun hole fed by a gas cloud; c reduced to 3 (real ~14500)",
   "yearsPerUnit": 47200.0,
   "velocityUnit": 20.74,
-  "gasFloorK": 100,
+  "gasFloorK": 8000,
   "params": {
     "dt": 0.002,
     "softening": 0.03,
@@ -27,11 +27,11 @@
   "removeBulkMotion": true,
   "camera": {
     "target": [0, 0, 0],
-    "distance": 3,
-    "pitch": 75,
+    "distance": 1.2,
+    "pitch": 12,
     "yaw": 0
   },
-  "effects": "glow,lens,doppler",
+  "effects": "glow,lens,doppler,gas",
   "components": [
     {
       "type": "plummer",
@@ -54,10 +54,10 @@
       "note": "A cloud on an eccentric orbit with pericenter inside its tidal radius, as in tidal disruption of gas clouds near Sgr A* (G2, Gillessen et al. 2012), scaled to make the disk visible.",
       "weight": 0.2,
       "mass": 0.05,
-      "scale": 0.08,
-      "gasTemperature": 100,
-      "position": [0.8, 0, 0],
-      "velocity": [0, 0.25, 0],
+      "scale": 0.12,
+      "gasTemperature": 8000,
+      "position": [0.5, 0, 0],
+      "velocity": [0, 0.12, 0],
       "seed": 11
     }
   ]
