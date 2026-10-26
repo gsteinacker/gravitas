@@ -24,6 +24,7 @@ type Snapshot struct {
 	HolesFormed    int     // black holes formed by collapse (collapse.go)
 	ScaleFactor    float64 // a in the comoving mode (comoving.go), 0 otherwise
 	Kind           []Kind
+	ID             []uint64 // stable identity of every body (State.ID)
 	Time           float64
 	Steps          int
 	C              float64 // speed of light of the run, 0 = Newtonian
@@ -62,6 +63,7 @@ func (sn *Snapshot) fill(m *Simulation) {
 	}
 	now := m.Time
 	sn.Kind = append(sn.Kind[:0], s.Kind...)
+	sn.ID = append(sn.ID[:0], s.ID...)
 	c := m.Params.C
 	ParallelFor(n, 8192, 0, func(lo, hi int) {
 		for i := lo; i < hi; i++ {

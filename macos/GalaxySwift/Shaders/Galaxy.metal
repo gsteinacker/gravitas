@@ -162,14 +162,20 @@ Sprite population(Body b, float3 s, float4 c, float3 tint, float size, float cor
         float a = share * light / (g * g);
         return makeSprite(s, min(g, 240 * ps) / 2, float4(c.rgb * tint * a, 0), vid, u);
     }
-    uint h = hash(as_type<uint>(b.pos.w) * POPULATION + sub);
+    uint h = hash(uint(b.gas.y) * POPULATION + sub); // the body's identity (engine.Frame), not its mass
     float3 o = float3(unit(h) + unit(hash(h + 1)), unit(hash(h + 2)) + unit(hash(h + 3)),
                       unit(hash(h + 4)) + unit(hash(h + 5))) - 1;
     float3 m = project(b.pos.xyz + 1.5 * r * o, u);
     if (m.z < 0.05) return culled();
-    float w = 4 * pow(unit(hash(h + 6)), 3.0); // a few bright giants, many faint stars (mean 1)
-    float ms = clamp(size, 3 * ps, 3.5 * ps); // at least 3 pixels: no twinkling between pixels
-    return makeSprite(m, ms / 2, float4(c.rgb * members * w / MEMBERS * light / (ms * ms), 0), vid, u);
+    // Luminosity function: many faint stars and a few bright giants (w = 7u⁶, mean 1). Brighter
+    // stars are drawn larger, as their image wings rise above the background, with the same light;
+    // at least 3 pixels, so they do not twinkle between pixels.
+    float w = 7 * pow(unit(hash(h + 6)), 6.0);
+    float ms = clamp(3 * ps * (0.8 + 0.5 * sqrt(w)), 3 * ps, 7 * ps);
+    // Each star its own temperature around the color of the population: cooler or hotter.
+    float t = unit(hash(h + 7));
+    float3 col = c.rgb * mix(float3(1.08, 0.9, 0.74), float3(0.86, 0.97, 1.22), t);
+    return makeSprite(m, ms / 2, float4(col * members * w / MEMBERS * light / (ms * ms), 0), vid, u);
 }
 
 vertex Sprite spriteVertex(uint vid [[vertex_id]], uint iid [[instance_id]],
@@ -296,6 +302,20 @@ vertex Screen screenVertex(uint vid [[vertex_id]]) {
 
 constexpr sampler linearSampler(filter::linear, address::clamp_to_edge);
 
+// smoothSample reads a low-resolution image (bloom, fog) with a cubic B-spline from four bilinear
+// taps: bilinear upscaling by 4 leaves the pixel grid visible as squares and crosses.
+float4 smoothSample(texture2d<float> t, float2 uv) {
+    float2 size = float2(t.get_width(), t.get_height());
+    float2 p = uv * size - 0.5, i = floor(p), f = p - i;
+    float2 f2 = f * f, f3 = f2 * f;
+    float2 w0 = (1 - 3 * f + 3 * f2 - f3) / 6, w1 = (4 - 6 * f2 + 3 * f3) / 6;
+    float2 w2 = (1 + 3 * f + 3 * f2 - 3 * f3) / 6, w3 = f3 / 6;
+    float2 g0 = w0 + w1, g1 = w2 + w3;
+    float2 h0 = (i - 0.5 + w1 / g0) / size, h1 = (i + 1.5 + w3 / g1) / size;
+    return g0.y * (g0.x * t.sample(linearSampler, h0) + g1.x * t.sample(linearSampler, float2(h1.x, h0.y)))
+         + g1.y * (g0.x * t.sample(linearSampler, float2(h0.x, h1.y)) + g1.x * t.sample(linearSampler, h1));
+}
+
 // trailFragment keeps a fading history that is never brighter than the stars.
 fragment float4 trailFragment(Screen in [[stage_in]], texture2d<float> stars [[texture(0)]],
                               texture2d<float> previous [[texture(1)]]) {
@@ -315,7 +335,7 @@ fragment float4 composeFragment(Screen in [[stage_in]], texture2d<float> stars [
     float4 c = sky.sample(linearSampler, in.uv);
     float4 out = float4(c.rgb * exp(-tau * float3(0.55, 0.75, 1.0)), c.a) + stars.sample(linearSampler, in.uv);
     if (fogOn > 0) {
-        float d = fog.sample(linearSampler, in.uv).r;
+        float d = smoothSample(fog, in.uv).r;
         out.rgb += float3(0.55, 0.35, 1.0) * 0.4 * (1 - exp(-1.2 * d));
     }
     return out;
@@ -350,16 +370,19 @@ fragment float4 downFragment(Screen in [[stage_in]], texture2d<float> src [[text
     return c / float(n * n);
 }
 
-// blurFragment is one direction of the separable 9-tap Gaussian of the bloom.
+// blurFragment is one direction of the separable Gaussian of the bloom (σ = 3 texels, every texel
+// sampled: taps spaced wider than a texel make a comb, and a bright star a plaid of squares).
 fragment float4 blurFragment(Screen in [[stage_in]], texture2d<float> src [[texture(0)]], constant float2 &dir [[buffer(0)]]) {
-    const float w[5] = { 0.227027, 0.1945946, 0.1216216, 0.054054, 0.016216 };
     float2 texel = dir / float2(src.get_width(), src.get_height());
-    float4 c = src.sample(linearSampler, in.uv) * w[0];
-    for (int i = 1; i < 5; i++) {
-        float2 o = texel * float(i) * 1.5;
-        c += (src.sample(linearSampler, in.uv + o) + src.sample(linearSampler, in.uv - o)) * w[i];
+    float4 c = src.sample(linearSampler, in.uv);
+    float sum = 1;
+    for (int i = 1; i <= 8; i++) {
+        float w = exp(-float(i * i) / 18.0);
+        float2 o = texel * float(i);
+        c += (src.sample(linearSampler, in.uv + o) + src.sample(linearSampler, in.uv - o)) * w;
+        sum += 2 * w;
     }
-    return c;
+    return c / sum;
 }
 
 // finalFragment adds the bloom and maps the HDR image softly to the display.
@@ -367,7 +390,7 @@ fragment float4 finalFragment(Screen in [[stage_in]], texture2d<float> scene [[t
                               texture2d<float> bloom [[texture(1)]], constant float &bloomStrength [[buffer(0)]]) {
     float3 c = scene.sample(linearSampler, in.uv).rgb;
     if (bloomStrength > 0) { // without glow the bloom image is not drawn: never read it (0 · NaN = NaN)
-        c += bloomStrength * bloom.sample(linearSampler, in.uv).rgb;
+        c += bloomStrength * smoothSample(bloom, in.uv).rgb;
     }
     // Hue-preserving: the brightest channel is mapped and the others are scaled with it, so bright
     // Hα stays deep red instead of turning pink-white (T-041). A little per-channel mapping keeps

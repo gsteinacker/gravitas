@@ -276,6 +276,9 @@ func (e *Engine) Frame(dst []float32, force bool) (FrameInfo, bool) {
 			d[4], d[5], d[6], d[7] = sn.VX[i], sn.VY[i], sn.VZ[i], float32(sn.Kind[i])
 			d[8], d[9], d[10], d[11] = sn.Age[i], sn.GasIon[i], sn.GasH[i], sn.GasRho[i]
 			if sn.Kind[i] == sim.Star {
+				// Stars have no gas: slot 9 carries their identity (24 bits, exact in a float), from
+				// which the renderer draws the stars of a population (Galaxy.metal population).
+				d[9] = float32(sn.ID[i] & 0xffffff)
 				starMass += float64(sn.Mass[i])
 				info.Stars++
 			}
