@@ -173,20 +173,24 @@ func (m *Simulation) stepSplit() {
 	m.Substeps = n
 	m.outerHoleForces(eps2)
 	m.kickOuter(0.5 * dt)
+	m.dragOuter(0.5 * dt) // frame dragging (framedrag.go): kick, rotate … rotate, kick
 
 	h := dt / float64(n)
 	m.fastForces(eps2)
 	for range n {
 		m.kickFast(0.5 * h)
+		m.dragFast(0.5 * h)
 		m.driftIdx(m.near, h, c)
 		m.driftIdx(m.holes, h, c)
 		m.fastForces(eps2)
+		m.dragFast(0.5 * h)
 		m.kickFast(0.5 * h)
 	}
 	m.driftFar(dt, c)
 
 	m.computeSlow()
 	m.outerHoleForces(eps2)
+	m.dragOuter(0.5 * dt)
 	m.kickOuter(0.5 * dt)
 }
 

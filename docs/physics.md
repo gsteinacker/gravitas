@@ -95,7 +95,10 @@ Szene. Die Szene „Direct collapse“ zeigt es mit verkleinertem c.
 
 Rotierende Löcher (T-071, `sim/kerr.go`): Jedes Loch trägt seinen Drehimpuls J. Akkretion und Verschmelzung
 addieren Spins und Bahndrehimpuls, begrenzt auf a* = 0,998. Gezeichnet werden r₊, die ISCO und der Photonenring
-nach Kerr; die Bahnen bleiben Paczyński-Wiita (`docs/analysis/03-kerr.md`).
+nach Kerr (`docs/analysis/03-kerr.md`). Dazu kommt Frame-Dragging (T-072, ADR-0013, `sim/framedrag.go`), die
+Lense-Thirring-Kraft a = v × B in Ordnung 1/c² als Boris-Rotation in den Kicks. Die Rückwirkung geht in Impuls
+und Spin des Lochs. Invarianten: Impuls und Gesamtdrehimpuls inklusive Spins (`TestFrameDraggingConserves`),
+Knotenpräzession gegen Ω_LT (`TestFrameDraggingPrecessesTheNode`).
 
 Akkretionsscheiben (T-065) sind reine Darstellung. Jedes Loch merkt sich seine Akkretionsrate (gleitend über 50
 Schritte, `sim/accrete.go`), die Helligkeit 1 − exp(−Ṁ/M/10⁻³) treibt. Gezeichnet wird eine dünne

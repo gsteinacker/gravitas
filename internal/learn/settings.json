@@ -174,8 +174,8 @@
         "en": "The spin a* ranges from 0 (no rotation) to 0.998; the radiation the hole swallows while growing prevents more. With growing spin the horizon shrinks to as little as half. The innermost stable orbit moves in from 6 to almost 1 r_g for orbits with the spin and out to 9 r_g against it, so the rings around the hole become lopsided. What the hole swallows changes its spin."
       },
       "physics": {
-        "de": "J = a* GM²/c entlang der Normalen der Startebene. r₊ = r_g(1 + √(1 − a*²)), ISCO und Photonenbahn nach Bardeen, Press & Teukolsky 1972. Akkretion und Verschmelzung addieren Spins und Bahndrehimpuls, a* ≤ 0,998 (Thorne 1974). Modellgrenze: Die Bahnen bleiben Paczyński-Wiita (Schwarzschild), Frame-Dragging fehlt (T-072).",
-        "en": "J = a* GM²/c along the launch plane normal. r₊ = r_g(1 + √(1 − a*²)), ISCO and photon orbit after Bardeen, Press & Teukolsky 1972. Accretion and mergers add spins and orbital angular momentum, a* ≤ 0.998 (Thorne 1974). Model limit: orbits stay Paczyński–Wiita (Schwarzschild); frame dragging is missing (T-072)."
+        "de": "J = a* GM²/c entlang der Normalen der Startebene. r₊ = r_g(1 + √(1 − a*²)), ISCO und Photonenbahn nach Bardeen, Press & Teukolsky 1972. Akkretion und Verschmelzung addieren Spins und Bahndrehimpuls, a* ≤ 0,998 (Thorne 1974). Frame-Dragging wirkt in erster Ordnung als Lense-Thirring-Kraft (ADR-0013). Modellgrenze: Die ISCO der Bahnen folgt nur näherungsweise der Kerr-ISCO.",
+        "en": "J = a* GM²/c along the launch plane normal. r₊ = r_g(1 + √(1 − a*²)), ISCO and photon orbit after Bardeen, Press & Teukolsky 1972. Accretion and mergers add spins and orbital angular momentum, a* ≤ 0.998 (Thorne 1974). Frame dragging acts to first order as the Lense–Thirring force (ADR-0013). Model limit: the ISCO of the orbits only approximates the Kerr ISCO."
       }
     }
   },

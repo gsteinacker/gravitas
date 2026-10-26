@@ -1,8 +1,21 @@
 # Performance-Log
 
-Chronologisches Log relevanter Benchmark-Ergebnisse. Neueste oben. Format:
+Chronologisches Log relevanter Benchmark-Ergebnisse. Neueste oben. Format: `## Datum · Task · Thema`, dann
+Maschine und Last, die Zahlen in einem Codeblock und eine kurze Einordnung.
+
+## 2026-10-26 · T-072 · Frame-Dragging
+
+Szene 4 (Doppel-Loch im Haufen), 50k, M4 Pro, keine Fremdlast, je 30 Schritte nach einem Aufwärmschritt, zwei
+Läufe:
 
 ```
+ohne Spin            30,26 / 30,73 ms/Schritt
+beide Löcher a* 0,9  30,46 / 30,94 ms/Schritt   (+0,7 %)
+```
+
+Die Lense-Thirring-Rotation kostet pro Kick O(N · Löcher) wie die Lochkräfte selbst. Ohne Spin bleibt nur eine
+Prüfung über die Löcher.
+
 ## 2026-10-24 · T-046/T-047 · Anpassung an den Rechner
 
 Maschine: M4 Pro (8P+4E). **Unter Fremdlast:** Parallel lief eine Galaxy-Instanz mit 100k Sternen und ~4 Kernen

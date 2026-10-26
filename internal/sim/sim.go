@@ -93,11 +93,12 @@ type Simulation struct {
 	farX, farY, farZ    []float64
 	fastX, fastY, fastZ []float64
 
-	histories  map[uint64]*holeHistory // past positions of black holes by ID (retarded.go)
-	accretion  map[uint64]float64      // recent accretion rate of black holes by ID (accrete.go)
-	dudt, divv []float64               // gas: du/dt and velocity divergence (gas.go)
-	ion        ionizer                 // photoionization grid (ionize.go)
-	holeHists  []*holeHistory          // histories of m.holes, bound once per step
+	histories   map[uint64]*holeHistory // past positions of black holes by ID (retarded.go)
+	accretion   map[uint64]float64      // recent accretion rate of black holes by ID (accrete.go)
+	dudt, divv  []float64               // gas: du/dt and velocity divergence (gas.go)
+	ion         ionizer                 // photoionization grid (ionize.go)
+	holeHists   []*holeHistory          // histories of m.holes, bound once per step
+	dragWeights []float64               // scratch of dragBack (framedrag.go)
 }
 
 func New(s *State, solver Solver, p Params) *Simulation {
