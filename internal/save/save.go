@@ -41,7 +41,10 @@ type File struct {
 	// Simulation.FormedMass, Supernovae, SNMass (T-080; zero in older files)
 	FormedMass, SNMass float64
 	Supernovae         int
-	Camera             Camera
+	// Simulation.InfallMass and InfallPending (T-081)
+	InfallMass    float64
+	InfallPending []float64
+	Camera        Camera
 
 	PosX, PosY, PosZ []float64
 	VelX, VelY, VelZ []float64
@@ -62,6 +65,7 @@ func Capture(m *sim.Simulation, sp *scene.Spec, cam Camera) *File {
 		Format: Format, Saved: time.Now(), Scene: *sp, Params: m.Params,
 		Time: m.Time, Steps: m.Steps, ScaleFactor: m.ScaleFactor, External: m.ExternalEnergy, Formed: m.StarsFormed, Camera: cam,
 		FormedMass: m.FormedMass, SNMass: m.SNMass, Supernovae: m.Supernovae,
+		InfallMass: m.InfallMass, InfallPending: slices.Clone(m.InfallPending),
 		PosX: slices.Clone(s.PosX), PosY: slices.Clone(s.PosY), PosZ: slices.Clone(s.PosZ),
 		VelX: slices.Clone(s.VelX), VelY: slices.Clone(s.VelY), VelZ: slices.Clone(s.VelZ),
 		Mass: slices.Clone(s.Mass), Kind: slices.Clone(s.Kind),
@@ -107,6 +111,7 @@ func (f *File) Restore(m *sim.Simulation) {
 	m.RestoreForces(f.Forces)
 	m.StarsFormed = f.Formed
 	m.FormedMass, m.Supernovae, m.SNMass = f.FormedMass, f.Supernovae, f.SNMass
+	m.InfallMass, m.InfallPending = f.InfallMass, slices.Clone(f.InfallPending)
 	m.ScaleFactor = f.ScaleFactor
 }
 

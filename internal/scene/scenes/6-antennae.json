@@ -9,6 +9,7 @@
     "tides",
     "star-formation",
     "supernovae",
+    "gas-cycle",
     "gas",
     "dust",
     "dark-matter",
@@ -23,7 +24,7 @@
     "gas": {
       "coolTime": 0.5,
       "sfDensity": 0.002,
-      "sfEfficiency": 0.02,
+      "sfEfficiency": 0.066,
       "youngAge": 5
     }
   },
@@ -57,6 +58,7 @@
       "haloScale": 1.5,
       "darkFraction": 0.4,
       "holeMass": 0.00011,
+      "infallMsunPerYear": 0.1,
       "inclination": 60,
       "position": [
         -5,
@@ -94,6 +96,7 @@
       "haloScale": 1.5,
       "darkFraction": 0.4,
       "holeMass": 0.00011,
+      "infallMsunPerYear": 0.1,
       "inclination": -60,
       "orientation": 30,
       "position": [

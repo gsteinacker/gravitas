@@ -98,7 +98,7 @@ final class Engine {
         slow.sps = 0; slow.fps = 0; slow.time = 0; slow.drift = 0; slow.driftQuality = 0
         slow.substeps = 0; slow.hydroSubsteps = 0; slow.starsFormed = 0; slow.bodies = 0
         slow.theta = 0; slow.renderScale = 0; slow.scaleFactor = 0
-        slow.supernovae = 0; slow.sfr = 0; slow.snRate = 0; slow.gasShare = 0
+        slow.supernovae = 0; slow.sfr = 0; slow.snRate = 0; slow.gasShare = 0; slow.infallRate = 0
         slow.darkBodies = min(slow.darkBodies, 1); slow.gasBodies = min(slow.gasBodies, 1) // only whether there are any
         slow.blackHoles = min(slow.blackHoles, 1)
         if !same(slow, state) { state = slow }

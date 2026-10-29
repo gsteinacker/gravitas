@@ -10,6 +10,7 @@
     "dark-matter",
     "star-formation",
     "supernovae",
+    "gas-cycle",
     "gas",
     "gravity",
     "populations"
@@ -23,7 +24,7 @@
     "gas": {
       "coolTime": 0.5,
       "sfDensity": 0.002,
-      "sfEfficiency": 0.02,
+      "sfEfficiency": 0.066,
       "youngAge": 5
     }
   },
@@ -37,6 +38,7 @@
       "weight": 0.6,
       "mass": 6,
       "holeMass": 0.00045,
+      "infallMsunPerYear": 0.4,
       "diskScale": 0.7,
       "diskMin": 0.05,
       "diskMax": 3,
@@ -73,6 +75,7 @@
       "weight": 0.4,
       "mass": 4,
       "holeMass": 0.0003,
+      "infallMsunPerYear": 0.25,
       "diskScale": 0.6,
       "diskMin": 0.05,
       "diskMax": 2.5,

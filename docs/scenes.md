@@ -28,6 +28,7 @@ Spielstände (F5/F9, `-load`) sind dagegen **exakte Abzüge** eines laufenden Zu
   (L = v · t, Test `TestUnitsMatchInfo`). Damit zeigt das Start-Werkzeug Abstände und Tempo physikalisch an.
 - Gas: `velocityUnit` und `gasFloorK` auf Szenenebene, in `params.gas`
   `coolTime`, `sfDensity`, `sfEfficiency`, `youngAge` (Simulationseinheiten). Siehe ADR-0007.
+- Supernovae (ADR-0015): `supernovaErgPerMsun` (z. B. 1e49) und optional `supernovaDelayMyr` ([3, 40]) auf Szenenebene
 - `note` ist freier Text für Quellen und Annahmen und wird nicht ausgewertet.
 - `paused: true` startet die Szene angehalten (statische Szenen wie das kosmische Netz).
 
@@ -35,7 +36,7 @@ Spielstände (F5/F9, `-load`) sind dagegen **exakte Abzüge** eines laufenden Zu
 
 | `type` | Felder | Beschreibung |
 |--------|--------|--------------|
-| `galaxy` | `mass`, `diskFraction`, `diskScale`, `diskMin`, `diskMax`, `thickness`, `dispersion` (oder `toomreQ` und `coldFraction`), `haloProfile` (`plummer`/`hernquist`), `haloScale`, `haloCut` (plummer), `haloMax` (hernquist), `darkFraction`, `gasFraction`, `gasTemperature` (K), `bulgeFraction`, `bulgeScale`, `holeMass`, `inclination`, `orientation`, `position`, `velocity`, `seed` | Exponentielle Scheibe auf Kreisbahnen (aus der eingeschlossenen Masse von Loch, Bulge, Scheibe und Halo), optional Halo aus Dunkler Materie (`darkFraction` der Teilchen) und Hernquist-Bulge alter Sterne (`bulgeFraction` der Sternmasse, Skala `bulgeScale`, isotrope Jeans-Geschwindigkeiten) |
+| `galaxy` | `mass`, `diskFraction`, `diskScale`, `diskMin`, `diskMax`, `thickness`, `dispersion` (oder `toomreQ` und `coldFraction`), `haloProfile` (`plummer`/`hernquist`), `haloScale`, `haloCut` (plummer), `haloMax` (hernquist), `darkFraction`, `gasFraction`, `gasTemperature` (K), `bulgeFraction`, `bulgeScale`, `holeMass`, `infallMsunPerYear` (Gaszufluss, braucht Loch und Einheiten, ADR-0016), `inclination`, `orientation`, `position`, `velocity`, `seed` | Exponentielle Scheibe auf Kreisbahnen (aus der eingeschlossenen Masse von Loch, Bulge, Scheibe und Halo), optional Halo aus Dunkler Materie (`darkFraction` der Teilchen) und Hernquist-Bulge alter Sterne (`bulgeFraction` der Sternmasse, Skala `bulgeScale`, isotrope Jeans-Geschwindigkeiten) |
 | `plummer` | `mass`, `scale`, `position`, `velocity`, `seed` | Sternhaufen im Virialgleichgewicht |
 | `hole` | `mass`, `position`, `velocity`, `spin` (a*, 0–0,998), `spinAxis` (Standard +z) | einzelnes Schwarzes Loch, mit `spin` rotierend (Kerr, nur mit c) |
 | `orbits` | `mass` (zentrales Loch), `aScale`, `orbits[]` (`a`, `e`, `i`, `node`, `peri`, `anomaly`), `starMass`, `background`, `backgroundA`, `backgroundMass`, `seed` | Kepler-Bahnen um ein Loch, z. B. aus Bahnelementen der Literatur |

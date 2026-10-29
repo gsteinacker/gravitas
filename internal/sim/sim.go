@@ -16,6 +16,8 @@ type Params struct {
 	// DarkMatterOff switches off the gravity of dark matter: it still moves as test particles, so
 	// switching it back on finds the halos (roughly) where they were.
 	DarkMatterOff bool `json:"darkMatterOff,omitempty"`
+	// Infall adds fresh gas around galaxies (infall.go); set by the scene.
+	Infall []InfallSource `json:"infall,omitempty"`
 	// Cosmology switches to comoving integration in an expanding, periodic box (comoving.go).
 	Cosmology *Cosmology `json:"cosmology,omitempty"`
 }
@@ -86,6 +88,10 @@ type Simulation struct {
 	// Supernovae counts populations that exploded since Reset, SNMass is their mass (supernova.go).
 	Supernovae int
 	SNMass     float64
+	// InfallMass is the gas mass added by infall since Reset; InfallPending is the mass each
+	// source has accumulated towards its next body (infall.go).
+	InfallMass    float64
+	InfallPending []float64
 	// HolesFormed counts black holes formed by collapse since Reset (collapse.go).
 	HolesFormed int
 	// ScaleFactor is a in the comoving mode (comoving.go), 0 otherwise.
@@ -123,6 +129,7 @@ func (m *Simulation) Reset(s *State, p Params) {
 	m.State, m.Params, m.Time, m.Steps, m.accValid, m.ExternalEnergy = s, p, 0, 0, false, 0
 	m.StarsFormed, m.HolesFormed, m.hydroDt = 0, 0, 0
 	m.FormedMass, m.Supernovae, m.SNMass = 0, 0, 0
+	m.InfallMass, m.InfallPending = 0, nil
 	m.accretion = nil
 	m.ScaleFactor, m.comoving = 0, nil
 	m.Epoch++
@@ -238,6 +245,7 @@ func (m *Simulation) step() {
 	}
 	m.updateGas(dt)
 	m.supernovae(dt)
+	m.infall(dt)
 	m.collapse()
 	m.decayAccretion(dt)
 	m.Time += dt

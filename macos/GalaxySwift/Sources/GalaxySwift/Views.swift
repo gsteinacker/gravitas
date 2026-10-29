@@ -216,7 +216,8 @@ struct LiveStats: View {
         }
         guard s.yearsPer > 0 else { return String(format: "t = %.2f", s.time) }
         let y = s.time * s.yearsPer
-        let (v, unit) = y >= 1e9 ? (y / 1e9, "Gyr") : y >= 1e6 ? (y / 1e6, "Myr") : y >= 1e3 ? (y / 1e3, "kyr") : (y, "yr")
+        let (v, unit) = y >= 1e9 ? (y / 1e9, L("Mrd. J.", "Gyr")) : y >= 1e6 ? (y / 1e6, L("Mio. J.", "Myr"))
+            : y >= 1e3 ? (y / 1e3, L("Tsd. J.", "kyr")) : (y, L("J.", "yr"))
         return String(format: "t = %.2f (%.3g %@)", s.time, v, unit)
     }
 
@@ -252,6 +253,16 @@ struct StarStats: View {
             InfoButton(engine, "gasReservoir")
         } label: {
             Text(L("Gasvorrat", "Gas reservoir"))
+        }
+        if s.infall != 0 {
+            LabeledContent {
+                Text(verbatim: s.rateUnits != 0 ? String(format: L("%.2f M☉/Jahr", "%.2f M☉/yr"), s.infallRate)
+                                                : String(format: L("%.3g Masse/Zeit", "%.3g mass/time"), s.infallRate))
+                    .monospacedDigit()
+                InfoButton(engine, "gasInflow")
+            } label: {
+                Text(L("Gaszufluss", "Gas inflow"))
+            }
         }
     }
 

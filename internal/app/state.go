@@ -52,7 +52,7 @@ func (c *Controller) Publish() {
 	}
 	s.Theta, s.ThetaUser, s.GPU, s.Stars, s.RenderScale = c.Theta, c.ThetaUser, c.GPU, c.N, c.RenderScaleNow
 	s.Drift, s.DriftQuality = c.Runner.EnergyDrift()
-	s.Rates = starRates(c.Scene, &c.rates, c.sim.GasShare)
+	s.Rates = starRates(c.Scene, &c.rates, c.sim.GasShare, c.sim.Infall)
 	if c.Scene != nil {
 		s.SceneName, s.SceneInfo, s.YearsPer = c.Scene.Name, c.Scene.Info, c.Scene.YearsPer
 		for i, p := range scene.Presets {

@@ -114,8 +114,8 @@ func report(m *sim.Simulation, steps int, start time.Time) {
 		}
 	}
 	el := time.Since(start).Seconds()
-	fmt.Printf("t=%.3f steps=%d (%.1f/s) gas=%d ionized=%d formed=%d sn=%d hmin=%.4f rhomax=%.0f rmax=%.1f\n",
-		m.Time, steps, float64(steps)/el, gas, ion, m.StarsFormed, m.Supernovae, hmin, rhomax, rmax)
+	fmt.Printf("t=%.3f steps=%d (%.1f/s) gas=%d ionized=%d formed=%d sn=%d infall=%.3g hmin=%.4f rhomax=%.0f rmax=%.1f\n",
+		m.Time, steps, float64(steps)/el, gas, ion, m.StarsFormed, m.Supernovae, m.InfallMass, hmin, rhomax, rmax)
 	_ = stars
 }
 

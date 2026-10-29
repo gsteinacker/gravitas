@@ -1,0 +1,11 @@
+{
+  "id": "gas-cycle",
+  "title": "Gaskreislauf",
+  "keys": "",
+  "short": "Frisches Gas regnet aus dem Halo auf die Scheibe, wird zu Sternen, und Supernovae heizen es wieder auf.",
+  "levels": {
+    "school": "Eine Galaxie ist wie eine Badewanne: Oben läuft frisches Gas hinein, unten wird Gas zu Sternen und verschwindet so aus der Wanne. Solange genug nachläuft, entstehen immer weiter neue Sterne.\n\nIn der Simulation regnet das neue Gas von oberhalb und unterhalb der Scheibe herab. Rechts im Panel siehst du, wie viel Gas zufließt und wie viele Sterne daraus entstehen.",
+    "lay": "Die Milchstraße bildet etwa 1,6 Sonnenmassen Sterne pro Jahr. Ihr Gas würde dafür nur zwei bis drei Milliarden Jahre reichen, trotzdem bildet sie seit zehn Milliarden Jahren Sterne. Also muss Gas nachströmen: aus dem heißen Halo, aus kleinen Begleitgalaxien und aus dem kosmischen Netz. Beobachtet wird es als Gas, das ein bis zwei Kiloparsec über der Scheibe langsamer rotiert und auf sie fällt.\n\nDaraus ergibt sich ein Kreislauf. Gas fällt ein, kühlt ab und bildet Sterne. Die massereichen Sterne explodieren, heizen das Gas und schleudern einen Teil wieder hoch. Zufluss, Sternentstehung und Rückkopplung pendeln sich auf ein Gleichgewicht ein.",
+    "physics": "Badewannenmodell (Bouché et al. 2010, Lilly et al. 2013): dM_gas/dt = Ṁ_in − (1 − R + η) SFR, im Gleichgewicht SFR ≈ Ṁ_in/(1 − R + η). Modell (ADR-0016): je Galaxie Ṁ_in = M_gas,0 / 3 Gyr, neue Gasteilchen bei |z| = 1,5 kpc, Radius aus dem exponentiellen Gasprofil, Rotation 0,8 v_c (Lag des extraplanaren H I, Fraternali & Binney 2006/2008). Sternentstehung ε_ff = 0,066 an der Schwelle 0,1 cm⁻³ (entspricht t* = 2,1 Gyr bei Springel & Hernquist 2003). Gemessen in Szene 1 bei 20 000 Teilchen über 1 Gyr: Zufluss 0,6 M☉/yr, SFR ≈ 0,55 M☉/yr, etwa konstant.\n\nModellgrenzen: R (Massenrückgabe) = 0 und η (Ausfluss) = 0, kein heißer Halo, keine Fontänen und keine Metallizität. Der Zufluss ist vorgegeben und folgt nicht aus der Kosmologie."
+  }
+}

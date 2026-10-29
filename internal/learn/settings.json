@@ -524,8 +524,8 @@
         "en": "Shows how much mass of new stars forms per year, in solar masses. Our Milky Way makes about one or two suns per year. Next to it is the number of new star particles since the start."
       },
       "lay": {
-        "de": "Neue Sterne entstehen nur aus dichtem, kaltem Gas. Ein Sternteilchen ist eine ganze Gruppe von 10⁵–10⁶ Sonnen, deshalb sind einzelne Ereignisse selten. Die Rate ist über die letzten 100 Millionen Jahre gemittelt, so wie Astronomen sie aus dem UV-Licht junger Sterne messen. Weil kein Gas nachströmt, sinkt sie, wenn der Gasvorrat schrumpft.",
-        "en": "New stars only form from dense, cold gas. A star particle is a whole group of 10⁵–10⁶ suns, so single events are rare. The rate is averaged over the last 100 million years, as astronomers measure it from the UV light of young stars. As no gas flows in, it drops as the gas reservoir shrinks."
+        "de": "Neue Sterne entstehen nur aus dichtem, kaltem Gas. Ein Sternteilchen ist eine ganze Gruppe von 10⁵–10⁶ Sonnen, deshalb sind einzelne Ereignisse selten. Die Rate ist über die letzten 100 Millionen Jahre gemittelt, so wie Astronomen sie aus dem UV-Licht junger Sterne messen. In den Galaxienszenen regnet frisches Gas aus dem Halo nach, deshalb bleibt sie etwa konstant.",
+        "en": "New stars only form from dense, cold gas. A star particle is a whole group of 10⁵–10⁶ suns, so single events are rare. The rate is averaged over the last 100 million years, as astronomers measure it from the UV light of young stars. In the galaxy scenes fresh gas rains in from the halo, so it stays about constant."
       },
       "physics": {
         "de": "SFR = Δ(gebildete Masse) / Δt über ein gleitendes Fenster von 100 Myr (app.rateMeter), umgerechnet mit der Massen- und Zeiteinheit der Szene. Ohne physikalische Einheiten: Masse pro Zeiteinheit über 5 Zeiteinheiten. Kriterium der Bildung: Thema „Sternentstehung“. Vergleich: Milchstraße 1,65 ± 0,19 M☉/yr (Licquia & Newman 2015).",
@@ -568,12 +568,34 @@
         "en": "This much of the visible mass is still gas. New stars form from gas, and every new star uses some of it up."
       },
       "lay": {
-        "de": "Anteil des Gases an Gas plus Sternen (ohne Dunkle Materie und Löcher). Er sinkt, weil Gas zu Sternen wird und keines von außen nachströmt. Echte Galaxien bekommen frisches Gas aus ihrer Umgebung und aus Begleitern; in der Milchstraße ist etwa ein Zehntel der Scheibe Gas.",
-        "en": "Share of gas in gas plus stars (without dark matter and holes). It drops because gas turns into stars and none flows in from outside. Real galaxies receive fresh gas from their surroundings and from companions; in the Milky Way about a tenth of the disk is gas."
+        "de": "Anteil des Gases an Gas plus Sternen (ohne Dunkle Materie und Löcher). Er sinkt, wenn Gas zu Sternen wird, und steigt durch frisches Gas aus dem Halo (Gaszufluss). Echte Galaxien bekommen frisches Gas aus ihrer Umgebung und aus Begleitern; in der Milchstraße ist etwa ein Zehntel der Scheibe Gas.",
+        "en": "Share of gas in gas plus stars (without dark matter and holes). It drops as gas turns into stars and rises with fresh gas from the halo (gas inflow). Real galaxies receive fresh gas from their surroundings and from companions; in the Milky Way about a tenth of the disk is gas."
       },
       "physics": {
-        "de": "f_gas = M_gas / (M_gas + M_*) aller Teilchen. Verbrauchszeit t_dep = M_gas / SFR, in Scheibengalaxien ~2 Gyr (Bigiel et al. 2008). Ohne Akkretion aus dem Halo (fehlt im Modell) fällt die Rate exponentiell mit t_dep.",
-        "en": "f_gas = M_gas / (M_gas + M_*) of all particles. Depletion time t_dep = M_gas / SFR, about 2 Gyr in disk galaxies (Bigiel et al. 2008). Without accretion from the halo (missing in the model) the rate falls exponentially with t_dep."
+        "de": "f_gas = M_gas / (M_gas + M_*) aller Teilchen. Verbrauchszeit t_dep = M_gas / SFR, in Scheibengalaxien ~2 Gyr (Bigiel et al. 2008). Ohne Zufluss fiele die Rate exponentiell mit t_dep; mit Zufluss Ṁ_in stellt sich M_gas ≈ Ṁ_in t_dep ein (ADR-0016).",
+        "en": "f_gas = M_gas / (M_gas + M_*) of all particles. Depletion time t_dep = M_gas / SFR, about 2 Gyr in disk galaxies (Bigiel et al. 2008). Without inflow the rate would fall exponentially with t_dep; with inflow Ṁ_in, M_gas settles at ≈ Ṁ_in t_dep (ADR-0016)."
+      }
+    }
+  },
+  {
+    "id": "gasInflow",
+    "topic": "gas-cycle",
+    "title": {
+      "de": "Gaszufluss",
+      "en": "Gas inflow"
+    },
+    "levels": {
+      "school": {
+        "de": "So viel frisches Gas regnet pro Jahr aus der Umgebung auf die Galaxie, gemessen in Sonnenmassen. Ohne diesen Nachschub wäre das Gas irgendwann aufgebraucht und es entstünden keine neuen Sterne mehr.",
+        "en": "This much fresh gas rains onto the galaxy from its surroundings each year, in solar masses. Without this supply the gas would run out at some point and no new stars would form."
+      },
+      "lay": {
+        "de": "Echte Scheibengalaxien bilden seit Milliarden Jahren Sterne, obwohl ihr Gas nur für zwei bis drei Milliarden Jahre reichen würde. Sie bekommen also Nachschub, etwa eine Sonnenmasse pro Jahr bei der Milchstraße. Das Gas kommt aus dem Halo, kühlt ab und regnet ein bis zwei Kiloparsec über der Scheibe auf sie herab. In der Simulation entstehen dort neue Gasteilchen, die etwas langsamer rotieren als die Scheibe und auf sie fallen.",
+        "en": "Real disk galaxies have formed stars for billions of years, although their gas would only last two to three billion years. So they get a supply, about one solar mass per year for the Milky Way. The gas comes from the halo, cools and rains down onto the disk from one to two kiloparsecs above it. In the simulation new gas particles appear there, rotating a little slower than the disk, and fall onto it."
+      },
+      "physics": {
+        "de": "Je Galaxie eine Quelle (sim/infall.go, ADR-0016): Rate infallMsunPerYear ≈ M_gas / 3 Gyr (Gleichgewicht Zufluss ≈ SFR, „Badewannenmodell“, Bouché et al. 2010, Lilly et al. 2013). Neue Gasteilchen mit der Masse der vorhandenen, 1,5 kpc über oder unter der Ebene (Ebene = Drehimpuls der Baryonen um das Loch), Radius ~ R e^(−R/R_gas), Rotation 0,8 v_c (Fraternali & Binney 2006), T = 10⁴ K. Energie exakt in ExternalEnergy verbucht. Anzeige gleitend über 100 Myr. Grenzen: kein heißer Halo, keine Kühlung aus der Korona, keine galaktischen Fontänen oder Ausflüsse, keine Metallizität.",
+        "en": "One source per galaxy (sim/infall.go, ADR-0016): rate infallMsunPerYear ≈ M_gas / 3 Gyr (equilibrium inflow ≈ SFR, \"bathtub model\", Bouché et al. 2010, Lilly et al. 2013). New gas particles with the mass of the existing ones, 1.5 kpc above or below the plane (plane = angular momentum of the baryons around the hole), radius ~ R e^(−R/R_gas), rotation 0.8 v_c (Fraternali & Binney 2006), T = 10⁴ K. Energy booked exactly in ExternalEnergy. Shown averaged over 100 Myr. Limits: no hot halo, no cooling from the corona, no galactic fountains or outflows, no metallicity."
       }
     }
   }

@@ -2,6 +2,7 @@ package save
 
 import (
 	"path/filepath"
+	"reflect"
 	"slices"
 	"testing"
 
@@ -28,7 +29,7 @@ func TestSaveLoadContinuesBitIdentically(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if f.Camera != cam || f.Scene.Name != sp.Name || f.Params != p || f.Steps != 20 {
+	if f.Camera != cam || f.Scene.Name != sp.Name || !reflect.DeepEqual(f.Params, p) || f.Steps != 20 {
 		t.Fatalf("metadata not restored: %+v", f)
 	}
 	loaded := sim.New(sim.NewState(0), &bh.Solver{}, sim.Params{})

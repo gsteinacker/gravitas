@@ -24,6 +24,8 @@ type Snapshot struct {
 	FormedMass     float64 // mass of the stars formed from gas
 	Supernovae     int     // populations exploded (supernova.go)
 	SNMass         float64 // their mass
+	InfallMass     float64 // gas added by infall (infall.go)
+	Infall         bool    // the run has infall sources
 	SNDelayMin     float64 // explosion delays after birth (SupernovaDelay); both 0 without supernovae
 	SNDelayMax     float64
 	HolesFormed    int     // black holes formed by collapse (collapse.go)
@@ -60,6 +62,7 @@ func (sn *Snapshot) fill(m *Simulation) {
 	sn.GasH, sn.GasIon = resize(sn.GasH, n), resize(sn.GasIon, n)
 	sn.YoungAge, sn.StarsFormed, sn.HolesFormed = m.Params.Gas.YoungAge, m.StarsFormed, m.HolesFormed
 	sn.FormedMass, sn.Supernovae, sn.SNMass = m.FormedMass, m.Supernovae, m.SNMass
+	sn.InfallMass, sn.Infall = m.InfallMass, len(m.Params.Infall) > 0
 	sn.SNDelayMin, sn.SNDelayMax = 0, 0
 	if g := m.Params.Gas; g.SNEnergy > 0 {
 		sn.SNDelayMin, sn.SNDelayMax = g.SNDelayMin, g.SNDelayMax

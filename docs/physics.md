@@ -147,11 +147,25 @@ von etwa 3 Myr Dauer, keine physikalische Helligkeit.
 Raten im Inspektor (`app.rateMeter`): gleitend über 100 Myr wie die UV-Messung, Supernovae pro Jahrhundert =
 0,01 × gebildete Masse (Kroupa-IMF über 8 M☉). Gemessen in Szene 1 bei 50 000 Teilchen nach 240 Myr:
 0,14 M☉/Jahr, 0,14 Supernovae pro Jahrhundert, Gasanteil 8,7 %. Milchstraße: 1,65 M☉/Jahr, 1,6 pro Jahrhundert.
-Die Rate ist also etwa zehnmal zu niedrig. Gas strömt nicht nach (kein Infall aus dem Halo, T-081), deshalb
-sinkt sie mit dem Gasvorrat.
+Die Rate war damit etwa zehnmal zu niedrig (T-081 korrigiert das, siehe unten).
 
 Grenzen: thermische Einspeisung kühlt bei grober Auflösung schnell weg (Overcooling); keine kinetische
-Rückkopplung, keine Typ-Ia-Supernovae, keine Sternwinde, keine Massen- und Metallrückgabe.
+Rückkopplung, keine Typ-Ia-Supernovae, keine Sternwinde, keine Massen- und Metallrückgabe. Getriggerte
+Sternentstehung in verdichteten Schalen entsteht nur, soweit der SPH-Druck die Nachbarn verdichtet; die Schalen
+(10–100 pc) liegen unter der Auflösung.
+
+### Gaszufluss und Kalibrierung (ADR-0016, T-081)
+
+Effizienz ε_ff = 0,066 in den Galaxienszenen statt 0,02. An der Schwelle 0,1 cm⁻³ (t_ff ≈ 140 Myr) entspricht das
+der Sternbildungszeit t* = 2,1 Gyr von Springel & Hernquist (2003). Die Gasverbrauchszeit liegt dann bei einigen
+Gyr wie in realen Scheiben (Bigiel et al. 2008).
+
+Je Galaxie regnet frisches Gas aus dem Halo (`infallMsunPerYear` ≈ M_gas / 3 Gyr, Badewannenmodell): neue
+Gasteilchen 1,5 kpc über oder unter der Ebene der Baryonen um das Loch, Radius aus dem Gasprofil, Rotation
+0,8 v_c, 10⁴ K. Die Energie jedes neuen Teilchens wird in `ExternalEnergy` verbucht. Nach einer Verschmelzung
+folgt die Quelle dem schwersten Loch. Gemessen in Szene 1 (20 000 Teilchen, 1 Gyr): Zufluss 0,60 M☉/Jahr,
+Sternentstehung ≈ 0,55 M☉/Jahr, über die ganze Zeit etwa konstant (17–28 neue Sterne je 100 Myr). Die Zahl der
+Gasteilchen wächst um 14 % (1024 → 1164), insgesamt sind das 0,7 % mehr Teilchen.
 
 ## Was wir bewusst ignorieren
 

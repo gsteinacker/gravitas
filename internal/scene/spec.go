@@ -85,8 +85,10 @@ type Component struct {
 	BulgeFrac    float64 `json:"bulgeFraction,omitempty"`  // share of the stellar mass (Mass·diskFraction) in a Hernquist bulge
 	BulgeScale   float64 `json:"bulgeScale,omitempty"`     // its scale radius
 	HoleMass     float64 `json:"holeMass,omitempty"`
-	Inclination  float64 `json:"inclination,omitempty"` // degrees, around x
-	Orientation  float64 `json:"orientation,omitempty"` // degrees, around z afterwards
+	// Fresh gas raining onto the disk from the halo in M☉/yr (T-081); needs a hole and units.
+	InfallMsunPerYear float64 `json:"infallMsunPerYear,omitempty"`
+	Inclination       float64 `json:"inclination,omitempty"` // degrees, around x
+	Orientation       float64 `json:"orientation,omitempty"` // degrees, around z afterwards
 
 	// plummer: star cluster
 	Scale float64 `json:"scale,omitempty"`
@@ -188,7 +190,11 @@ func (sp *Spec) Build(n int) (*sim.State, sim.Params) {
 	for i, c := range sp.Components {
 		switch c.Type {
 		case "galaxy":
+			first := s.Len()
 			addGalaxy(s, c, counts[i], p, sp.specificEnergy(c.GasK))
+			if f, ok := sp.infallSource(s, c, first); ok {
+				p.Infall = append(p.Infall, f)
+			}
 		case "plummer":
 			AddPlummer(s, counts[i], c.Mass, c.Scale, v3(c.Position), v3(c.Velocity), c.Seed)
 		case "hole":
@@ -237,6 +243,43 @@ func (sp *Spec) Units() (kmPerS, pcPerUnit float64, ok bool) {
 // SpecificEnergy converts a gas temperature in K into specific internal energy in simulation units
 // (0 for scenes without velocityUnit).
 func (sp *Spec) SpecificEnergy(kelvin float64) float64 { return sp.specificEnergy(kelvin) }
+
+// infallHeightPc is the height above the disk from which infalling gas starts: extraplanar H I
+// lies 1–2 kpc above disks (Fraternali & Binney 2006, Marasco & Fraternali 2011).
+const infallHeightPc = 1500
+
+// infallSource is the gas infall onto the galaxy c whose bodies start at index first: new gas
+// bodies as heavy as its gas bodies, around its black hole; ok is false if anything is missing.
+func (sp *Spec) infallSource(s *sim.State, c Component, first int) (sim.InfallSource, bool) {
+	msun, ok := sp.MassUnit()
+	_, pcPerUnit, _ := sp.Units()
+	if c.InfallMsunPerYear <= 0 || !ok || sp.YearsPer <= 0 {
+		return sim.InfallSource{}, false
+	}
+	f := sim.InfallSource{Rate: c.InfallMsunPerYear * sp.YearsPer / msun, Height: infallHeightPc / pcPerUnit}
+	hole, gas := -1, 0
+	for i := first; i < s.Len(); i++ {
+		switch s.Kind[i] {
+		case sim.BlackHole:
+			hole = i
+		case sim.Gas:
+			f.Mass += s.Mass[i]
+			gas++
+		}
+	}
+	if hole < 0 || gas == 0 {
+		return sim.InfallSource{}, false
+	}
+	f.Center, f.Mass = s.ID[hole], f.Mass/float64(gas)
+	f.Scale, f.RMax = c.GasScale, c.GasMax
+	if f.Scale == 0 {
+		f.Scale = c.DiskScale
+	}
+	if f.RMax == 0 {
+		f.RMax = c.DiskMax
+	}
+	return f, true
+}
 
 // MassUnit is the mass unit of the scene in solar masses, M = v² L / G; ok is false without units.
 func (sp *Spec) MassUnit() (msun float64, ok bool) {

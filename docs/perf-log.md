@@ -3,6 +3,21 @@
 Chronologisches Log relevanter Benchmark-Ergebnisse. Neueste oben. Format: `## Datum · Task · Thema`, dann
 Maschine und Last, die Zahlen in einem Codeblock und eine kurze Einordnung.
 
+## 2026-10-29 · T-080, T-081 · Supernovae, Gaszufluss, höhere Sternentstehung
+
+`tools/evolve -preset 1 -n 20000 -t 15` (200 Myr), M4 Pro, keine Fremdlast. Abwechselnd gemessen: neuer Stand,
+alter Commit (Worktree), neuer Stand.
+
+```
+neu (Supernovae, Zufluss, ε 0,066)   167,9 / 168,1 Schritte/s   1055 Gas, 35 neue Sterne
+T-080 (nur Supernovae)               176,3 Schritte/s           1012 Gas, 14 neue Sterne
+```
+
+Etwa 5 % langsamer. Gründe: 4 % mehr Gas und eine zusätzliche Kraftauswertung je neuem Gasteilchen (alle
+~60 Schritte bei 20k). Über 1 Gyr sinkt die Rate von 170 auf 130 Schritte/s, weil das Gas wächst und dichter
+wird (ADR-0016). Hinnehmbar; falls nötig, ließe sich die neue Kraftauswertung durch eine Beschleunigung nur für
+das neue Teilchen ersetzen.
+
 ## 2026-10-26 · T-074 · Particle-Mesh im kosmologischen Modus
 
 Szene 13 (100 Mpc/h, z = 50), M4 Pro, keine Fremdlast, 20 Schritte nach einem Aufwärmschritt:

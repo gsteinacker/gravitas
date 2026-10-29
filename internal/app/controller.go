@@ -253,6 +253,7 @@ type SimState struct {
 	HolesFormed                                int
 	Supernovae                                 int     // populations exploded (sim.Simulation.Supernovae)
 	GasShare                                   float64 // gas mass / (gas + star mass)
+	Infall                                     bool    // gas falls in from the halo
 	ScaleFactor                                float64 // comoving mode: a (redshift z = 1/a − 1), else 0
 	Time, C                                    float64
 	Substeps, HydroSubsteps                    int
@@ -610,7 +611,8 @@ func (c *Controller) Observe(sn *sim.Snapshot) {
 			"Supernovae: the massive stars of a young population explode and heat the gas."))
 		c.focus("supernovae")
 	}
-	c.rates.add(sn.Time, sn.FormedMass, sn.SNMass, rateWindow(c.Scene))
+	c.rates.add(sn.Time, sn.FormedMass, sn.SNMass, sn.InfallMass, rateWindow(c.Scene))
+	s.Infall = sn.Infall
 	var gas, stars float64
 	if s.HolesFormed > c.sim.HolesFormed && s.Time >= c.sim.Time { // not after a restart (T-067)
 		c.Notify(i18n.T("Ein Schwarzes Loch ist entstanden: die Masse passte in ihren eigenen Schwarzschild-Radius.",
@@ -639,17 +641,17 @@ func (c *Controller) Observe(sn *sim.Snapshot) {
 // Sim is what the controller last saw of the simulation.
 func (c *Controller) Sim() SimState { return c.sim }
 
-// FormatYears picks a readable unit: yr, kyr, Myr or Gyr.
+// FormatYears picks a readable unit: yr, kyr, Myr or Gyr (German: J., Tsd. J., Mio. J., Mrd. J.).
 func FormatYears(y float64) string {
 	switch a := math.Abs(y); {
 	case a >= 1e9:
-		return fmt.Sprintf("%.3g Gyr", y/1e9)
+		return fmt.Sprintf("%.3g %s", y/1e9, i18n.T("Mrd. J.", "Gyr"))
 	case a >= 1e6:
-		return fmt.Sprintf("%.3g Myr", y/1e6)
+		return fmt.Sprintf("%.3g %s", y/1e6, i18n.T("Mio. J.", "Myr"))
 	case a >= 1e3:
-		return fmt.Sprintf("%.3g kyr", y/1e3)
+		return fmt.Sprintf("%.3g %s", y/1e3, i18n.T("Tsd. J.", "kyr"))
 	default:
-		return fmt.Sprintf("%.3g yr", y)
+		return fmt.Sprintf("%.3g %s", y, i18n.T("J.", "yr"))
 	}
 }
 
