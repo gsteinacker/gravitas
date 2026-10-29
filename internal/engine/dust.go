@@ -106,6 +106,24 @@ func (dm *dustMap) front(sx, sy, depth float64) float64 {
 	return tau * 0.5 * math.Erfc(-(depth-mu)/(math.Sqrt2*sigma))
 }
 
+// dustSputterK is the temperature range (K) over which gas loses its dust: shocks faster than
+// ~100 km/s (post-shock T ≳ 10⁵ K) destroy a large share of the grains, and above ~10⁶ K thermal
+// sputtering erodes them within the lifetime of a supernova bubble (Draine & Salpeter 1979,
+// Jones et al. 1994).
+var dustSputterK = [2]float64{1e5, 1e6}
+
+// dustShare is the share of the Milky Way dust-to-gas ratio a gas body carries: none where it is
+// ionized, and fading from 1 to 0 between uLo and uHi (logarithmically in temperature). Without
+// units (uLo = 0) only the ionization counts. Dust returns as soon as the gas has cooled; real
+// grains regrow in about 100 Myr (topic "dust").
+func dustShare(ion, u, uLo, uHi float64) float32 {
+	share := 1 - ion
+	if uLo > 0 && uHi > uLo && u > uLo {
+		share *= math.Max(0, 1-math.Log(u/uLo)/math.Log(uHi/uLo))
+	}
+	return float32(math.Max(0, share))
+}
+
 // transmission returns the attenuation per color channel for optical depth tauV.
 func transmission(tauV float64) (r, g, b float32) {
 	if tauV <= 0 {
@@ -155,8 +173,8 @@ func (l *looker) buildDust(bodies []float32, n int, vw *view.View, w, h, focal, 
 		if sx < -size || sy < -size || sx > w+size || sy > h+size {
 			continue
 		}
-		// τ · footprint in pixels² = κ m (focal/depth)² for the neutral mass (dust survives there).
-		tauArea := kappa * float64(b[3]) * (1 - float64(b[9])) * (focal / depth) * (focal / depth)
+		// τ · footprint in pixels² = κ m (focal/depth)² for the mass that carries dust (dustShare).
+		tauArea := kappa * float64(b[3]) * float64(b[8]) * (focal / depth) * (focal / depth)
 		l.dust.deposit(sx, sy, size, tauArea, depth)
 	}
 	if sceneKappa > 0 {

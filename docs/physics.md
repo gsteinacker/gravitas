@@ -86,6 +86,28 @@ Milchstraßen-Verhältnis); Szenen ohne `velocityUnit` normieren automatisch. Je
 mit dem Staub vor ihm geschwächt, τ · Φ((d − μ)/σ) aus Mittelwert und Streuung der Staubtiefe je Bildpunkt
 (`internal/render/dust.go`); der Himmelshintergrund liegt hinter allem Staub.
 
+Heißes Gas verliert seinen Staub (T-082, `engine.dustShare`): Zwischen 10⁵ und 10⁶ K fällt der Anteil
+logarithmisch von 1 auf 0. Grund sind Stoßwellen über ~100 km/s und thermisches Sputtern (Draine & Salpeter 1979,
+Jones et al. 1994). Supernova-Blasen werden so zu Löchern in den Staubbändern. Sobald das Gas abgekühlt ist, kehrt
+der Staub zurück; echte Körner wachsen dafür etwa 100 Myr nach. Herkunft (AGB-Winde, Supernova-Auswurf) und ein
+veränderliches Staub-zu-Gas-Verhältnis sind nicht modelliert.
+
+## Rotation von Wolken und Haufen, Galaxienentstehung (T-082)
+
+Gaswolken bekommen zusätzlich zur Turbulenz v_φ = f · v_c(r) · sin θ um die Achse der Startebene. v_c folgt aus
+allen zuvor gebauten Körpern, also auch aus einem Halo. Wegen Σ m v_c² = |W| ist β = E_rot/|W| = f²/3; beobachtet
+werden 10⁻⁴–0,07, typisch 0,02 (Goodman et al. 1993), Standard im Werkzeug f = 0,25. Sternhaufen drehen nach
+Lynden-Bell (1960): Mit Wahrscheinlichkeit f bekommt ein gegenläufiger Stern das umgekehrte v_φ. Das ändert keine
+Energie und erhält das Gleichgewicht. Test: `TestSpinUpCloudGivesBeta`, `TestSpinUpClusterKeepsEnergyAndRotates`.
+
+Szene „Galaxy formation“ (`14-galaxy-formation.json`): Ein Plummer-Halo aus DM und eine Gaswolke mit Baryonenanteil
+0,15 auf derselben Skala (10 kpc), anfangs bei Virialtemperatur und mit f = 0,5 (λ ≈ 0,025). Die Kühlzeit beträgt
+26 Myr. Gemessen bei 8000 Teilchen (`tools/evolve` gibt jetzt Halbmassenradius, rms-Höhe und deren Verhältnis der
+Baryonen aus): Das Verhältnis Höhe/Radius fällt von 1,0 auf 0,25–0,4 nach 400–550 Myr. Es ist eine sichtbare
+Scheibe von etwa 3 kpc Halbmassenradius, mit 94 Sternpopulationen und Supernova-Blasen. Bei kürzerer Kühlzeit
+(7 Myr) oder f = 0,25 fällt das Gas zu einem runden, dichten Klumpen zusammen. Grenze: Das dichte Zentrum verlangt
+viele Gas-Teilschritte, die Szene wird im Lauf langsamer (8000 Teilchen: 150 → 40 Schritte/s).
+
 ## Entstehung Schwarzer Löcher (ADR-0012)
 
 Hoop-Kriterium auf der kleinsten aufgelösten Kugel: Steckt in R = 2ε die Masse M ≥ R c²/2 in mindestens 20

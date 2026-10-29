@@ -202,8 +202,12 @@ type Controller struct {
 	// CloudK and CloudTurb are the temperature (K) and turbulence (fraction of the virial speed)
 	// of the next gas cloud.
 	CloudK, CloudTurb float64
-	ShowHUD           bool
-	ShowHelp          bool
+	// CloudRot and ClusterRot rotate the next cloud and cluster about PlaceNormal (T-082): extra
+	// azimuthal speed in units of the circular speed (β = CloudRot²/3), share of stars turned
+	// to orbit in the same sense.
+	CloudRot, ClusterRot float64
+	ShowHUD              bool
+	ShowHelp             bool
 	// FPS is the frame rate measured by the front end.
 	FPS float64
 	// Theta and GPU mirror the Barnes-Hut solver settings (set by main, changed by SetTheta/SetGPU).
@@ -264,7 +268,7 @@ type SimState struct {
 // New creates the controller for a runner that already simulates sp, built for n bodies.
 func New(runner *sim.Runner, n int, sp *scene.Spec) *Controller {
 	c := &Controller{
-		Runner: runner, N: n, Speed: len(SpeedLevels) - 1, Mass: 0.5, CloudK: 100, CloudTurb: 0.3,
+		Runner: runner, N: n, Speed: len(SpeedLevels) - 1, Mass: 0.5, CloudK: 100, CloudTurb: 0.3, CloudRot: 0.25, ClusterRot: 0.3,
 		ShowHUD: true, ShowHelp: true, SaveDir: DefaultSaveDir(),
 	}
 	c.applyScene(sp)
@@ -580,6 +584,7 @@ func (c *Controller) PlaceAt(pos, vel vec.Vec3) {
 	n := clusterStars(c.N)
 	s := sim.NewState(n)
 	scene.AddPlummer(s, n, mass, c.clusterRadius(mass), pos, vel, 1000+c.placements)
+	scene.SpinUpCluster(s, 0, pos, vel, c.PlaceNormal, c.ClusterRot, 1000+c.placements)
 	c.Runner.Do(func(m *sim.Simulation) {
 		for i := range s.Len() {
 			b := s.Body(i)
@@ -666,6 +671,7 @@ func (c *Controller) placeCloud(pos, vel vec.Vec3) {
 	turb := c.CloudTurb * math.Sqrt(mass/r)
 	s := sim.NewState(n)
 	scene.AddGasClump(s, n, mass, r, pos, vel, u, turb, 0.3, 2000+c.placements)
+	scene.SpinUpCloud(s, 0, pos, c.PlaceNormal, c.CloudRot)
 	c.Runner.Do(func(m *sim.Simulation) {
 		for i := range s.Len() {
 			b := s.Body(i)

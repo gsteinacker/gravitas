@@ -90,8 +90,12 @@ type Component struct {
 	Inclination       float64 `json:"inclination,omitempty"` // degrees, around x
 	Orientation       float64 `json:"orientation,omitempty"` // degrees, around z afterwards
 
-	// plummer: star cluster
+	// plummer: star cluster; halo: dark matter halo (Plummer, cut at haloCut); both use Scale
 	Scale float64 `json:"scale,omitempty"`
+	// plummer, gasclump: rotation about SpinAxis (default +z), T-082. Clusters: share of stars
+	// turned to orbit in the same sense (0–1); clouds: extra azimuthal speed in units of the
+	// circular speed (β = rotation²/3).
+	Rotation float64 `json:"rotation,omitempty"`
 
 	// star: a single star, a source of ionizing radiation if Luminosity > 0
 	Luminosity float64 `json:"luminosity,omitempty"`
@@ -142,7 +146,7 @@ func ParseSpec(data []byte) (*Spec, error) {
 	}
 	for i, c := range s.Components {
 		switch c.Type {
-		case "galaxy", "plummer", "hole", "orbits", "star", "gasbox", "gasclump", "cosmicweb":
+		case "galaxy", "plummer", "hole", "orbits", "star", "gasbox", "gasclump", "cosmicweb", "halo":
 			if p := c.HaloProfile; p != "" && p != "plummer" && p != "hernquist" {
 				return nil, fmt.Errorf("scene %q: component %d: unknown halo profile %q", s.Name, i, p)
 			}
@@ -196,7 +200,15 @@ func (sp *Spec) Build(n int) (*sim.State, sim.Params) {
 				p.Infall = append(p.Infall, f)
 			}
 		case "plummer":
+			first := s.Len()
 			AddPlummer(s, counts[i], c.Mass, c.Scale, v3(c.Position), v3(c.Velocity), c.Seed)
+			SpinUpCluster(s, first, v3(c.Position), v3(c.Velocity), v3(c.SpinAxis), c.Rotation, c.Seed)
+		case "halo":
+			cut := c.HaloCut
+			if cut == 0 {
+				cut = 0.99
+			}
+			AddHalo(s, counts[i], c.Mass, c.Scale, v3(c.Position), v3(c.Velocity), c.Seed, cut)
 		case "hole":
 			s.Add(sim.Body{Pos: v3(c.Position), Vel: v3(c.Velocity), Mass: c.Mass, Kind: sim.BlackHole,
 				Spin: SpinVector(c.Spin, v3(c.SpinAxis), c.Mass, p.C)})
@@ -205,7 +217,9 @@ func (sp *Spec) Build(n int) (*sim.State, sim.Params) {
 		case "star":
 			s.Add(sim.Body{Pos: v3(c.Position), Vel: v3(c.Velocity), Mass: c.Mass, Lum: c.Luminosity})
 		case "gasbox", "gasclump":
+			first := s.Len()
 			addGasCloud(s, c, counts[i], sp.specificEnergy(c.GasK), c.Turbulence/math.Max(sp.KmPerS, 1e-30))
+			SpinUpCloud(s, first, v3(c.Position), v3(c.SpinAxis), c.Rotation)
 		case "cosmicweb":
 			sp.addCosmicWeb(s, c, counts[i], &p)
 		}

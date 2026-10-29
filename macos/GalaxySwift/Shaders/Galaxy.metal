@@ -15,7 +15,7 @@ struct Uniforms {
     float4 pop;    // population radius (0: particles are stars), star formation density, its light, unused
 };
 
-struct Body { float4 pos; float4 vel; float4 gas; }; // xyz mass | v kind | age ion h rho (stars: age id flash -)
+struct Body { float4 pos; float4 vel; float4 gas; }; // xyz mass | v kind | age ion h rho (stars: age id flash -, gas: dust ion h rho)
 
 struct Sprite {
     float4 position [[position]];
@@ -256,7 +256,7 @@ vertex Sprite spriteVertex(uint vid [[vertex_id]], uint iid [[instance_id]],
     return culled();
 }
 
-// dustVertex draws the neutral gas as column density into the dust image: alpha accumulates
+// dustVertex draws the dusty gas (neutral, not too hot) as column density into the dust image: alpha accumulates
 // "over", the background is attenuated by exp(−alpha · DustStrength · k).
 vertex Sprite dustVertex(uint vid [[vertex_id]], uint iid [[instance_id]],
                          const device Body *bodies [[buffer(0)]], constant Uniforms &u [[buffer(1)]]) {
@@ -267,7 +267,7 @@ vertex Sprite dustVertex(uint vid [[vertex_id]], uint iid [[instance_id]],
     float focal = u.view.z, ps = u.view.w;
     float size = max(2 * b.gas.z * focal / s.z, 2 * ps);
     float k = focal / s.z;
-    float tauArea = u.misc.w * b.pos.w * (1 - b.gas.y) * k * k;
+    float tauArea = u.misc.w * b.pos.w * b.gas.x * k * k; // dust share (engine.dustShare)
     float a = min(1.0, tauArea / (KERNEL_MEAN * size * size) / 2.5);
     return gasSprite(s, size, float4(a), vid, u);
 }

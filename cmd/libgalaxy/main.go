@@ -26,6 +26,8 @@ typedef struct {
 	double cloudAlpha, cloudFloorK; // its virial parameter (< 1 collapses, > 2 disperses), effective temperature
 	double galaxyTilt;      // next galaxy: tilt of its disk against the launch plane (degrees)
 	double holeSpin;        // next black hole: spin a* about the launch plane normal
+	double cloudRot, cloudBeta; // next gas cloud: rotation (× circular speed), its β = E_rot/|W|
+	double clusterRot;      // next cluster: share of stars orbiting in the same sense
 	double massMin;         // smallest sensible mass (about 1 solar mass), simulation units
 	int galaxyScale;        // galaxies can be placed in this scene
 	int resolved;           // the next object is enlarged to the scene's resolution (2 × softening)
@@ -197,6 +199,7 @@ func galaxy_state(out *C.GalaxyState) {
 		yearsPer: C.double(s.YearsPer), drift: C.double(s.Drift), renderScale: C.double(s.RenderScale),
 		cloudK: C.double(s.CloudK), cloudTurb: C.double(s.CloudTurb),
 		cloudAlpha: C.double(alpha), cloudFloorK: C.double(floorK), galaxyTilt: C.double(eng.GalaxyTilt), holeSpin: C.double(eng.HoleSpin),
+		cloudRot: C.double(s.CloudRot), cloudBeta: C.double(scene.CloudBeta(s.CloudRot)), clusterRot: C.double(s.ClusterRot),
 		massMin: C.double(massMin), galaxyScale: b(eng.GalaxyScale()), resolved: b(s.Resolved),
 		starFormation: b(s.Rates.Formation), rateUnits: b(s.Rates.Units), supernovae: C.int(s.Sim.Supernovae),
 		sfr: C.double(s.Rates.SFR), snRate: C.double(s.Rates.SNRate), gasShare: C.double(s.Rates.GasShare),
@@ -261,6 +264,10 @@ func galaxy_set(name *C.char, v C.double) {
 		eng.SetCloud(x, eng.CloudTurb)
 	case "cloudTurb":
 		eng.SetCloud(eng.CloudK, x)
+	case "cloudRot":
+		eng.CloudRot = math.Max(0, math.Min(1, x))
+	case "clusterRot":
+		eng.ClusterRot = math.Max(0, math.Min(1, x))
 	case "darkOff":
 		eng.SetDarkMatterOff(x != 0)
 	case "fx":

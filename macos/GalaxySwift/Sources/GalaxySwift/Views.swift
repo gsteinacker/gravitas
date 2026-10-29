@@ -172,6 +172,18 @@ struct InspectorView: View {
                                       "turbulent motion as a fraction of √(GM/R): below ~0.6 bound (collapse, star formation), above it disperses"),
                               value: Binding(get: { s.cloudTurb }, set: { engine.set("cloudTurb", $0) }), range: 0...2,
                               text: String(format: L("%.2f × virial", "%.2f × virial"), s.cloudTurb))
+                    SliderRow(info: InfoButton(engine, "cloudRotation"), title: L("Rotation", "Rotation"),
+                              help: L("Drehung um die Achse der Startebene als Anteil der Kreisbahngeschwindigkeit; beim Kollaps entsteht daraus eine Scheibe",
+                                      "spin about the launch plane's axis as a fraction of the circular speed; collapse turns it into a disk"),
+                              value: Binding(get: { s.cloudRot }, set: { engine.set("cloudRot", $0) }), range: 0...1,
+                              text: String(format: "%.2f · β = %.3f", s.cloudRot, s.cloudBeta))
+                }
+                if s.tool == 1 {
+                    SliderRow(info: InfoButton(engine, "clusterRotation"), title: L("Rotation", "Rotation"),
+                              help: L("Anteil der Sterne, die gleichsinnig um die Achse der Startebene laufen",
+                                      "share of stars orbiting the launch plane's axis in the same sense"),
+                              value: Binding(get: { s.clusterRot }, set: { engine.set("clusterRot", $0) }), range: 0...1,
+                              text: String(format: L("%.0f %% gleichsinnig", "%.0f %% aligned"), 50 + 50 * s.clusterRot))
                 }
             }
             Section(L("Darstellung", "View")) {

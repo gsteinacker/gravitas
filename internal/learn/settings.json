@@ -598,5 +598,49 @@
         "en": "One source per galaxy (sim/infall.go, ADR-0016): rate infallMsunPerYear ≈ M_gas / 3 Gyr (equilibrium inflow ≈ SFR, \"bathtub model\", Bouché et al. 2010, Lilly et al. 2013). New gas particles with the mass of the existing ones, 1.5 kpc above or below the plane (plane = angular momentum of the baryons around the hole), radius ~ R e^(−R/R_gas), rotation 0.8 v_c (Fraternali & Binney 2006), T = 10⁴ K. Energy booked exactly in ExternalEnergy. Shown averaged over 100 Myr. Limits: no hot halo, no cooling from the corona, no galactic fountains or outflows, no metallicity."
       }
     }
+  },
+  {
+    "id": "cloudRotation",
+    "topic": "gas-clouds",
+    "title": {
+      "de": "Rotation der Gaswolke",
+      "en": "Rotation of the gas cloud"
+    },
+    "levels": {
+      "school": {
+        "de": "Fast jede Gaswolke dreht sich ein wenig. Wenn sie in sich zusammenfällt, dreht sie sich immer schneller, wie eine Eiskunstläuferin, die die Arme anzieht. Deshalb wird aus ihr eine flache Scheibe und kein Punkt. So entstehen Scheiben um junge Sterne und ganze Scheibengalaxien.",
+        "en": "Almost every gas cloud spins a little. When it collapses it spins faster and faster, like a figure skater pulling in her arms. That is why it becomes a flat disk instead of a point. This is how disks around young stars and whole disk galaxies form."
+      },
+      "lay": {
+        "de": "Der Regler gibt die Drehgeschwindigkeit als Anteil der Kreisbahngeschwindigkeit an. β ist der Anteil der Drehenergie an der Bindungsenergie. Gemessene Molekülwolken haben β zwischen 0,0001 und 0,07, typisch 0,02. Das entspricht hier etwa 0,25. Der Drehimpuls bleibt beim Kollaps erhalten. Das Gas fällt deshalb nur so weit nach innen, bis die Fliehkraft die Schwerkraft ausgleicht, und sammelt sich in einer Scheibe senkrecht zur Drehachse. Die Achse ist die der Startebene.",
+        "en": "The slider sets the spin speed as a fraction of the circular speed. β is the share of rotational energy in the binding energy. Measured molecular clouds have β between 0.0001 and 0.07, typically 0.02, about 0.25 here. Angular momentum is conserved during collapse, so the gas only falls in until the centrifugal force balances gravity and collects in a disk perpendicular to the spin axis. The axis is that of the launch plane."
+      },
+      "physics": {
+        "de": "Zusätzlich zur Turbulenz v_φ = f · v_c(r) · sin θ um die Normale der Startebene, v_c = √(G M(<r)/r) aus den Teilchen der Wolke (scene.SpinUpCloud). Für ein kugelsymmetrisches System gilt Σ m v_c² = |W|, also β = E_rot/|W| = f²/3. Beobachtet: β ≈ 10⁻⁴–0,07 bei Drehung fast starr (Goodman et al. 1993). Grenzen: kein Magnetfeld, das in echten Wolken Drehimpuls abführt (magnetisches Bremsen); die Scheibe ist nur bis zur Glättungslänge aufgelöst.",
+        "en": "On top of the turbulence v_φ = f · v_c(r) · sin θ about the launch plane normal, v_c = √(G M(<r)/r) from the cloud's particles (scene.SpinUpCloud). For a spherical system Σ m v_c² = |W|, so β = E_rot/|W| = f²/3. Observed: β ≈ 10⁻⁴–0.07 with nearly solid-body rotation (Goodman et al. 1993). Limits: no magnetic field, which removes angular momentum in real clouds (magnetic braking); the disk is only resolved down to the smoothing length."
+      }
+    }
+  },
+  {
+    "id": "clusterRotation",
+    "topic": "gravity",
+    "title": {
+      "de": "Rotation des Sternhaufens",
+      "en": "Rotation of the star cluster"
+    },
+    "levels": {
+      "school": {
+        "de": "In einem Sternhaufen fliegen die Sterne kreuz und quer um die Mitte. Dreht sich der Haufen, laufen mehr Sterne in die eine Richtung als in die andere. Er bleibt dabei trotzdem ungefähr rund, weil Sterne nicht zusammenstoßen und keine Energie verlieren.",
+        "en": "In a star cluster the stars fly around the center in all directions. If the cluster rotates, more stars go one way than the other. It still stays roughly round, because stars do not collide and lose no energy."
+      },
+      "lay": {
+        "de": "Der Regler legt fest, wie viele Sterne gleichsinnig um die Achse der Startebene laufen: 50 % heißt keine Drehung, 100 % die stärkste Drehung, die der Haufen bei seiner Geschwindigkeitsstreuung haben kann. Kugelsternhaufen drehen sich messbar, aber langsam (Rotationsgeschwindigkeit etwa 10–50 % der Streuung). Anders als eine Gaswolke wird ein Sternhaufen dabei nicht zur Scheibe: Ohne Reibung und Abstrahlung kann er seine Bewegungsenergie nicht loswerden.",
+        "en": "The slider sets how many stars orbit the launch plane's axis in the same sense: 50 % means no rotation, 100 % the strongest rotation the cluster can have for its velocity dispersion. Globular clusters rotate measurably but slowly (rotation speed about 10–50 % of the dispersion). Unlike a gas cloud, a cluster does not become a disk: without friction and radiation it cannot get rid of its kinetic energy."
+      },
+      "physics": {
+        "de": "Lynden-Bell-Trick (1960): Sterne mit v_φ < 0 bezüglich der Achse bekommen mit Wahrscheinlichkeit f das Vorzeichen von v_φ umgekehrt (scene.SpinUpCluster). Beträge, Radien und Energie bleiben gleich, die Verteilungsfunktion f(E, L_z) bleibt eine Gleichgewichtslösung, das Plummer-Modell bleibt im Gleichgewicht. Beobachtet: v_rot/σ ≈ 0,1–0,5 bei Kugelsternhaufen (Bianchini et al. 2018, Kamann et al. 2018).",
+        "en": "Lynden-Bell trick (1960): stars with v_φ < 0 about the axis get the sign of v_φ reversed with probability f (scene.SpinUpCluster). Speeds, radii and energy stay the same; the distribution function f(E, L_z) remains an equilibrium solution, so the Plummer model stays in equilibrium. Observed: v_rot/σ ≈ 0.1–0.5 in globular clusters (Bianchini et al. 2018, Kamann et al. 2018)."
+      }
+    }
   }
 ]

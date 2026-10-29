@@ -37,7 +37,9 @@ Spielstände (F5/F9, `-load`) sind dagegen **exakte Abzüge** eines laufenden Zu
 | `type` | Felder | Beschreibung |
 |--------|--------|--------------|
 | `galaxy` | `mass`, `diskFraction`, `diskScale`, `diskMin`, `diskMax`, `thickness`, `dispersion` (oder `toomreQ` und `coldFraction`), `haloProfile` (`plummer`/`hernquist`), `haloScale`, `haloCut` (plummer), `haloMax` (hernquist), `darkFraction`, `gasFraction`, `gasTemperature` (K), `bulgeFraction`, `bulgeScale`, `holeMass`, `infallMsunPerYear` (Gaszufluss, braucht Loch und Einheiten, ADR-0016), `inclination`, `orientation`, `position`, `velocity`, `seed` | Exponentielle Scheibe auf Kreisbahnen (aus der eingeschlossenen Masse von Loch, Bulge, Scheibe und Halo), optional Halo aus Dunkler Materie (`darkFraction` der Teilchen) und Hernquist-Bulge alter Sterne (`bulgeFraction` der Sternmasse, Skala `bulgeScale`, isotrope Jeans-Geschwindigkeiten) |
-| `plummer` | `mass`, `scale`, `position`, `velocity`, `seed` | Sternhaufen im Virialgleichgewicht |
+| `plummer` | `mass`, `scale`, `position`, `velocity`, `seed`, `rotation` (0–1), `spinAxis` | Sternhaufen im Virialgleichgewicht; `rotation` lässt diesen Anteil der Sterne gleichsinnig umlaufen (Lynden-Bell, Gleichgewicht bleibt) |
+| `halo` | `mass`, `scale`, `haloCut` (Standard 0,99), `position`, `velocity`, `seed` | Halo aus Dunkler Materie (Plummer), z. B. für eine Gaswolke, die darin kollabiert |
+| `gasbox`, `gasclump` | `mass`, `size` (gasbox) bzw. `scale` (gasclump), `gasTemperature` (K), `turbulence` (km/s), `perturb`, `position`, `velocity`, `seed`, `rotation`, `spinAxis` | Gas als Kasten oder Plummer-Wolke; `rotation` gibt zusätzlich `rotation` × Kreisbahngeschwindigkeit (aller zuvor gebauten Körper) um `spinAxis`, β = rotation²/3 |
 | `hole` | `mass`, `position`, `velocity`, `spin` (a*, 0–0,998), `spinAxis` (Standard +z) | einzelnes Schwarzes Loch, mit `spin` rotierend (Kerr, nur mit c) |
 | `orbits` | `mass` (zentrales Loch), `aScale`, `orbits[]` (`a`, `e`, `i`, `node`, `peri`, `anomaly`), `starMass`, `background`, `backgroundA`, `backgroundMass`, `seed` | Kepler-Bahnen um ein Loch, z. B. aus Bahnelementen der Literatur |
 | `cosmicweb` | `box` (Mpc/h), `redshift`, `position`, `seed` | kosmisches Netz: Zel'dovich-Realisierung von ΛCDM (Planck 2018) als Dunkle Materie, Masse Ω_m ρ_krit L³ (T-073) |
@@ -52,6 +54,7 @@ Spielstände (F5/F9, `-load`) sind dagegen **exakte Abzüge** eines laufenden Zu
 | 7 | Whirlpool (M51) | 2,5 kpc | angelehnt an M51/NGC 5195, nicht angepasst |
 | 8 | S-Sterne um Sgr A* | 1000 AE, 4,3·10⁶ M☉, **echtes c** | Bahnelemente gerundet nach Gillessen et al. 2017, Phasen illustrativ |
 | 9 | Pferdekopfnebel | 1 pc, 100 M☉ | Photoverdampfung einer Wolkenkante, siehe `note` |
+| (14) | Galaxienentstehung | 2,5 kpc, 2·10¹⁰ M☉ | rotierende heiße Gaswolke (Baryonenanteil 0,15) in einem DM-Halo kollabiert zur Scheibe (T-082), siehe `note` |
 | Menü | 10 Direkter Kollaps | 1 pc, 10⁴ M☉, c = 15 | 10⁵ M☉ Gas bei 8000 K kollabiert zum Loch (T-067, ADR-0012) |
 | Menü | 11 Akkretionsscheibe | 1 pc, 10⁵ M☉, c = 3 | Gaswolke füttert ein Loch, Scheibe als Darstellung (T-065) |
 | Menü | 12 Kosmisches Netz | 1 Mpc, Würfel 100 Mpc/h | Zel'dovich, ΛCDM Planck 2018, statisch (T-073) |

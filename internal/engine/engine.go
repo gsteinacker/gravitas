@@ -240,7 +240,8 @@ func (e *Engine) Zoom(f float64)        { e.Cam.Zoom(f) }
 func (e *Engine) LastFrame() FrameInfo { return e.last }
 
 // FloatsPerBody is the layout of Frame: x, y, z, mass, vx, vy, vz, kind, age, ion, h, rho. Stars
-// carry their identity in ion and the supernova flash (supernovaFlash) in h.
+// carry their identity in ion and the supernova flash (supernovaFlash) in h; gas carries its dust
+// share (dustShare) in age.
 const FloatsPerBody = 12
 
 // FrameInfo describes the copied bodies.
@@ -271,11 +272,18 @@ func (e *Engine) Frame(dst []float32, force bool) (FrameInfo, bool) {
 		info = FrameInfo{}
 		n := min(sn.Len(), len(dst)/FloatsPerBody)
 		var starMass float64
+		var uLo, uHi float64
+		if e.Scene != nil {
+			uLo, uHi = e.Scene.SpecificEnergy(dustSputterK[0]), e.Scene.SpecificEnergy(dustSputterK[1])
+		}
 		for i := range n {
 			d := dst[i*FloatsPerBody : i*FloatsPerBody+FloatsPerBody : i*FloatsPerBody+FloatsPerBody]
 			d[0], d[1], d[2], d[3] = sn.X[i], sn.Y[i], sn.Z[i], sn.Mass[i]
 			d[4], d[5], d[6], d[7] = sn.VX[i], sn.VY[i], sn.VZ[i], float32(sn.Kind[i])
 			d[8], d[9], d[10], d[11] = sn.Age[i], sn.GasIon[i], sn.GasH[i], sn.GasRho[i]
+			if sn.Kind[i] == sim.Gas {
+				d[8] = dustShare(float64(sn.GasIon[i]), float64(sn.GasU[i]), uLo, uHi)
+			}
 			if sn.Kind[i] == sim.Star {
 				// Stars have no gas: slot 9 carries their identity (24 bits, exact in a float), from
 				// which the renderer draws the stars of a population (Galaxy.metal population).
