@@ -72,6 +72,54 @@ func TestNeighborSearchMatchesBruteForce(t *testing.T) {
 	}
 }
 
+// The group walk with per-body culling and leaves sorted by h (T-087) finds exactly the neighbors
+// of a brute-force search, also with very different smoothing lengths side by side.
+func TestGroupScanMatchesBruteForce(t *testing.T) {
+	s := cloud(2000, 3)
+	rng := rand.New(rand.NewPCG(7, 8))
+	for i := range s.Len() {
+		s.H[i] = 0.03 + 0.1*rng.Float64()
+		if rng.Float64() < 0.05 {
+			s.H[i] = 1 + 2*rng.Float64() // a few wide bodies, as in a diffuse halo
+		}
+	}
+	var gas []int32
+	for i := range s.Len() {
+		gas = append(gas, int32(i))
+	}
+	var tr tree
+	tr.build(gas, s.PosX, s.PosY, s.PosZ, s.H)
+	tr.sortLeaves()
+	var stack, cand []int32
+	for _, sym := range []bool{false, true} {
+		for _, leaf := range tr.leaves {
+			stack, cand = tr.candidates(leaf, sym, stack, cand)
+			nd := &tr.nodes[leaf]
+			for _, i := range tr.order[nd.lo:nd.hi] {
+				got := map[int32]bool{}
+				tr.scan(cand, s.PosX[i], s.PosY[i], s.PosZ[i], 2*s.H[i], sym, func(j int32, _ float64) { got[j] = true })
+				want := 0
+				for j := range s.Len() {
+					r := s.Body(int(i)).Pos.Sub(s.Body(j).Pos).Len()
+					lim := 2 * s.H[i]
+					if sym {
+						lim = math.Max(lim, 2*s.H[j])
+					}
+					if r < lim {
+						want++
+						if !got[int32(j)] {
+							t.Fatalf("i=%d sym=%v: neighbor %d at r=%.4f (lim %.4f) not found", i, sym, j, r, lim)
+						}
+					}
+				}
+				if len(got) != want {
+					t.Fatalf("i=%d sym=%v: %d found, %d expected", i, sym, len(got), want)
+				}
+			}
+		}
+	}
+}
+
 func TestDensityOfLattice(t *testing.T) {
 	const k, spacing = 16, 0.1
 	s := sim.NewState(k * k * k)

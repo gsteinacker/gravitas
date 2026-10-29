@@ -50,13 +50,13 @@ const (
 	sphGrain = 16
 )
 
-// walk is the scratch of a tree walk: the node stack and the candidate ranges of a group walk.
+// walk is the scratch of a tree walk: the node stack and the candidate leaves of a group walk.
 type walk struct {
-	stack  []int32
-	ranges [][2]int32
+	stack []int32
+	cand  []int32
 }
 
-var walkPool = sync.Pool{New: func() any { return &walk{stack: make([]int32, 0, 64), ranges: make([][2]int32, 0, 64)} }}
+var walkPool = sync.Pool{New: func() any { return &walk{stack: make([]int32, 0, 64), cand: make([]int32, 0, 64)} }}
 
 // leafGrain is the smallest chunk of leaves (of up to leafSize bodies) in the group walks.
 const leafGrain = 2
@@ -134,7 +134,7 @@ func (sv *Solver) Forces(s *sim.State, p *sim.Params, active []bool, step []floa
 			sim.ParallelFor(len(sv.leaves), leafGrain, 0, func(lo, hi int) {
 				w := walkPool.Get().(*walk)
 				for _, leaf := range sv.leaves[lo:hi] {
-					w.stack, w.ranges = sv.tree.candidates(leaf, false, w.stack, w.ranges)
+					w.stack, w.cand = sv.tree.candidates(leaf, false, w.stack, w.cand)
 					nd := &sv.tree.nodes[leaf]
 					for k := nd.lo; k < nd.hi; k++ {
 						i := sv.tree.order[k]
@@ -143,7 +143,7 @@ func (sv *Solver) Forces(s *sim.State, p *sim.Params, active []bool, step []floa
 							continue
 						}
 						hi, rho := h[i], 0.0
-						sv.tree.scan(w.ranges, x[i], y[i], z[i], 2*hi, false, func(j int32, r2 float64) {
+						sv.tree.scan(w.cand, x[i], y[i], z[i], 2*hi, false, func(j int32, r2 float64) {
 							rho += m[j] * W(math.Sqrt(r2), hi)
 						})
 						sv.again[k] = setH(i, rho)
@@ -186,6 +186,7 @@ func (sv *Solver) Forces(s *sim.State, p *sim.Params, active []bool, step []floa
 			sv.tree.refitH(h)
 		}
 	}
+	sv.tree.sortLeaves()
 
 	if cap(sv.P) < s.Len() {
 		sv.P, sv.C = make([]float64, s.Len()), make([]float64, s.Len())
@@ -203,7 +204,7 @@ func (sv *Solver) Forces(s *sim.State, p *sim.Params, active []bool, step []floa
 	sim.ParallelFor(len(sv.leaves), leafGrain, 0, func(lo, hi int) {
 		w := walkPool.Get().(*walk)
 		for _, leaf := range sv.leaves[lo:hi] {
-			w.stack, w.ranges = sv.tree.candidates(leaf, true, w.stack, w.ranges)
+			w.stack, w.cand = sv.tree.candidates(leaf, true, w.stack, w.cand)
 			nd := &sv.tree.nodes[leaf]
 			for _, i := range sv.tree.order[nd.lo:nd.hi] {
 				if !isActive(i) {
@@ -213,7 +214,7 @@ func (sv *Solver) Forces(s *sim.State, p *sim.Params, active []bool, step []floa
 				fi := pi / (rhoi * rhoi)
 				var ax, ay, az, du, dv float64
 				vsig, minStep, maxStep := 2*C[i], math.Inf(1), 0.0
-				sv.tree.scan(w.ranges, x[i], y[i], z[i], 2*hi, true, func(j int32, r2 float64) {
+				sv.tree.scan(w.cand, x[i], y[i], z[i], 2*hi, true, func(j int32, r2 float64) {
 					if j == i || r2 == 0 {
 						return
 					}
@@ -248,7 +249,7 @@ func (sv *Solver) Forces(s *sim.State, p *sim.Params, active []bool, step []floa
 				out.Dt[i] = dt
 				if maxStep > sim.LimiterRatio*dt {
 					// Neighbors with much longer steps must be woken up (Saitoh & Makino 2009).
-					sv.tree.scan(w.ranges, x[i], y[i], z[i], 2*hi, true, func(j int32, _ float64) {
+					sv.tree.scan(w.cand, x[i], y[i], z[i], 2*hi, true, func(j int32, _ float64) {
 						if step[j] > sim.LimiterRatio*dt {
 							lowerWake(&out.Wake[j], dt)
 						}

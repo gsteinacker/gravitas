@@ -230,16 +230,16 @@ func (t *tree) each(px, py, pz, radius float64, symmetric bool, stack []int32, f
 	return stack
 }
 
-// candidates collects the body ranges (positions in order) of all leaves that can hold neighbors of
-// any body in leaf: within 2·hmax of the leaf (gather), or with symmetric set, within
-// 2·max(hmax of the leaf, hmax of the visited node). One walk serves all bodies of the leaf, which
-// then scan the ranges (group walk).
-func (t *tree) candidates(leaf int32, symmetric bool, stack []int32, ranges [][2]int32) ([]int32, [][2]int32) {
+// candidates collects the leaves that can hold neighbors of any body in leaf: within 2·hmax of
+// the leaf (gather), or with symmetric set, within 2·max(hmax of the leaf, hmax of the visited
+// node). One walk serves all bodies of the leaf, which then scan the candidates (group walk).
+func (t *tree) candidates(leaf int32, symmetric bool, stack, cand []int32) ([]int32, []int32) {
 	lf := &t.nodes[leaf]
-	ranges = ranges[:0]
+	cand = cand[:0]
 	stack = append(stack[:0], 0)
 	for len(stack) > 0 {
-		nd := &t.nodes[stack[len(stack)-1]]
+		ni := stack[len(stack)-1]
+		nd := &t.nodes[ni]
 		stack = stack[:len(stack)-1]
 		reach := 2 * lf.hmax
 		if symmetric && 2*nd.hmax > reach {
@@ -252,21 +252,36 @@ func (t *tree) candidates(leaf int32, symmetric bool, stack []int32, ranges [][2
 			stack = append(stack, nd.left, nd.right)
 			continue
 		}
-		if n := len(ranges); n > 0 && ranges[n-1][1] == nd.lo { // adjacent leaves: one range
-			ranges[n-1][1] = nd.hi
-		} else {
-			ranges = append(ranges, [2]int32{nd.lo, nd.hi})
-		}
+		cand = append(cand, ni)
 	}
-	return stack, ranges
+	return stack, cand
 }
 
-// scan calls fn for every body in ranges within radius of (px, py, pz), with symmetric set within
-// 2·max(radius/2, h_j), like each.
-func (t *tree) scan(ranges [][2]int32, px, py, pz, radius float64, symmetric bool, fn func(j int32, r2 float64)) {
+// scan calls fn for every body in the candidate leaves within radius of (px, py, pz), with
+// symmetric set within 2·max(radius/2, h_j), like each. Leaves out of reach of this body are
+// skipped as a whole: the group's candidates suit its widest body, most bodies need far fewer
+// (T-087).
+func (t *tree) scan(cand []int32, px, py, pz, radius float64, symmetric bool, fn func(j int32, r2 float64)) {
 	r2max := radius * radius
-	for _, rg := range ranges {
-		for k := rg[0]; k < rg[1]; k++ {
+	for _, ni := range cand {
+		nd := &t.nodes[ni]
+		reach2 := r2max
+		if symmetric {
+			if l := 2 * nd.hmax; l*l > reach2 {
+				reach2 = l * l
+			}
+		}
+		d2 := boxDist2(nd, px, py, pz)
+		if d2 >= reach2 {
+			continue
+		}
+		// Outside the own radius only bodies with 2·h_j beyond the box distance can reach (px,
+		// py, pz); with the leaf sorted by h (sortLeaves) the rest is skipped.
+		scatterOnly := symmetric && d2 >= r2max
+		for k := nd.lo; k < nd.hi; k++ {
+			if scatterOnly && 4*t.sh[k]*t.sh[k] <= d2 {
+				break
+			}
 			ex, ey, ez := t.sx[k]-px, t.sy[k]-py, t.sz[k]-pz
 			r2 := ex*ex + ey*ey + ez*ez
 			lim2 := r2max
@@ -282,6 +297,26 @@ func (t *tree) scan(ranges [][2]int32, px, py, pz, radius float64, symmetric boo
 	}
 }
 
+// sortLeaves orders the bodies of every leaf by decreasing smoothing length (after the density
+// pass, when h is final), so symmetric scans can stop early in leaves that mix a few wide bodies
+// with many narrow ones (T-087). Boxes and hmax stay valid.
+func (t *tree) sortLeaves() {
+	sim.ParallelFor(len(t.leaves), 256, 0, func(lo, hi int) {
+		for _, leaf := range t.leaves[lo:hi] {
+			nd := &t.nodes[leaf]
+			for a := nd.lo + 1; a < nd.hi; a++ {
+				for b := a; b > nd.lo && t.sh[b] > t.sh[b-1]; b-- {
+					t.order[b], t.order[b-1] = t.order[b-1], t.order[b]
+					t.sx[b], t.sx[b-1] = t.sx[b-1], t.sx[b]
+					t.sy[b], t.sy[b-1] = t.sy[b-1], t.sy[b]
+					t.sz[b], t.sz[b-1] = t.sz[b-1], t.sz[b]
+					t.sh[b], t.sh[b-1] = t.sh[b-1], t.sh[b]
+				}
+			}
+		}
+	})
+}
+
 // boxBoxDist2 is the squared distance between the boxes of a and b (0 if they overlap).
 func boxBoxDist2(a, b *node) float64 {
 	var d2 float64
@@ -295,25 +330,13 @@ func boxBoxDist2(a, b *node) float64 {
 	return d2
 }
 
-// boxDist2 is the squared distance from (px, py, pz) to the box of nd (0 inside).
+// boxDist2 is the squared distance from (px, py, pz) to the box of nd (0 inside). Branch free, so
+// it inlines into the scans.
 func boxDist2(nd *node, px, py, pz float64) float64 {
-	var d2 float64
-	if d := nd.minX - px; d > 0 {
-		d2 += d * d
-	} else if d := px - nd.maxX; d > 0 {
-		d2 += d * d
-	}
-	if d := nd.minY - py; d > 0 {
-		d2 += d * d
-	} else if d := py - nd.maxY; d > 0 {
-		d2 += d * d
-	}
-	if d := nd.minZ - pz; d > 0 {
-		d2 += d * d
-	} else if d := pz - nd.maxZ; d > 0 {
-		d2 += d * d
-	}
-	return d2
+	dx := max(nd.minX-px, px-nd.maxX, 0)
+	dy := max(nd.minY-py, py-nd.maxY, 0)
+	dz := max(nd.minZ-pz, pz-nd.maxZ, 0)
+	return dx*dx + dy*dy + dz*dz
 }
 
 func resize(s []float64, n int) []float64 {

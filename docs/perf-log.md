@@ -3,6 +3,26 @@
 Chronologisches Log relevanter Benchmark-Ergebnisse. Neueste oben. Format: `## Datum · Task · Thema`, dann
 Maschine und Last, die Zahlen in einem Codeblock und eine kurze Einordnung.
 
+## 2026-10-29 · T-087 · SPH-Nachbarsuche bei gemischten Glättungslängen
+
+Messung (Szene 14, 43 000, 12 400 Gas): Dichtes Scheibengas prüfte im Kraftteil rund 700 Kandidaten für 60
+Nachbarn. Ursache sind wenige weit herausgeschleuderte Halo-Teilchen mit h bis 20, die über die symmetrische
+Bedingung r < 2·max(h_i, h_j) formal die ganze Scheibe erreichen. Jedes Blatt mit so einem Teilchen wurde
+komplett (8 Körper) geprüft. M4 Pro, keine Fremdlast, T-085-Stand und neuer Stand abwechselnd.
+
+```
+Gasauswertung Szene 14 / 43 000                     20,3 ms → 17,5 ms (1 Kern: 145 → 130 ms, 7,4× auf 12)
+Szene 14 dichter Zustand, 43 000                     38,5 → 46,0 Schritte/s
+Szene 14 dichter Zustand, 8000                        168 → 175 Schritte/s
+Pferdekopfnebel frisch, 60k                          12,7 → 13,3 Schritte/s
+```
+
+Änderungen: Die Kandidaten der Gruppensuche sind Blätter statt Bereiche; jeder Körper verwirft Blätter, deren
+Box außer Reichweite liegt (Dichte: 787 → 118 geprüfte Kandidaten pro Körper). Die Körper eines Blatts sind nach
+h absteigend sortiert; liegt das Blatt außerhalb des eigenen Radius, bricht die Prüfung beim ersten Körper ab,
+der nicht mehr hinreicht. `boxDist2` verzweigungsfrei (inline). Rest: Die Halo-Teilchen sind echte Partner der
+symmetrischen Formulierung; weniger Arbeit gäbe es nur mit einer Obergrenze für h (Physikänderung, nicht gemacht).
+
 ## 2026-10-29 · T-085 · Eigene Zeitschritte für Gas
 
 Anlass: Nutzer sah die Kerne weiter nur zur Hälfte ausgelastet. Profil Szene 14 (8000): Jeder Gas-Teilschritt
