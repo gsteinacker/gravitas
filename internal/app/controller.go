@@ -237,6 +237,7 @@ type Controller struct {
 	mu         sync.Mutex
 	posted     []func(*Controller)
 	sim        SimState
+	rates      rateMeter
 	state      atomic.Pointer[State]
 }
 
@@ -250,6 +251,8 @@ type Note struct {
 type SimState struct {
 	Bodies, BlackHoles, Dark, Gas, StarsFormed int
 	HolesFormed                                int
+	Supernovae                                 int     // populations exploded (sim.Simulation.Supernovae)
+	GasShare                                   float64 // gas mass / (gas + star mass)
 	ScaleFactor                                float64 // comoving mode: a (redshift z = 1/a − 1), else 0
 	Time, C                                    float64
 	Substeps, HydroSubsteps                    int
@@ -600,14 +603,21 @@ func (c *Controller) Observe(sn *sim.Snapshot) {
 	s := SimState{
 		Bodies: sn.Len(), Time: sn.Time, C: sn.C, Substeps: sn.Substeps, HydroSubsteps: sn.HydroSubsteps,
 		Gravity: sn.Gravity, DarkMatterOff: sn.DarkMatterOff, StarsFormed: sn.StarsFormed,
-		HolesFormed: sn.HolesFormed, ScaleFactor: sn.ScaleFactor,
+		HolesFormed: sn.HolesFormed, ScaleFactor: sn.ScaleFactor, Supernovae: sn.Supernovae,
 	}
+	if s.Supernovae > 0 && c.sim.Supernovae == 0 && s.Time >= c.sim.Time {
+		c.Notify(i18n.T("Supernovae: Die massereichen Sterne einer jungen Population explodieren und heizen das Gas auf.",
+			"Supernovae: the massive stars of a young population explode and heat the gas."))
+		c.focus("supernovae")
+	}
+	c.rates.add(sn.Time, sn.FormedMass, sn.SNMass, rateWindow(c.Scene))
+	var gas, stars float64
 	if s.HolesFormed > c.sim.HolesFormed && s.Time >= c.sim.Time { // not after a restart (T-067)
 		c.Notify(i18n.T("Ein Schwarzes Loch ist entstanden: die Masse passte in ihren eigenen Schwarzschild-Radius.",
 			"A black hole has formed: the mass fit inside its own Schwarzschild radius."))
 		c.focus("hole-formation")
 	}
-	for _, k := range sn.Kind {
+	for i, k := range sn.Kind {
 		switch k {
 		case sim.BlackHole:
 			s.BlackHoles++
@@ -615,7 +625,13 @@ func (c *Controller) Observe(sn *sim.Snapshot) {
 			s.Dark++
 		case sim.Gas:
 			s.Gas++
+			gas += float64(sn.Mass[i])
+		case sim.Star:
+			stars += float64(sn.Mass[i])
 		}
+	}
+	if gas+stars > 0 {
+		s.GasShare = gas / (gas + stars)
 	}
 	c.sim = s
 }

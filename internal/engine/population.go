@@ -65,6 +65,22 @@ func youngBoost(age, youngAge float64) (alpha, size float64) {
 	return 1 + 3*f, 1 + 0.6*f
 }
 
+// supernovaFlash is the brightening (0 to 1) of a population since seconds after its supernova
+// (sim/supernova.go), over flashShare of the delay span. It marks the event; a real supernova
+// fades within months, far below a frame (topic "supernovae").
+func supernovaFlash(since, span float64) float64 {
+	d := flashShare * span
+	if since < 0 || d <= 0 || since >= d {
+		return 0
+	}
+	f := 1 - since/d
+	return f * f
+}
+
+// flashShare is the duration of the supernova flash as a share of the span of explosion delays:
+// 3 Myr for 3–40 Myr, about a second at 60 steps/s in the spiral galaxy.
+const flashShare = 0.08
+
 // starFormingLight is the young light of a gas particle of density rho and ionized fraction ion in
 // units of an old star particle of the same mass (0 below the threshold or when ionized).
 func (p Population) starFormingLight(rho, ion float64) float64 {

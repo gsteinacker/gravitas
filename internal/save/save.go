@@ -38,7 +38,10 @@ type File struct {
 	Steps    int
 	External float64 // Simulation.ExternalEnergy
 	Formed   int     // Simulation.StarsFormed (since format 3)
-	Camera   Camera
+	// Simulation.FormedMass, Supernovae, SNMass (T-080; zero in older files)
+	FormedMass, SNMass float64
+	Supernovae         int
+	Camera             Camera
 
 	PosX, PosY, PosZ []float64
 	VelX, VelY, VelZ []float64
@@ -58,6 +61,7 @@ func Capture(m *sim.Simulation, sp *scene.Spec, cam Camera) *File {
 	return &File{
 		Format: Format, Saved: time.Now(), Scene: *sp, Params: m.Params,
 		Time: m.Time, Steps: m.Steps, ScaleFactor: m.ScaleFactor, External: m.ExternalEnergy, Formed: m.StarsFormed, Camera: cam,
+		FormedMass: m.FormedMass, SNMass: m.SNMass, Supernovae: m.Supernovae,
 		PosX: slices.Clone(s.PosX), PosY: slices.Clone(s.PosY), PosZ: slices.Clone(s.PosZ),
 		VelX: slices.Clone(s.VelX), VelY: slices.Clone(s.VelY), VelZ: slices.Clone(s.VelZ),
 		Mass: slices.Clone(s.Mass), Kind: slices.Clone(s.Kind),
@@ -102,6 +106,7 @@ func (f *File) Restore(m *sim.Simulation) {
 	m.Restore(f.State(), f.Params, f.Time, f.Steps, f.External)
 	m.RestoreForces(f.Forces)
 	m.StarsFormed = f.Formed
+	m.FormedMass, m.Supernovae, m.SNMass = f.FormedMass, f.Supernovae, f.SNMass
 	m.ScaleFactor = f.ScaleFactor
 }
 

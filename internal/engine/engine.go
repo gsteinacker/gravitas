@@ -239,7 +239,8 @@ func (e *Engine) Zoom(f float64)        { e.Cam.Zoom(f) }
 // LastFrame describes the bodies of the last Frame copy.
 func (e *Engine) LastFrame() FrameInfo { return e.last }
 
-// FloatsPerBody is the layout of Frame: x, y, z, mass, vx, vy, vz, kind, age, ion, h, rho.
+// FloatsPerBody is the layout of Frame: x, y, z, mass, vx, vy, vz, kind, age, ion, h, rho. Stars
+// carry their identity in ion and the supernova flash (supernovaFlash) in h.
 const FloatsPerBody = 12
 
 // FrameInfo describes the copied bodies.
@@ -279,6 +280,11 @@ func (e *Engine) Frame(dst []float32, force bool) (FrameInfo, bool) {
 				// Stars have no gas: slot 9 carries their identity (24 bits, exact in a float), from
 				// which the renderer draws the stars of a population (Galaxy.metal population).
 				d[9] = float32(sn.ID[i] & 0xffffff)
+				d[10] = 0
+				if sn.SNDelayMax > 0 && sn.Age[i] >= 0 {
+					delay := sim.SupernovaDelay(sn.ID[i], sn.SNDelayMin, sn.SNDelayMax)
+					d[10] = float32(supernovaFlash(float64(sn.Age[i])-delay, sn.SNDelayMax-sn.SNDelayMin))
+				}
 				starMass += float64(sn.Mass[i])
 				info.Stars++
 			}

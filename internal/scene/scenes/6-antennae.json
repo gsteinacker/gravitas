@@ -8,6 +8,7 @@
   "topics": [
     "tides",
     "star-formation",
+    "supernovae",
     "gas",
     "dust",
     "dark-matter",
@@ -28,6 +29,7 @@
   },
   "velocityUnit": 185,
   "gasFloorK": 10000,
+  "supernovaErgPerMsun": 1e49,
   "removeBulkMotion": true,
   "camera": {
     "target": [

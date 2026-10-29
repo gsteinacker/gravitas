@@ -22,20 +22,24 @@ import (
 // a particle budget n gives the initial state. Angles are in degrees, everything else in simulation
 // units (G = 1) unless a field says otherwise.
 type Spec struct {
-	Name       string            `json:"name"`
-	Info       string            `json:"info,omitempty"`            // shown in the HUD, e.g. the physical units
-	Intro      map[string]string `json:"intro,omitempty"`           // introduction per audience: school, lay, physics
-	Topics     []string          `json:"topics,omitempty"`          // related topics of the learning mode (internal/learn)
-	YearsPer   float64           `json:"yearsPerUnit,omitempty"`    // physical years per simulation time unit
-	KmPerS     float64           `json:"velocityUnit,omitempty"`    // km/s per simulation velocity unit (gas temperatures)
-	GasFloorK  float64           `json:"gasFloorK,omitempty"`       // cooling floor temperature in K (sets params.gas.uFloor)
-	IonK       float64           `json:"ionTemperatureK,omitempty"` // temperature of photoionized gas in K (sets params.gas.uIon)
-	Params     sim.Params        `json:"params"`
-	Camera     *CameraSpec       `json:"camera,omitempty"`
-	Effects    string            `json:"effects,omitempty"` // render effects to switch on, e.g. "glow,trails"
-	Paused     bool              `json:"paused,omitempty"`  // start paused (a static scene, e.g. the cosmic web)
-	BulkRest   bool              `json:"removeBulkMotion,omitempty"`
-	Components []Component       `json:"components"`
+	Name      string            `json:"name"`
+	Info      string            `json:"info,omitempty"`            // shown in the HUD, e.g. the physical units
+	Intro     map[string]string `json:"intro,omitempty"`           // introduction per audience: school, lay, physics
+	Topics    []string          `json:"topics,omitempty"`          // related topics of the learning mode (internal/learn)
+	YearsPer  float64           `json:"yearsPerUnit,omitempty"`    // physical years per simulation time unit
+	KmPerS    float64           `json:"velocityUnit,omitempty"`    // km/s per simulation velocity unit (gas temperatures)
+	GasFloorK float64           `json:"gasFloorK,omitempty"`       // cooling floor temperature in K (sets params.gas.uFloor)
+	IonK      float64           `json:"ionTemperatureK,omitempty"` // temperature of photoionized gas in K (sets params.gas.uIon)
+	// Supernovae of stars formed from gas (T-080): energy per formed solar mass in erg and the
+	// range of delays after birth in Myr (default 3–40); they set params.gas.snEnergy/snDelay*.
+	SNErg      float64     `json:"supernovaErgPerMsun,omitempty"`
+	SNDelayMyr [2]float64  `json:"supernovaDelayMyr,omitzero"`
+	Params     sim.Params  `json:"params"`
+	Camera     *CameraSpec `json:"camera,omitempty"`
+	Effects    string      `json:"effects,omitempty"` // render effects to switch on, e.g. "glow,trails"
+	Paused     bool        `json:"paused,omitempty"`  // start paused (a static scene, e.g. the cosmic web)
+	BulkRest   bool        `json:"removeBulkMotion,omitempty"`
+	Components []Component `json:"components"`
 }
 
 // CameraSpec is the initial view.
@@ -164,6 +168,16 @@ func (sp *Spec) Build(n int) (*sim.State, sim.Params) {
 	}
 	if sp.IonK > 0 {
 		p.Gas.UIon = sp.specificEnergy(sp.IonK)
+	}
+	if sp.SNErg > 0 && sp.KmPerS > 0 && sp.YearsPer > 0 {
+		const msunKg = 1.989e30
+		v := sp.SNErg * 1e-7 / msunKg / 1e6 // (km/s)²
+		p.Gas.SNEnergy = v / (sp.KmPerS * sp.KmPerS)
+		d := sp.SNDelayMyr
+		if d == [2]float64{} {
+			d = [2]float64{3, 40}
+		}
+		p.Gas.SNDelayMin, p.Gas.SNDelayMax = d[0]*1e6/sp.YearsPer, d[1]*1e6/sp.YearsPer
 	}
 	if p.Cosmology != nil { // the cosmic web fills in the box; keep the spec unchanged
 		cp := *p.Cosmology

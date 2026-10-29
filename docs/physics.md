@@ -135,11 +135,30 @@ Ist der Szenen-Schritt länger, wird er in gleiche Teile zerlegt (höchstens 64,
 heizt sich Gas in Schocks bei Galaxienverschmelzungen explizit unbegrenzt auf und die Rechnung explodiert.
 h ist nach unten auf ε/4 begrenzt: Unterhalb der Gravitationsauflösung ist Gas ohnehin nicht aufgelöst.
 
+### Supernovae (ADR-0015, T-080)
+
+Jedes aus Gas entstandene Sternteilchen explodiert genau einmal, nach einer Verzögerung gleichverteilt in
+[3, 40] Myr (deterministisch aus der ID, `sim.SupernovaDelay`). Es gibt E = 10⁴⁹ erg pro M☉ Sternmasse als Wärme an
+seine 32 nächsten Gasteilchen ab (gleiches Δu); E wird in `ExternalEnergy` verbucht. Geheiztes Gas
+(u > 3 u_floor) bildet keine Sterne, bis die Kühlung es zurückführt: Die Sternentstehung regelt sich selbst.
+Szenen schalten das mit `supernovaErgPerMsun` ein (1, 2, 6, 7). Der Lichtblitz im Bild ist eine Markierung
+von etwa 3 Myr Dauer, keine physikalische Helligkeit.
+
+Raten im Inspektor (`app.rateMeter`): gleitend über 100 Myr wie die UV-Messung, Supernovae pro Jahrhundert =
+0,01 × gebildete Masse (Kroupa-IMF über 8 M☉). Gemessen in Szene 1 bei 50 000 Teilchen nach 240 Myr:
+0,14 M☉/Jahr, 0,14 Supernovae pro Jahrhundert, Gasanteil 8,7 %. Milchstraße: 1,65 M☉/Jahr, 1,6 pro Jahrhundert.
+Die Rate ist also etwa zehnmal zu niedrig. Gas strömt nicht nach (kein Infall aus dem Halo, T-081), deshalb
+sinkt sie mit dem Gasvorrat.
+
+Grenzen: thermische Einspeisung kühlt bei grober Auflösung schnell weg (Overcooling); keine kinetische
+Rückkopplung, keine Typ-Ia-Supernovae, keine Sternwinde, keine Massen- und Metallrückgabe.
+
 ## Was wir bewusst ignorieren
 
 - Allgemeine Relativität jenseits der obigen Näherungen (keine Metrik, kein Frame-Dragging).
 - Gravitationswellen-Abstrahlung (eventuell später als „Inspiral-Hack“ für BH-Paare).
-- Sternentwicklung und Supernova-Rückkopplung. Sterne sind Massepunkte.
+- Sternentwicklung. Sterne sind Massepunkte bzw. Populationen; Supernovae nur als einmalige Wärmeabgabe
+  junger Populationen (ADR-0015).
 - Kollisionen zwischen normalen Sternen (optional: Verschmelzen unterhalb eines Abstands).
 
 ## Invarianten für Tests

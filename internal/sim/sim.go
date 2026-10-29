@@ -34,6 +34,9 @@ type GasParams struct {
 	IonOpacity   float64 `json:"ionOpacity,omitempty"`   // optical depth per neutral column density (mass per area)
 	IonRecomb    float64 `json:"ionRecomb,omitempty"`    // optical depth per ∫ρ_ion² dl (recombinations in ionized gas)
 	IonEvery     int     `json:"ionEvery,omitempty"`     // recompute ionization every n steps (0 means 4)
+	SNEnergy     float64 `json:"snEnergy,omitempty"`     // supernova energy per formed stellar mass (0: none)
+	SNDelayMin   float64 `json:"snDelayMin,omitempty"`   // earliest explosion after birth (supernova.go)
+	SNDelayMax   float64 `json:"snDelayMax,omitempty"`   // latest explosion after birth
 }
 
 // Hydro computes the hydrodynamic part of the gas model.
@@ -78,6 +81,11 @@ type Simulation struct {
 
 	// StarsFormed counts stars born from gas since Reset.
 	StarsFormed int
+	// FormedMass is the mass of these stars.
+	FormedMass float64
+	// Supernovae counts populations that exploded since Reset, SNMass is their mass (supernova.go).
+	Supernovae int
+	SNMass     float64
 	// HolesFormed counts black holes formed by collapse since Reset (collapse.go).
 	HolesFormed int
 	// ScaleFactor is a in the comoving mode (comoving.go), 0 otherwise.
@@ -114,6 +122,7 @@ func New(s *State, solver Solver, p Params) *Simulation {
 func (m *Simulation) Reset(s *State, p Params) {
 	m.State, m.Params, m.Time, m.Steps, m.accValid, m.ExternalEnergy = s, p, 0, 0, false, 0
 	m.StarsFormed, m.HolesFormed, m.hydroDt = 0, 0, 0
+	m.FormedMass, m.Supernovae, m.SNMass = 0, 0, 0
 	m.accretion = nil
 	m.ScaleFactor, m.comoving = 0, nil
 	m.Epoch++
@@ -228,6 +237,7 @@ func (m *Simulation) step() {
 		m.Substeps = 1
 	}
 	m.updateGas(dt)
+	m.supernovae(dt)
 	m.collapse()
 	m.decayAccretion(dt)
 	m.Time += dt

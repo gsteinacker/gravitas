@@ -88,6 +88,9 @@ struct InspectorView: View {
                 }
                 LiveStats(engine: engine)
             }
+            if s.starFormation != 0 {
+                Section(L("Sterne und Gas", "Stars and gas")) { StarStats(engine: engine) }
+            }
             Section(L("Physik", "Physics")) {
                 LabeledContent {
                     Slider(value: Binding(get: { log10(max(s.c, 1)) }, set: { engine.set("c", pow(10, $0)) }), in: 0...3)
@@ -220,6 +223,53 @@ struct LiveStats: View {
     private var driftText: String {
         if s.driftQuality == 0 || s.drift.isNaN { return L("wird gemessen …", "measuring…") }
         return String(format: s.driftQuality == 1 ? "≈ %+.0e" : "%+.1e", s.drift)
+    }
+}
+
+/// StarStats shows how fast stars form and explode (app.StarRates), from engine.live.
+struct StarStats: View {
+    var engine: Engine
+
+    private var s: GalaxyState { engine.live }
+
+    var body: some View {
+        LabeledContent {
+            Text(verbatim: sfrText).monospacedDigit()
+            InfoButton(engine, "starFormationRate")
+        } label: {
+            Text(L("Sternentstehung", "Star formation"))
+                .help(String(format: L("gemittelt über die letzten %@", "averaged over the last %@"), windowText))
+        }
+        LabeledContent {
+            Text(verbatim: snText).monospacedDigit()
+            InfoButton(engine, "supernovae")
+        } label: {
+            Text(L("Supernovae", "Supernovae"))
+        }
+        LabeledContent {
+            Text(verbatim: String(format: L("%.1f %% von Sternen + Gas", "%.1f %% of stars + gas"), 100 * s.gasShare))
+                .monospacedDigit()
+            InfoButton(engine, "gasReservoir")
+        } label: {
+            Text(L("Gasvorrat", "Gas reservoir"))
+        }
+    }
+
+    private var sfrText: String {
+        let rate = s.rateUnits != 0 ? String(format: L("%.2f M☉/Jahr", "%.2f M☉/yr"), s.sfr)
+                                    : String(format: L("%.3g Masse/Zeit", "%.3g mass/time"), s.sfr)
+        return rate + " · " + String(format: L("%d neu", "%d new"), s.starsFormed)
+    }
+
+    private var snText: String {
+        let rate = s.rateUnits != 0 ? String(format: L("%.2f pro Jh.", "%.2f per century"), s.snRate)
+                                    : String(format: L("%.3g Masse/Zeit", "%.3g mass/time"), s.snRate)
+        return rate + " · " + String(format: L("%d explodiert", "%d exploded"), s.supernovae)
+    }
+
+    private var windowText: String {
+        s.rateUnits != 0 ? String(format: L("%.0f Mio. Jahre", "%.0f Myr"), s.rateWindow / 1e6)
+                         : String(format: L("%.0f Zeiteinheiten", "%.0f time units"), s.rateWindow)
     }
 }
 

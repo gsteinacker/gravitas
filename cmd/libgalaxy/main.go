@@ -30,6 +30,10 @@ typedef struct {
 	int galaxyScale;        // galaxies can be placed in this scene
 	int resolved;           // the next object is enlarged to the scene's resolution (2 × softening)
 	double scaleFactor;      // comoving mode (cosmic web): a = 1/(1 + z), else 0
+	int starFormation;       // the scene forms stars from gas (app.StarRates)
+	int rateUnits;           // sfr in M☉/yr and snRate per century, else per time unit
+	int supernovae;          // populations exploded since the start
+	double sfr, snRate, gasShare, rateWindow;
 } GalaxyState;
 
 typedef struct {
@@ -192,6 +196,9 @@ func galaxy_state(out *C.GalaxyState) {
 		cloudK: C.double(s.CloudK), cloudTurb: C.double(s.CloudTurb),
 		cloudAlpha: C.double(alpha), cloudFloorK: C.double(floorK), galaxyTilt: C.double(eng.GalaxyTilt), holeSpin: C.double(eng.HoleSpin),
 		massMin: C.double(massMin), galaxyScale: b(eng.GalaxyScale()), resolved: b(s.Resolved),
+		starFormation: b(s.Rates.Formation), rateUnits: b(s.Rates.Units), supernovae: C.int(s.Sim.Supernovae),
+		sfr: C.double(s.Rates.SFR), snRate: C.double(s.Rates.SNRate), gasShare: C.double(s.Rates.GasShare),
+		rateWindow: C.double(s.Rates.Window),
 	}
 }
 

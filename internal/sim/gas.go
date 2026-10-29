@@ -76,6 +76,7 @@ func (m *Simulation) updateGas(dt float64) {
 			if unitRandom(s.ID[i], uint64(m.Steps)) < 1-math.Exp(-eff*dt/tff) {
 				s.Kind[i], s.Born[i], s.U[i] = Star, m.Time, 0
 				m.StarsFormed++
+				m.FormedMass += s.Mass[i]
 			}
 		}
 	}

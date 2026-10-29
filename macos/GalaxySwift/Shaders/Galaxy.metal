@@ -15,7 +15,7 @@ struct Uniforms {
     float4 pop;    // population radius (0: particles are stars), star formation density, its light, unused
 };
 
-struct Body { float4 pos; float4 vel; float4 gas; }; // xyz mass | v kind | age ion h rho
+struct Body { float4 pos; float4 vel; float4 gas; }; // xyz mass | v kind | age ion h rho (stars: age id flash -)
 
 struct Sprite {
     float4 position [[position]];
@@ -206,6 +206,13 @@ vertex Sprite spriteVertex(uint vid [[vertex_id]], uint iid [[instance_id]],
             size *= 1 + 0.6 * f;
         }
         float4 c = shade(b, col, alpha, fx, bi, attn, holes, u);
+        if (b.gas.z > 0 && sub == 0) {
+            // Supernova flash in place of the core: a bright point that fades, a marker of the
+            // event, not its physical brightness (engine.supernovaFlash).
+            float f = b.gas.z;
+            float4 w = shade(b, float3(1.0, 0.95, 0.85), 1, fx, bi, attn, holes, u);
+            return makeSprite(s, (3 + 9 * f) * ps, float4(w.rgb * (0.5 + 6 * f), 0), vid, u);
+        }
         return population(b, s, c, tint, size, u.pop.x > 0 ? 0.4 : 1.0, sub, vid, u);
     }
     if (kind == 3 && sub == 1) {

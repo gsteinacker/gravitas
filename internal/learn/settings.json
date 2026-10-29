@@ -510,5 +510,71 @@
         "en": "Tree walk in Metal (float32 accumulation, quadrupoles), tested against the CPU (TestGPUWalkMatchesCPU). Gas SPH, holes and integration stay on the CPU."
       }
     }
+  },
+  {
+    "id": "starFormationRate",
+    "topic": "star-formation",
+    "title": {
+      "de": "Sternentstehungsrate",
+      "en": "Star formation rate"
+    },
+    "levels": {
+      "school": {
+        "de": "Zeigt, wie viel Masse an neuen Sternen pro Jahr entsteht, gemessen in Sonnenmassen. Unsere Milchstraße bildet etwa ein bis zwei Sonnen pro Jahr. Dahinter steht die Zahl der neuen Sternteilchen seit dem Start.",
+        "en": "Shows how much mass of new stars forms per year, in solar masses. Our Milky Way makes about one or two suns per year. Next to it is the number of new star particles since the start."
+      },
+      "lay": {
+        "de": "Neue Sterne entstehen nur aus dichtem, kaltem Gas. Ein Sternteilchen ist eine ganze Gruppe von 10⁵–10⁶ Sonnen, deshalb sind einzelne Ereignisse selten. Die Rate ist über die letzten 100 Millionen Jahre gemittelt, so wie Astronomen sie aus dem UV-Licht junger Sterne messen. Weil kein Gas nachströmt, sinkt sie, wenn der Gasvorrat schrumpft.",
+        "en": "New stars only form from dense, cold gas. A star particle is a whole group of 10⁵–10⁶ suns, so single events are rare. The rate is averaged over the last 100 million years, as astronomers measure it from the UV light of young stars. As no gas flows in, it drops as the gas reservoir shrinks."
+      },
+      "physics": {
+        "de": "SFR = Δ(gebildete Masse) / Δt über ein gleitendes Fenster von 100 Myr (app.rateMeter), umgerechnet mit der Massen- und Zeiteinheit der Szene. Ohne physikalische Einheiten: Masse pro Zeiteinheit über 5 Zeiteinheiten. Kriterium der Bildung: Thema „Sternentstehung“. Vergleich: Milchstraße 1,65 ± 0,19 M☉/yr (Licquia & Newman 2015).",
+        "en": "SFR = Δ(formed mass) / Δt over a sliding window of 100 Myr (app.rateMeter), converted with the scene's mass and time units. Without physical units: mass per time unit over 5 time units. Formation criterion: topic \"Star formation\". Comparison: Milky Way 1.65 ± 0.19 M☉/yr (Licquia & Newman 2015)."
+      }
+    }
+  },
+  {
+    "id": "supernovae",
+    "topic": "supernovae",
+    "title": {
+      "de": "Supernova-Rate",
+      "en": "Supernova rate"
+    },
+    "levels": {
+      "school": {
+        "de": "Massereiche junge Sterne explodieren nach wenigen Millionen Jahren. Hier steht, wie viele Explosionen es pro hundert Jahre gäbe. In der Milchstraße sind es etwa zwei.",
+        "en": "Massive young stars explode after a few million years. This shows how many explosions there would be per hundred years. In the Milky Way there are about two."
+      },
+      "lay": {
+        "de": "Auf 100 Sonnenmassen neuer Sterne kommt etwa eine Supernova. Ein Sternteilchen explodiert einmal, 3 bis 40 Millionen Jahre nach seiner Geburt, und steht dabei für Tausende echte Supernovae. Die Rate rechnet das zurück auf echte Explosionen pro Jahrhundert. Dahinter steht die Zahl der explodierten Sternteilchen.",
+        "en": "About one supernova comes with every 100 solar masses of new stars. A star particle explodes once, 3 to 40 million years after its birth, and stands for thousands of real supernovae. The rate converts this back to real explosions per century. Next to it is the number of exploded star particles."
+      },
+      "physics": {
+        "de": "Rate = 0,01 M☉⁻¹ × Δ(explodierte Masse) / Δt über 100 Myr, pro Jahrhundert. Energie 10⁴⁹ erg/M☉ thermisch auf die 32 nächsten Gasteilchen (sim/supernova.go, ADR-0015). Vergleich: Milchstraße 1,63 ± 0,46 pro Jahrhundert (Rozwadowska et al. 2021).",
+        "en": "Rate = 0.01 M☉⁻¹ × Δ(exploded mass) / Δt over 100 Myr, per century. Energy 10⁴⁹ erg/M☉ as heat into the 32 nearest gas particles (sim/supernova.go, ADR-0015). Comparison: Milky Way 1.63 ± 0.46 per century (Rozwadowska et al. 2021)."
+      }
+    }
+  },
+  {
+    "id": "gasReservoir",
+    "topic": "star-formation",
+    "title": {
+      "de": "Gasvorrat",
+      "en": "Gas reservoir"
+    },
+    "levels": {
+      "school": {
+        "de": "So viel der sichtbaren Masse ist noch Gas. Aus Gas entstehen neue Sterne, und jeder neue Stern verbraucht etwas davon.",
+        "en": "This much of the visible mass is still gas. New stars form from gas, and every new star uses some of it up."
+      },
+      "lay": {
+        "de": "Anteil des Gases an Gas plus Sternen (ohne Dunkle Materie und Löcher). Er sinkt, weil Gas zu Sternen wird und keines von außen nachströmt. Echte Galaxien bekommen frisches Gas aus ihrer Umgebung und aus Begleitern; in der Milchstraße ist etwa ein Zehntel der Scheibe Gas.",
+        "en": "Share of gas in gas plus stars (without dark matter and holes). It drops because gas turns into stars and none flows in from outside. Real galaxies receive fresh gas from their surroundings and from companions; in the Milky Way about a tenth of the disk is gas."
+      },
+      "physics": {
+        "de": "f_gas = M_gas / (M_gas + M_*) aller Teilchen. Verbrauchszeit t_dep = M_gas / SFR, in Scheibengalaxien ~2 Gyr (Bigiel et al. 2008). Ohne Akkretion aus dem Halo (fehlt im Modell) fällt die Rate exponentiell mit t_dep.",
+        "en": "f_gas = M_gas / (M_gas + M_*) of all particles. Depletion time t_dep = M_gas / SFR, about 2 Gyr in disk galaxies (Bigiel et al. 2008). Without accretion from the halo (missing in the model) the rate falls exponentially with t_dep."
+      }
+    }
   }
 ]

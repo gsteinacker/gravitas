@@ -37,6 +37,7 @@ type State struct {
 	Drift         float64
 	DriftQuality  sim.EnergyQuality
 	Sim           SimState
+	Rates         StarRates
 	StepsPerSec   float64
 	FPS           float64
 }
@@ -51,6 +52,7 @@ func (c *Controller) Publish() {
 	}
 	s.Theta, s.ThetaUser, s.GPU, s.Stars, s.RenderScale = c.Theta, c.ThetaUser, c.GPU, c.N, c.RenderScaleNow
 	s.Drift, s.DriftQuality = c.Runner.EnergyDrift()
+	s.Rates = starRates(c.Scene, &c.rates, c.sim.GasShare)
 	if c.Scene != nil {
 		s.SceneName, s.SceneInfo, s.YearsPer = c.Scene.Name, c.Scene.Info, c.Scene.YearsPer
 		for i, p := range scene.Presets {

@@ -88,3 +88,18 @@ func TestDiskBrightness(t *testing.T) {
 		t.Error("brightness depends on Ṁ/M only")
 	}
 }
+
+func TestSupernovaFlash(t *testing.T) {
+	if f := supernovaFlash(-0.01, 10); f != 0 {
+		t.Errorf("flash before the explosion: %g", f)
+	}
+	if f := supernovaFlash(0, 10); f != 1 {
+		t.Errorf("flash at the explosion %g, want 1", f)
+	}
+	if a, b := supernovaFlash(0.2, 10), supernovaFlash(0.4, 10); !(a > b && b > 0) {
+		t.Errorf("flash does not fade: %g, %g", a, b)
+	}
+	if f := supernovaFlash(flashShare*10, 10); f != 0 {
+		t.Errorf("flash after its duration: %g", f)
+	}
+}

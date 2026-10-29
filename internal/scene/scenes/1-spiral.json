@@ -10,6 +10,7 @@
     "dark-matter",
     "gas",
     "star-formation",
+    "supernovae",
     "dust",
     "gravity",
     "bulge",
@@ -30,6 +31,7 @@
   },
   "velocityUnit": 185,
   "gasFloorK": 10000,
+  "supernovaErgPerMsun": 1e49,
   "components": [
     {
       "type": "galaxy",
