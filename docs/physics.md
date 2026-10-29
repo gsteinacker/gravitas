@@ -108,6 +108,9 @@ Scheibe von etwa 3 kpc Halbmassenradius, mit 94 Sternpopulationen und Supernova-
 (7 Myr) oder f = 0,25 fällt das Gas zu einem runden, dichten Klumpen zusammen. Grenze: Das dichte Zentrum verlangt
 viele Gas-Teilschritte, die Szene wird im Lauf langsamer (8000 Teilchen: 150 → 40 Schritte/s).
 
+Seit T-083 gilt: Zusammenströmendes Gas über der Auflösungsgrenze ρ > 3 N m / (4π (ε/2)³) wird sofort zum Stern
+(ADR-0017), und die Wolke beginnt mit Turbulenz (30 km/s) und 30 % Dichteschwankungen.
+
 ## Entstehung Schwarzer Löcher (ADR-0012)
 
 Hoop-Kriterium auf der kleinsten aufgelösten Kugel: Steckt in R = 2ε die Masse M ≥ R c²/2 in mindestens 20

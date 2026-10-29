@@ -43,9 +43,13 @@ type GasParams struct {
 
 // Hydro computes the hydrodynamic part of the gas model.
 type Hydro interface {
-	// Forces adds pressure and viscosity accelerations of gas bodies to s.Acc*, fills s.Rho and s.H,
-	// and writes du/dt and the velocity divergence of every body (0 for non-gas) into dudt and divv.
+	// Forces computes the pressure and viscosity accelerations of gas bodies (added to s.Acc* by
+	// AddAccelerations), fills s.Rho and s.H, and writes du/dt and the velocity divergence of every
+	// body (0 for non-gas) into dudt and divv. It must not touch s.Acc*: it runs concurrently with
+	// the gravity solver.
 	Forces(s *State, p *Params, dudt, divv []float64)
+	// AddAccelerations adds the accelerations of the last Forces to s.Acc*.
+	AddAccelerations(s *State)
 	// Timestep returns the largest stable time step (Courant condition) after the last Forces,
 	// +Inf without gas.
 	Timestep() float64

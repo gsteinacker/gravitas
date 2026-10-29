@@ -15,6 +15,20 @@ type Solver struct {
 	todo  []int32   // bodies whose smoothing length is still iterating
 	again []bool
 	dt    float64 // Courant time step of the last Forces
+	// Pressure and viscosity accelerations of the last Forces, added by AddAccelerations (so the
+	// hydro can run while the gravity is computed on the GPU, T-086).
+	ax, ay, az []float64
+}
+
+// AddAccelerations implements sim.Hydro: it adds the accelerations of the last Forces.
+func (sv *Solver) AddAccelerations(s *sim.State) {
+	sim.ParallelFor(len(sv.gas), 4096, 0, func(lo, hi int) {
+		for _, i := range sv.gas[lo:hi] {
+			s.AccX[i] += sv.ax[i]
+			s.AccY[i] += sv.ay[i]
+			s.AccZ[i] += sv.az[i]
+		}
+	})
 }
 
 // courant is the Courant factor of the time step condition dt ≤ courant · h / v_sig.
@@ -31,9 +45,22 @@ const (
 	// hMinSoftening bounds h from below by this fraction of the gravitational softening: gas is
 	// not resolved below it anyway, and tiny h would force tiny Courant steps (as in GADGET).
 	hMinSoftening = 0.25
+	// sphGrain is the smallest chunk of the parallel loops. Bodies are in tree order, so a chunk
+	// is a region of space; dense regions have many more neighbors per body. Small chunks let
+	// the dynamic scheduling spread a dense core over all cores (T-085).
+	sphGrain = 16
 )
 
-var stackPool = sync.Pool{New: func() any { s := make([]int32, 0, 64); return &s }}
+// walk is the scratch of a tree walk: the node stack and the candidate ranges of a group walk.
+type walk struct {
+	stack  []int32
+	ranges [][2]int32
+}
+
+var walkPool = sync.Pool{New: func() any { return &walk{stack: make([]int32, 0, 64), ranges: make([][2]int32, 0, 64)} }}
+
+// leafGrain is the smallest chunk of leaves (of up to leafSize bodies) in the group walks.
+const leafGrain = 2
 
 func defaults(g sim.GasParams) (gamma, ngb, alpha float64) {
 	gamma, ngb, alpha = g.Gamma, g.Neighbors, g.Alpha
@@ -76,24 +103,46 @@ func (sv *Solver) Forces(s *sim.State, p *sim.Params, dudt, divv []float64) {
 	for it := 0; len(sv.todo) > 0; it++ {
 		last := it == maxDensityIterations-1
 		sv.again = resizeBool(sv.again, len(sv.todo))
-		sim.ParallelFor(len(sv.todo), 256, 0, func(lo, hi int) {
-			sp := stackPool.Get().(*[]int32)
-			for k, i := range sv.todo[lo:hi] {
-				hi := h[i]
-				var rho float64
-				*sp = sv.tree.each(x[i], y[i], z[i], 2*hi, false, *sp, func(j int32, r2 float64) {
-					rho += m[j] * W(math.Sqrt(r2), hi)
-				})
-				s.Rho[i] = rho
-				target := math.Max(hMin, 0.5*math.Cbrt(3*ngb*m[i]/(4*math.Pi*rho)))
-				redo := !last && math.Abs(target-hi) > hTolerance*hi
-				if redo {
-					h[i] = math.Max(hMin, math.Max(0.5*hi, math.Min(2*hi, target))) // damped update
-				}
-				sv.again[lo+k] = redo
+		density := func(i int32, each func(radius float64, fn func(j int32, r2 float64))) bool {
+			hi := h[i]
+			var rho float64
+			each(2*hi, func(j int32, r2 float64) { rho += m[j] * W(math.Sqrt(r2), hi) })
+			s.Rho[i] = rho
+			target := math.Max(hMin, 0.5*math.Cbrt(3*ngb*m[i]/(4*math.Pi*rho)))
+			redo := !last && math.Abs(target-hi) > hTolerance*hi
+			if redo {
+				h[i] = math.Max(hMin, math.Max(0.5*hi, math.Min(2*hi, target))) // damped update
 			}
-			stackPool.Put(sp)
-		})
+			return redo
+		}
+		if it == 0 {
+			// All bodies, in tree order: one group walk per leaf (todo position = tree position).
+			sim.ParallelFor(len(sv.tree.leaves), leafGrain, 0, func(lo, hi int) {
+				w := walkPool.Get().(*walk)
+				for _, leaf := range sv.tree.leaves[lo:hi] {
+					w.stack, w.ranges = sv.tree.candidates(leaf, false, w.stack, w.ranges)
+					nd := &sv.tree.nodes[leaf]
+					for k := nd.lo; k < nd.hi; k++ {
+						i := sv.tree.order[k]
+						sv.again[k] = density(i, func(radius float64, fn func(j int32, r2 float64)) {
+							sv.tree.scan(w.ranges, x[i], y[i], z[i], radius, false, fn)
+						})
+					}
+				}
+				walkPool.Put(w)
+			})
+		} else {
+			// The few bodies that still iterate: one walk each.
+			sim.ParallelFor(len(sv.todo), sphGrain, 0, func(lo, hi int) {
+				w := walkPool.Get().(*walk)
+				for k, i := range sv.todo[lo:hi] {
+					sv.again[lo+k] = density(i, func(radius float64, fn func(j int32, r2 float64)) {
+						w.stack = sv.tree.each(x[i], y[i], z[i], radius, false, w.stack, fn)
+					})
+				}
+				walkPool.Put(w)
+			})
+		}
 		j := 0
 		for k, i := range sv.todo {
 			if sv.again[k] {
@@ -107,6 +156,7 @@ func (sv *Solver) Forces(s *sim.State, p *sim.Params, dudt, divv []float64) {
 		}
 	}
 
+	sv.ax, sv.ay, sv.az = resize(sv.ax, s.Len()), resize(sv.ay, s.Len()), resize(sv.az, s.Len())
 	if cap(sv.P) < s.Len() {
 		sv.P, sv.C = make([]float64, s.Len()), make([]float64, s.Len())
 	}
@@ -119,47 +169,49 @@ func (sv *Solver) Forces(s *sim.State, p *sim.Params, dudt, divv []float64) {
 
 	// Forces, energy equation and velocity divergence (symmetric variable-h formulation).
 	var dtMu sync.Mutex
-	sim.ParallelFor(len(sv.gas), 256, 0, func(lo, hi int) {
-		sp := stackPool.Get().(*[]int32)
+	sim.ParallelFor(len(sv.tree.leaves), leafGrain, 0, func(lo, hi int) {
+		w := walkPool.Get().(*walk)
 		dtMin := math.Inf(1)
-		for _, i := range sv.tree.order[lo:hi] {
-			hi, rhoi, pi := h[i], s.Rho[i], P[i]
-			fi := pi / (rhoi * rhoi)
-			var ax, ay, az, du, dv float64
-			vsig := 2 * C[i]
-			*sp = sv.tree.each(x[i], y[i], z[i], 2*hi, true, *sp, func(j int32, r2 float64) {
-				if j == i || r2 == 0 {
-					return
+		for _, leaf := range sv.tree.leaves[lo:hi] {
+			w.stack, w.ranges = sv.tree.candidates(leaf, true, w.stack, w.ranges)
+			nd := &sv.tree.nodes[leaf]
+			for _, i := range sv.tree.order[nd.lo:nd.hi] {
+				hi, rhoi, pi := h[i], s.Rho[i], P[i]
+				fi := pi / (rhoi * rhoi)
+				var ax, ay, az, du, dv float64
+				vsig := 2 * C[i]
+				sv.tree.scan(w.ranges, x[i], y[i], z[i], 2*hi, true, func(j int32, r2 float64) {
+					if j == i || r2 == 0 {
+						return
+					}
+					r := math.Sqrt(r2)
+					ex, ey, ez := (x[i]-x[j])/r, (y[i]-y[j])/r, (z[i]-z[j])/r
+					vx, vy, vz := s.VelX[i]-s.VelX[j], s.VelY[i]-s.VelY[j], s.VelZ[i]-s.VelZ[j]
+					vr := vx*ex + vy*ey + vz*ez // v_ij · r̂_ij
+					vsig = max(vsig, C[i]+C[j]-3*min(0, vr))
+					dwi, dwj := DW(r, hi), DW(r, h[j])
+					dwm := 0.5 * (dwi + dwj)
+					fj := P[j] / (s.Rho[j] * s.Rho[j])
+					var visc float64
+					if vr < 0 { // approaching: Monaghan viscosity
+						hm := 0.5 * (hi + h[j])
+						mu := hm * vr * r / (r2 + 0.01*hm*hm)
+						visc = (-alpha*0.5*(C[i]+C[j])*mu + betaFactor*alpha*mu*mu) / (0.5 * (rhoi + s.Rho[j]))
+					}
+					f := -m[j] * (fi*dwi + fj*dwj + visc*dwm)
+					ax, ay, az = ax+f*ex, ay+f*ey, az+f*ez
+					du += m[j] * (fi*dwi + 0.5*visc*dwm) * vr
+					dv -= m[j] * dwi * vr
+				})
+				sv.ax[i], sv.ay[i], sv.az[i] = ax, ay, az
+				dudt[i] = du
+				divv[i] = dv / rhoi
+				if vsig > 0 {
+					dtMin = min(dtMin, courant*hi/vsig)
 				}
-				r := math.Sqrt(r2)
-				ex, ey, ez := (x[i]-x[j])/r, (y[i]-y[j])/r, (z[i]-z[j])/r
-				vx, vy, vz := s.VelX[i]-s.VelX[j], s.VelY[i]-s.VelY[j], s.VelZ[i]-s.VelZ[j]
-				vr := vx*ex + vy*ey + vz*ez // v_ij · r̂_ij
-				vsig = max(vsig, C[i]+C[j]-3*min(0, vr))
-				dwi, dwj := DW(r, hi), DW(r, h[j])
-				dwm := 0.5 * (dwi + dwj)
-				fj := P[j] / (s.Rho[j] * s.Rho[j])
-				var visc float64
-				if vr < 0 { // approaching: Monaghan viscosity
-					hm := 0.5 * (hi + h[j])
-					mu := hm * vr * r / (r2 + 0.01*hm*hm)
-					visc = (-alpha*0.5*(C[i]+C[j])*mu + betaFactor*alpha*mu*mu) / (0.5 * (rhoi + s.Rho[j]))
-				}
-				f := -m[j] * (fi*dwi + fj*dwj + visc*dwm)
-				ax, ay, az = ax+f*ex, ay+f*ey, az+f*ez
-				du += m[j] * (fi*dwi + 0.5*visc*dwm) * vr
-				dv -= m[j] * dwi * vr
-			})
-			s.AccX[i] += ax
-			s.AccY[i] += ay
-			s.AccZ[i] += az
-			dudt[i] = du
-			divv[i] = dv / rhoi
-			if vsig > 0 {
-				dtMin = min(dtMin, courant*hi/vsig)
 			}
 		}
-		stackPool.Put(sp)
+		walkPool.Put(w)
 		dtMu.Lock()
 		sv.dt = min(sv.dt, dtMin)
 		dtMu.Unlock()

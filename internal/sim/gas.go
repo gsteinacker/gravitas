@@ -1,6 +1,9 @@
 package sim
 
-import "math"
+import (
+	"math"
+	"sync"
+)
 
 // Gas model glue (ADR-0007): the Hydro adds pressure and viscosity to the slow forces; after every
 // step the internal energy is advanced, relaxed towards the cooling floor, and dense, cold,
@@ -9,13 +12,19 @@ import "math"
 // computeSlow computes the forces that are evaluated once per outer step: star–star gravity from
 // the Solver plus hydrodynamics of gas.
 func (m *Simulation) computeSlow() {
-	m.Solver.Accelerations(m.State, m.Params)
 	if m.Hydro == nil || !m.hasGas() {
+		m.Solver.Accelerations(m.State, m.Params)
 		return
 	}
 	n := m.State.Len()
 	m.dudt, m.divv = resize(m.dudt, n), resize(m.divv, n)
+	// Gravity and hydro write disjoint fields, so the hydro runs while the gravity solver works
+	// (on the GPU the CPU would otherwise wait); its accelerations are added afterwards.
+	var wg sync.WaitGroup
+	wg.Go(func() { m.Solver.Accelerations(m.State, m.Params) })
 	m.Hydro.Forces(m.State, &m.Params, m.dudt, m.divv)
+	wg.Wait()
+	m.Hydro.AddAccelerations(m.State)
 	m.hydroDt = m.Hydro.Timestep()
 }
 
@@ -57,29 +66,56 @@ func (m *Simulation) updateGas(dt float64) {
 			m.ionize()
 		}
 	}
-	for i := range s.Len() {
-		if s.Kind[i] != Gas {
-			continue
-		}
-		u := math.Max(s.U[i]+dt*m.dudt[i], 1e-3*g.UFloor)
-		// Relax towards the equilibrium temperature: photoheated where ionized, cooled elsewhere.
-		target := g.UFloor
-		if g.UIon > 0 {
-			target = g.UFloor + s.Ion[i]*(g.UIon-g.UFloor)
-		}
-		if g.CoolTime > 0 && (u > target || g.UIon > 0) {
-			u = target + (u-target)*decay
-		}
-		s.U[i] = u
-		if g.SFDensity > 0 && s.Rho[i] > g.SFDensity && m.divv[i] < 0 && u < 3*g.UFloor && s.Ion[i] < 0.5 {
-			tff := math.Sqrt(3 * math.Pi / (32 * s.Rho[i]))
-			if unitRandom(s.ID[i], uint64(m.Steps)) < 1-math.Exp(-eff*dt/tff) {
-				s.Kind[i], s.Born[i], s.U[i] = Star, m.Time, 0
-				m.StarsFormed++
-				m.FormedMass += s.Mass[i]
+	unresolved := m.unresolvedDensity()
+	now, step := m.Time, uint64(m.Steps)
+	ParallelFor(s.Len(), 4096, 0, func(lo, hi int) {
+		for i := lo; i < hi; i++ {
+			if s.Kind[i] != Gas {
+				continue
+			}
+			u := math.Max(s.U[i]+dt*m.dudt[i], 1e-3*g.UFloor)
+			// Relax towards the equilibrium temperature: photoheated where ionized, cooled elsewhere.
+			target := g.UFloor
+			if g.UIon > 0 {
+				target = g.UFloor + s.Ion[i]*(g.UIon-g.UFloor)
+			}
+			if g.CoolTime > 0 && (u > target || g.UIon > 0) {
+				u = target + (u-target)*decay
+			}
+			s.U[i] = u
+			if g.SFDensity > 0 && s.Rho[i] > g.SFDensity && m.divv[i] < 0 && s.Ion[i] < 0.5 &&
+				(u < 3*g.UFloor || s.Rho[i] > unresolved*s.Mass[i]) {
+				tff := math.Sqrt(3 * math.Pi / (32 * s.Rho[i]))
+				// Converging gas denser than the SPH resolves (ADR-0017) collapses below the
+				// resolution anyway: it becomes a star at once, whatever its temperature.
+				if s.Rho[i] > unresolved*s.Mass[i] || unitRandom(s.ID[i], step) < 1-math.Exp(-eff*dt/tff) {
+					s.Kind[i], s.Born[i], s.U[i] = Star, now, 0
+				}
 			}
 		}
+	})
+	// Count the new stars in index order, so the sums do not depend on the scheduling.
+	for i := range s.Len() {
+		if s.Kind[i] == Star && s.Born[i] == now {
+			m.StarsFormed++
+			m.FormedMass += s.Mass[i]
+		}
 	}
+}
+
+// unresolvedDensity is the density per unit body mass above which gas is not resolved: its SPH
+// smoothing length h = ½ (3 N m / 4π ρ)^⅓ would fall below the floor ε/4 (internal/sph), i.e.
+// below the gravitational resolution. +Inf without softening.
+func (m *Simulation) unresolvedDensity() float64 {
+	eps := m.Params.Softening
+	if eps <= 0 {
+		return math.Inf(1)
+	}
+	ngb := m.Params.Gas.Neighbors
+	if ngb == 0 {
+		ngb = 40 // sph default
+	}
+	return 3 * ngb / (4 * math.Pi * math.Pow(eps/2, 3))
 }
 
 // unitRandom is a deterministic uniform number in [0, 1) for (id, step): star formation stays

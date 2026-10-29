@@ -12,6 +12,7 @@ type fixedHydro struct{ dt float64 }
 
 func (f fixedHydro) Forces(s *State, p *Params, dudt, divv []float64) {}
 func (f fixedHydro) Timestep() float64                                { return f.dt }
+func (f fixedHydro) AddAccelerations(*State)                          {}
 
 // A step longer than the Courant step of the gas is split into equal parts that add up to Dt.
 func TestStepSplitsForCourantCondition(t *testing.T) {

@@ -70,7 +70,7 @@ func TestCalibrateMeasures(t *testing.T) {
 	}
 	t0 := time.Now()
 	c := Calibrate(true)
-	if d := time.Since(t0); d > 3*time.Second {
+	if d := time.Since(t0); d > 3*time.Second && !raceEnabled {
 		t.Errorf("calibration took %v", d)
 	}
 	if c.SecPerNL <= 0 || c.BodiesPerStar < 1 {

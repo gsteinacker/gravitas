@@ -5,6 +5,8 @@ import (
 	"math/bits"
 	"slices"
 	"sort"
+
+	"galaxy/internal/sim"
 )
 
 // The neighbor search uses a bounding volume hierarchy over the gas bodies in Morton order: an
@@ -12,7 +14,7 @@ import (
 // smoothing length inside. A query for body i visits a node if its box is within
 // 2·max(h_i, hmax_node), so pairs with very different smoothing lengths still find each other.
 
-const leafSize = 16
+const leafSize = 8
 
 type node struct {
 	minX, minY, minZ, maxX, maxY, maxZ float64
@@ -22,11 +24,55 @@ type node struct {
 }
 
 type tree struct {
-	order []int32 // gas body indices in Morton order
-	keys  []uint64
-	nodes []node
+	leaves []int32 // leaf nodes in tree order (group walks, T-086)
+	order  []int32 // gas body indices in Morton order
+	keys   []uint64
+	nodes  []node
 	// Copies of position and smoothing length in Morton order, for cache-friendly leaf scans.
 	sx, sy, sz, sh []float64
+	// Scratch of build, kept to avoid allocations per force evaluation.
+	items, spare []keyed
+}
+
+// keyed is a body with its Morton key.
+type keyed struct {
+	key uint64
+	i   int32
+}
+
+// radixBits is the digit width of radixSort: 6 passes cover the 63-bit Morton keys.
+const radixBits = 11
+
+// radixSort sorts items by key (stable, so equal keys keep the order of gas) with an LSD radix
+// sort, using spare as buffer; it returns the sorted slice and the other buffer. Digits shared by
+// all items (high bits of a compact region) are skipped. O(n) instead of the O(n log n) of a
+// comparison sort, which made the tree build the serial bottleneck of the hydro (T-086).
+func radixSort(items, spare []keyed) (sorted, buf []keyed) {
+	if len(items) == 0 {
+		return items, spare
+	}
+	var count [1 << radixBits]int
+	for shift := uint(0); shift < 64; shift += radixBits {
+		clear(count[:])
+		for _, it := range items {
+			count[(it.key>>shift)&(1<<radixBits-1)]++
+		}
+		if count[(items[0].key>>shift)&(1<<radixBits-1)] == len(items) {
+			continue
+		}
+		sum := 0
+		for d, c := range count {
+			count[d] = sum
+			sum += c
+		}
+		for _, it := range items {
+			d := (it.key >> shift) & (1<<radixBits - 1)
+			spare[count[d]] = it
+			count[d]++
+		}
+		items, spare = spare, items
+	}
+	return items, spare
 }
 
 func spread(v uint64) uint64 {
@@ -50,35 +96,29 @@ func (t *tree) build(gas []int32, x, y, z, h []float64) {
 	}
 	side := math.Max(math.Max(maxX-minX, maxY-minY), math.Max(maxZ-minZ, 1e-12)) * (1 + 1e-9)
 	scale := float64(1<<21-1) / side
-	t.order = append(t.order[:0], gas...)
-	t.keys = slices.Grow(t.keys[:0], len(gas))[:len(gas)]
-	for k, i := range t.order {
-		t.keys[k] = spread(uint64((x[i]-minX)*scale))<<2 | spread(uint64((y[i]-minY)*scale))<<1 | spread(uint64((z[i]-minZ)*scale))
-	}
-	idx := make([]int, len(gas))
-	for k := range idx {
-		idx[k] = k
-	}
-	slices.SortFunc(idx, func(a, b int) int {
-		switch {
-		case t.keys[a] < t.keys[b]:
-			return -1
-		case t.keys[a] > t.keys[b]:
-			return 1
+	n := len(gas)
+	t.items = slices.Grow(t.items[:0], n)[:n]
+	sim.ParallelFor(n, 4096, 0, func(lo, hi int) {
+		for k := lo; k < hi; k++ {
+			i := gas[k]
+			key := spread(uint64((x[i]-minX)*scale))<<2 | spread(uint64((y[i]-minY)*scale))<<1 | spread(uint64((z[i]-minZ)*scale))
+			t.items[k] = keyed{key, i}
 		}
-		return a - b
 	})
-	sorted := make([]int32, len(gas))
-	keys := make([]uint64, len(gas))
-	for k, j := range idx {
-		sorted[k], keys[k] = t.order[j], t.keys[j]
+	t.items, t.spare = radixSort(t.items, slices.Grow(t.spare[:0], n)[:n])
+	t.order = slices.Grow(t.order[:0], n)[:n]
+	t.keys = slices.Grow(t.keys[:0], n)[:n]
+	for k, it := range t.items {
+		t.order[k], t.keys[k] = it.i, it.key
 	}
-	t.order, t.keys = sorted, keys
 	t.sx, t.sy, t.sz, t.sh = resize(t.sx, len(gas)), resize(t.sy, len(gas)), resize(t.sz, len(gas)), resize(t.sh, len(gas))
-	for k, i := range t.order {
-		t.sx[k], t.sy[k], t.sz[k], t.sh[k] = x[i], y[i], z[i], h[i]
-	}
-	t.nodes = t.nodes[:0]
+	sim.ParallelFor(n, 4096, 0, func(lo, hi int) {
+		for k := lo; k < hi; k++ {
+			i := t.order[k]
+			t.sx[k], t.sy[k], t.sz[k], t.sh[k] = x[i], y[i], z[i], h[i]
+		}
+	})
+	t.nodes, t.leaves = t.nodes[:0], t.leaves[:0]
 	if len(gas) > 0 {
 		t.buildNode(0, int32(len(gas)), x, y, z, h)
 	}
@@ -89,6 +129,7 @@ func (t *tree) buildNode(lo, hi int32, x, y, z, h []float64) int32 {
 	t.nodes = append(t.nodes, node{lo: lo, hi: hi, left: -1, right: -1})
 	if hi-lo <= leafSize {
 		t.refit(ni, x, y, z, h)
+		t.leaves = append(t.leaves, ni)
 		return ni
 	}
 	mid := t.split(lo, hi)
@@ -117,12 +158,12 @@ func (t *tree) refit(ni int32, x, y, z, h []float64) {
 	nd.minX, nd.minY, nd.minZ = math.Inf(1), math.Inf(1), math.Inf(1)
 	nd.maxX, nd.maxY, nd.maxZ = math.Inf(-1), math.Inf(-1), math.Inf(-1)
 	nd.hmax = 0
-	if nd.left < 0 {
-		for _, i := range t.order[nd.lo:nd.hi] {
-			nd.minX, nd.maxX = math.Min(nd.minX, x[i]), math.Max(nd.maxX, x[i])
-			nd.minY, nd.maxY = math.Min(nd.minY, y[i]), math.Max(nd.maxY, y[i])
-			nd.minZ, nd.maxZ = math.Min(nd.minZ, z[i]), math.Max(nd.maxZ, z[i])
-			nd.hmax = math.Max(nd.hmax, h[i])
+	if nd.left < 0 { // from the sorted copies (build fills them first)
+		for k := nd.lo; k < nd.hi; k++ {
+			nd.minX, nd.maxX = min(nd.minX, t.sx[k]), max(nd.maxX, t.sx[k])
+			nd.minY, nd.maxY = min(nd.minY, t.sy[k]), max(nd.maxY, t.sy[k])
+			nd.minZ, nd.maxZ = min(nd.minZ, t.sz[k]), max(nd.maxZ, t.sz[k])
+			nd.hmax = max(nd.hmax, t.sh[k])
 		}
 		return
 	}
@@ -187,6 +228,71 @@ func (t *tree) each(px, py, pz, radius float64, symmetric bool, stack []int32, f
 		}
 	}
 	return stack
+}
+
+// candidates collects the body ranges (positions in order) of all leaves that can hold neighbors of
+// any body in leaf: within 2·hmax of the leaf (gather), or with symmetric set, within
+// 2·max(hmax of the leaf, hmax of the visited node). One walk serves all bodies of the leaf, which
+// then scan the ranges (group walk).
+func (t *tree) candidates(leaf int32, symmetric bool, stack []int32, ranges [][2]int32) ([]int32, [][2]int32) {
+	lf := &t.nodes[leaf]
+	ranges = ranges[:0]
+	stack = append(stack[:0], 0)
+	for len(stack) > 0 {
+		nd := &t.nodes[stack[len(stack)-1]]
+		stack = stack[:len(stack)-1]
+		reach := 2 * lf.hmax
+		if symmetric && 2*nd.hmax > reach {
+			reach = 2 * nd.hmax
+		}
+		if boxBoxDist2(nd, lf) >= reach*reach {
+			continue
+		}
+		if nd.left >= 0 {
+			stack = append(stack, nd.left, nd.right)
+			continue
+		}
+		if n := len(ranges); n > 0 && ranges[n-1][1] == nd.lo { // adjacent leaves: one range
+			ranges[n-1][1] = nd.hi
+		} else {
+			ranges = append(ranges, [2]int32{nd.lo, nd.hi})
+		}
+	}
+	return stack, ranges
+}
+
+// scan calls fn for every body in ranges within radius of (px, py, pz), with symmetric set within
+// 2·max(radius/2, h_j), like each.
+func (t *tree) scan(ranges [][2]int32, px, py, pz, radius float64, symmetric bool, fn func(j int32, r2 float64)) {
+	r2max := radius * radius
+	for _, rg := range ranges {
+		for k := rg[0]; k < rg[1]; k++ {
+			ex, ey, ez := t.sx[k]-px, t.sy[k]-py, t.sz[k]-pz
+			r2 := ex*ex + ey*ey + ez*ez
+			lim2 := r2max
+			if symmetric {
+				if l := 2 * t.sh[k]; l*l > lim2 {
+					lim2 = l * l
+				}
+			}
+			if r2 < lim2 {
+				fn(t.order[k], r2)
+			}
+		}
+	}
+}
+
+// boxBoxDist2 is the squared distance between the boxes of a and b (0 if they overlap).
+func boxBoxDist2(a, b *node) float64 {
+	var d2 float64
+	for _, d := range [3]float64{
+		max(a.minX-b.maxX, b.minX-a.maxX, 0),
+		max(a.minY-b.maxY, b.minY-a.maxY, 0),
+		max(a.minZ-b.maxZ, b.minZ-a.maxZ, 0),
+	} {
+		d2 += d * d
+	}
+	return d2
 }
 
 // boxDist2 is the squared distance from (px, py, pz) to the box of nd (0 inside).

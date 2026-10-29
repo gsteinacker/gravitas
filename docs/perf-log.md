@@ -3,6 +3,27 @@
 Chronologisches Log relevanter Benchmark-Ergebnisse. Neueste oben. Format: `## Datum · Task · Thema`, dann
 Maschine und Last, die Zahlen in einem Codeblock und eine kurze Einordnung.
 
+## 2026-10-29 · T-083, T-086 · Gasrechnung: Kernauslastung, Gruppensuche, Sink
+
+Anlass: Nutzer sah bei Gasszenen 5 Schritte/s und kaum ausgelastete Kerne. Profil (Pferdekopfnebel, 50 000 Gas):
+87 % der Zeit in der SPH-Nachbarsuche, der Baumaufbau (Vergleichssortierung, 13,5 ms) seriell, `updateGas`
+seriell, die CPU wartet während der GPU-Gravitation. M4 Pro, keine Fremdlast, alter Commit (Worktree) und neuer
+Stand abwechselnd.
+
+```
+BenchmarkHorsehead (eine Gasauswertung, 60k)      66 ms  →  48 ms
+  davon Baumaufbau                                13,5 ms →  3,0 ms (Radix-Sort, keine Allokationen)
+Pferdekopfnebel, ganzer Schritt, 50k             4,4–4,7 → 5,6–5,9 Schritte/s
+Szene 14 dichter Zustand (8000)                   25,5 → 59 Schritte/s (mit Sink, ADR-0017)
+Szene 14 ganze 550 Myr (8000, Mittel)               41 → 76 Schritte/s
+Spirale 400 Myr (20k)                              159 → 225 Schritte/s, neue Sterne 70 → 74
+```
+
+Änderungen: Nachbarsuche je Baumblatt (8 Teilchen) statt je Teilchen, kleinere Arbeitspakete (dichte Kerne
+blockierten einen Kern), Radix-Sort und parallele Schlüssel im Baumaufbau, Gas parallel zur Gravitation
+(eigene Beschleunigungspuffer, danach addiert), `updateGas` parallel. Dichte und Kräfte skalieren 8–10× auf
+12 Kernen (8P + 4E). Der nächste Hebel sind eigene Zeitschritte für Gas (T-085).
+
 ## 2026-10-29 · T-080, T-081 · Supernovae, Gaszufluss, höhere Sternentstehung
 
 `tools/evolve -preset 1 -n 20000 -t 15` (200 Myr), M4 Pro, keine Fremdlast. Abwechselnd gemessen: neuer Stand,

@@ -3,7 +3,7 @@
   "intro": {
     "school": "Eine riesige, heiße Gaswolke, die sich ganz langsam dreht, sitzt in einem unsichtbaren Halo aus Dunkler Materie. Das Gas kühlt ab und fällt nach innen. Weil es sich dreht, kann es nicht bis in die Mitte fallen: Es wird zu einer flachen, rotierenden Scheibe, und darin entstehen die ersten Sterne. So ist vermutlich auch unsere Milchstraße entstanden.",
     "lay": "Das klassische Bild der Entstehung einer Scheibengalaxie: Gas mit dem kosmischen Anteil von etwa 15 % an der Masse ist anfangs so heiß wie der Halo (einige 100 000 K) und dreht sich am Äquator mit der halben Kreisbahngeschwindigkeit. Es strahlt Energie ab, behält aber seinen Drehimpuls. Deshalb schrumpft die Wolke zu einer Scheibe, etwa zehnmal kleiner als der Halo. Dort wird das Gas dicht genug für Sternentstehung, Supernovae heizen es wieder auf. Aus einer Wolke aus Sternen würde dagegen keine Scheibe, weil Sterne keine Energie abstrahlen können. Probier: o (Gaskarte), Ansicht von der Kante.",
-    "physics": "Plummer-Halo aus DM (1,7·10¹¹ M☉, a = 10 kpc) und Plummer-Gaswolke (3·10¹⁰ M☉, gleiche Skala, Baryonenanteil 0,15) bei T ≈ 6·10⁵ K (≈ Virialtemperatur) mit Rotation v_φ = 0,5 v_c(r) sin θ (β_Gas = 0,083; der Halo ruht, Spinparameter des Ganzen λ ≈ 0,025, typische ΛCDM-Halos 0,02–0,1, Median 0,035, Bullock et al. 2001). Kühlung auf 10⁴ K mit t_cool = 26 Myr, Sternentstehung (ε_ff = 0,066), Supernovae. Gemessen bei 8000 Teilchen: Nach 260 Myr ist das Baryonen-Verhältnis Höhe/Radius 0,39 (anfangs 1,0). Erwartung nach Fall & Efstathiou (1980), Mo, Mao & White (1998): Scheibenradius ≈ λ R/√2 bei erhaltenem spezifischem Drehimpuls. Grenzen: keine Hierarchie aus Verschmelzungen, keine kosmologische Expansion, isolierter Halo, feste Kühlzeit statt Λ(T, ρ), schwere DM-Teilchen heizen die Scheibe auf."
+    "physics": "Plummer-Halo aus DM (1,7·10¹¹ M☉, a = 10 kpc) und Plummer-Gaswolke (3·10¹⁰ M☉, gleiche Skala, Baryonenanteil 0,15) bei T ≈ 6·10⁵ K (≈ Virialtemperatur) mit Turbulenz (30 km/s, ≈ 0,3 σ), 30 % Dichteschwankungen und Rotation v_φ = 0,5 v_c(r) sin θ (β_Gas = 0,083; der Halo ruht, Spinparameter des Ganzen λ ≈ 0,025, typische ΛCDM-Halos 0,02–0,1, Median 0,035, Bullock et al. 2001). Kühlung auf 10⁴ K mit t_cool = 26 Myr, Sternentstehung (ε_ff = 0,066), Supernovae. Gemessen bei 8000 Teilchen: Nach 260 Myr ist das Baryonen-Verhältnis Höhe/Radius 0,39 (anfangs 1,0). Erwartung nach Fall & Efstathiou (1980), Mo, Mao & White (1998): Scheibenradius ≈ λ R/√2 bei erhaltenem spezifischem Drehimpuls. Grenzen: keine Hierarchie aus Verschmelzungen, keine kosmologische Expansion, isolierter Halo, feste Kühlzeit statt Λ(T, ρ), schwere DM-Teilchen heizen die Scheibe auf."
   },
   "topics": [
     "galaxy-formation",
@@ -64,7 +64,7 @@
     {
       "type": "gasclump",
       "name": "rotating hot gas",
-      "note": "Gas with the cosmic baryon fraction (Omega_b/Omega_m = 0.157, Planck 2018) on the same profile, at about the virial temperature (T ~ 6e5 K). Rotation 0.5 v_c sin(theta): beta_gas = 0.083, total spin parameter lambda ~ 0.025 with the halo at rest (LCDM halos: median 0.035, Bullock et al. 2001). coolTime 2 units (26 Myr) lets the gas settle into a disk instead of falling into a central clump. Monolithic collapse after Eggen, Lynden-Bell & Sandage 1962 and Fall & Efstathiou 1980.",
+      "note": "Gas with the cosmic baryon fraction (Omega_b/Omega_m = 0.157, Planck 2018) on the same profile, at about the virial temperature (T ~ 6e5 K). Rotation 0.5 v_c sin(theta): beta_gas = 0.083, total spin parameter lambda ~ 0.025 with the halo at rest (LCDM halos: median 0.035, Bullock et al. 2001). coolTime 2 units (26 Myr) lets the gas settle into a disk instead of falling into a central clump. Monolithic collapse after Eggen, Lynden-Bell & Sandage 1962 and Fall & Efstathiou 1980. Turbulence 30 km/s (about 0.3 of the 1D virial dispersion) and 30 % density fluctuations make the collapse clumpy instead of perfectly spherical (T-083).",
       "weight": 0.3,
       "mass": 1.5,
       "scale": 4,
@@ -80,7 +80,14 @@
         0,
         0
       ],
-      "seed": 42
+      "seed": 42,
+      "turbulence": 30,
+      "perturb": 0.3,
+      "size": [
+        16,
+        16,
+        16
+      ]
     }
   ]
 }

@@ -83,7 +83,9 @@ func TestDensityOfLattice(t *testing.T) {
 		}
 	}
 	dudt, divv := make([]float64, s.Len()), make([]float64, s.Len())
-	(&Solver{}).Forces(s, &sim.Params{}, dudt, divv)
+	var sv Solver
+	sv.Forces(s, &sim.Params{}, dudt, divv)
+	sv.AddAccelerations(s)
 	want := 1 / (spacing * spacing * spacing)
 	center := (k/2)*k*k + (k/2)*k + k/2
 	if rho := s.Rho[center]; math.Abs(rho/want-1) > 0.03 {
@@ -97,7 +99,9 @@ func TestDensityOfLattice(t *testing.T) {
 func TestHydroConservesMomentumAndEnergy(t *testing.T) {
 	s := cloud(3000, 2)
 	dudt, divv := make([]float64, s.Len()), make([]float64, s.Len())
-	(&Solver{}).Forces(s, &sim.Params{}, dudt, divv)
+	var sv Solver
+	sv.Forces(s, &sim.Params{}, dudt, divv)
+	sv.AddAccelerations(s)
 	var px, py, pz, dE, scale float64
 	for i := range s.Len() {
 		m := s.Mass[i]
