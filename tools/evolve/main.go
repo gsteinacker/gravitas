@@ -59,6 +59,7 @@ func main() {
 	for m.Time < *until {
 		m.Step()
 		steps++
+		substeps += m.HydroSubsteps
 		if i := firstBad(m.State); i >= 0 {
 			s := m.State
 			fmt.Printf("step %d t=%.5f: body %d kind %d pos (%g %g %g) vel (%g %g %g) acc (%g %g %g) u %g h %g rho %g ion %g m %g\n",
@@ -97,6 +98,9 @@ func main() {
 	}
 }
 
+// substeps sums the gas evaluations of all steps, for the mean in report.
+var substeps int
+
 func report(m *sim.Simulation, steps int, start time.Time) {
 	s := m.State
 	var gas, ion, stars int
@@ -115,8 +119,8 @@ func report(m *sim.Simulation, steps int, start time.Time) {
 		}
 	}
 	el := time.Since(start).Seconds()
-	fmt.Printf("t=%.3f steps=%d (%.1f/s) gas=%d ionized=%d formed=%d sn=%d infall=%.3g hmin=%.4f rhomax=%.0f rmax=%.1f\n",
-		m.Time, steps, float64(steps)/el, gas, ion, m.StarsFormed, m.Supernovae, m.InfallMass, hmin, rhomax, rmax)
+	fmt.Printf("t=%.3f steps=%d (%.1f/s, %.1f gas evaluations) gas=%d ionized=%d formed=%d sn=%d infall=%.3g hmin=%.4f rhomax=%.0f rmax=%.1f\n",
+		m.Time, steps, float64(steps)/el, float64(substeps)/float64(max(steps, 1)), gas, ion, m.StarsFormed, m.Supernovae, m.InfallMass, hmin, rhomax, rmax)
 	_ = stars
 	h, r50, rz := shape(s)
 	fmt.Printf("  baryons: half-mass radius %.3g, rms height %.3g, flattening %.2f (height/radius)\n", r50, h, rz)

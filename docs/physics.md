@@ -106,7 +106,7 @@ Szene „Galaxy formation“ (`14-galaxy-formation.json`): Ein Plummer-Halo aus 
 Baryonen aus): Das Verhältnis Höhe/Radius fällt von 1,0 auf 0,25–0,4 nach 400–550 Myr. Es ist eine sichtbare
 Scheibe von etwa 3 kpc Halbmassenradius, mit 94 Sternpopulationen und Supernova-Blasen. Bei kürzerer Kühlzeit
 (7 Myr) oder f = 0,25 fällt das Gas zu einem runden, dichten Klumpen zusammen. Grenze: Das dichte Zentrum verlangt
-viele Gas-Teilschritte, die Szene wird im Lauf langsamer (8000 Teilchen: 150 → 40 Schritte/s).
+kurze Gasschritte; seit T-085 rechnen nur die dichten Teilchen in diesen kurzen Schritten.
 
 Seit T-083 gilt: Zusammenströmendes Gas über der Auflösungsgrenze ρ > 3 N m / (4π (ε/2)³) wird sofort zum Stern
 (ADR-0017), und die Wolke beginnt mit Turbulenz (30 km/s) und 30 % Dichteschwankungen.
@@ -156,8 +156,13 @@ Einzelsterne, die beim Hineinzoomen aufgelöst werden. Sternbildendes Gas leucht
 jungen Sterne als bläulicher Schleier. Das ist reine Darstellung, die Dynamik bleibt unverändert.
 
 Zeitschritt: Gas verlangt Δt ≤ 0,3 h / v_sig (Courant, v_sig = c_i + c_j − 3 min(0, v_ij·r̂), Monaghan 1997).
-Ist der Szenen-Schritt länger, wird er in gleiche Teile zerlegt (höchstens 64, HUD „gas N“). Ohne das
-heizt sich Gas in Schocks bei Galaxienverschmelzungen explizit unbegrenzt auf und die Rechnung explodiert.
+Ohne das heizt sich Gas in Schocks bei Galaxienverschmelzungen explizit unbegrenzt auf und die Rechnung
+explodiert. Seit T-085 (ADR-0018) hat jedes Gasteilchen einen eigenen Schritt Δt/2^r (Blockzeitschritte, r ≤ 10,
+höchstens viermal so lang wie der kürzeste Nachbarschritt, mit Aufwecken der Nachbarn, Saitoh & Makino 2009).
+Die Gravitation wirkt auf Gas wie auf Sterne im Szenenschritt. Ausgewertet werden nur die Teilchen, deren Schritt
+endet; am Ende von Δt ist das ganze Gas synchron. HUD „Gas N“ ist die Zahl der Gasauswertungen pro Schritt.
+Grenze: Nachbarn auf verschiedenen Stufen erhalten Impuls und Energie nicht mehr paarweise exakt (Test
+`TestIndividualGasStepsConserveEnergyAndMomentum`, Messwerte in ADR-0018).
 h ist nach unten auf ε/4 begrenzt: Unterhalb der Gravitationsauflösung ist Gas ohnehin nicht aufgelöst.
 
 ### Supernovae (ADR-0015, T-080)
@@ -206,3 +211,5 @@ Gasteilchen wächst um 14 % (1024 → 1164), insgesamt sind das 0,7 % mehr Teilc
 2. Barnes-Hut mit θ → 0 entspricht der direkten Summe (relativer Fehler < 1e-10).
 3. Impulserhaltung bei Absorption durch ein Schwarzes Loch.
 4. Kein Körper erreicht jemals `|v| ≥ c`.
+5. Gas mit eigenen Zeitschritten (ADR-0018): heißer Kern in einer Gaskugel, mehrere Stufen, Energie < 2,5 % und
+   Impuls < 10⁻⁴ relativ über 300 Schritte; zwei Läufe und Speichern/Laden bitidentisch.

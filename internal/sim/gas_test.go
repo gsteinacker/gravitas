@@ -10,16 +10,15 @@ import (
 // densityHydro sets a given density and a converging flow for every gas body, without forces.
 type densityHydro struct{ rho float64 }
 
-func (h densityHydro) Forces(s *State, _ *Params, _, divv []float64) {
+func (h densityHydro) Forces(s *State, _ *Params, active []bool, _ []float64, out *HydroOut) {
 	for i := range s.Len() {
-		if s.Kind[i] == Gas {
-			s.Rho[i], divv[i] = h.rho, -1
+		if s.Kind[i] == Gas && (active == nil || active[i]) {
+			s.Rho[i], out.DivV[i], out.Dt[i] = h.rho, -1, math.Inf(1)
 		}
 	}
 }
 
-func (densityHydro) Timestep() float64       { return math.Inf(1) }
-func (densityHydro) AddAccelerations(*State) {}
+func (densityHydro) Bound(*State, *Params, []float64) {}
 
 func TestUnresolvedGasFormsStarsAtOnce(t *testing.T) {
 	p := Params{Dt: 1e-3, Softening: 0.1, Gas: GasParams{UFloor: 0.01, SFDensity: 1e-6, SFEfficiency: 1e-9}}

@@ -3,6 +3,28 @@
 Chronologisches Log relevanter Benchmark-Ergebnisse. Neueste oben. Format: `## Datum · Task · Thema`, dann
 Maschine und Last, die Zahlen in einem Codeblock und eine kurze Einordnung.
 
+## 2026-10-29 · T-085 · Eigene Zeitschritte für Gas
+
+Anlass: Nutzer sah die Kerne weiter nur zur Hälfte ausgelastet. Profil Szene 14 (8000): Jeder Gas-Teilschritt
+wartete auf eine volle GPU-Gravitationsrechnung (6 ms Latenz), und das ganze Gas rechnete im Takt der dichtesten
+Teilchen. M4 Pro, keine Fremdlast, alter Stand (`f2cdca0`) und neuer Stand abwechselnd (`tools/evolve`).
+
+```
+BenchmarkHorsehead (eine Gasauswertung, 60k)          41–48 ms → 40 ms, 120 343 → 161 allocs/op
+Pferdekopfnebel frisch, 60k, 21 Schritte                7,9 → 14,9 Schritte/s (Gasauswertungen 2,1 → 2,2)
+Pferdekopfnebel entwickelt (50k Gas)                    9,6 → 17,5 Schritte/s
+Szene 14 dichter Zustand, 8000                           71 → 168 Schritte/s
+Szene 14 dichter Zustand, 43 000 (12 400 Gas)            21 → 38 Schritte/s
+Szene 14 ganze 550 Myr, 8000 (Mittel)                   106 → 198 Schritte/s
+Spirale 400 Myr, 20k (kein Gas-Teilschritt)             243 → 236 Schritte/s (Verwaltung, im Rauschen)
+Gasauswertung Szene 14 / 43 000 nach Kernen     1: 145 ms, 4: 41 ms, 8: 27 ms, 12: 20 ms (7,1×)
+```
+
+Änderungen: Gravitation einmal pro Schritt, parallel zur letzten Gasauswertung; Gas in Blockzeitschritten, nur
+aktive Teilchen werden ausgewertet (ADR-0018). Die Dichte-Closure legte pro Teilchen Speicher an (seit T-086
+unbemerkt), jetzt allokationsfrei. Der Rest-Engpass bei 43 000 ist die symmetrische Nachbarsuche im Kraftteil
+(Scan der Kandidaten, 50 % der Zeit) in Gas mit sehr unterschiedlichen Glättungslängen.
+
 ## 2026-10-29 · T-083, T-086 · Gasrechnung: Kernauslastung, Gruppensuche, Sink
 
 Anlass: Nutzer sah bei Gasszenen 5 Schritte/s und kaum ausgelastete Kerne. Profil (Pferdekopfnebel, 50 000 Gas):

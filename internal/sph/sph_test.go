@@ -82,31 +82,32 @@ func TestDensityOfLattice(t *testing.T) {
 			}
 		}
 	}
-	dudt, divv := make([]float64, s.Len()), make([]float64, s.Len())
+	var out sim.HydroOut
+	out.Resize(s.Len())
 	var sv Solver
-	sv.Forces(s, &sim.Params{}, dudt, divv)
-	sv.AddAccelerations(s)
+	sv.Forces(s, &sim.Params{}, nil, nil, &out)
 	want := 1 / (spacing * spacing * spacing)
 	center := (k/2)*k*k + (k/2)*k + k/2
 	if rho := s.Rho[center]; math.Abs(rho/want-1) > 0.03 {
 		t.Errorf("lattice density %.1f, want %.1f", rho, want)
 	}
-	if a := math.Hypot(s.AccX[center], s.AccY[center]); a > 1e-6*want {
+	if a := math.Hypot(out.AccX[center], out.AccY[center]); a > 1e-6*want {
 		t.Errorf("interior of a uniform lattice should feel no pressure force, got %.3g", a)
 	}
 }
 
 func TestHydroConservesMomentumAndEnergy(t *testing.T) {
 	s := cloud(3000, 2)
-	dudt, divv := make([]float64, s.Len()), make([]float64, s.Len())
+	var out sim.HydroOut
+	out.Resize(s.Len())
 	var sv Solver
-	sv.Forces(s, &sim.Params{}, dudt, divv)
-	sv.AddAccelerations(s)
+	sv.Forces(s, &sim.Params{}, nil, nil, &out)
+	dudt := out.DuDt
 	var px, py, pz, dE, scale float64
 	for i := range s.Len() {
 		m := s.Mass[i]
-		px, py, pz = px+m*s.AccX[i], py+m*s.AccY[i], pz+m*s.AccZ[i]
-		dE += m * (s.VelX[i]*s.AccX[i] + s.VelY[i]*s.AccY[i] + s.VelZ[i]*s.AccZ[i] + dudt[i])
+		px, py, pz = px+m*out.AccX[i], py+m*out.AccY[i], pz+m*out.AccZ[i]
+		dE += m * (s.VelX[i]*out.AccX[i] + s.VelY[i]*out.AccY[i] + s.VelZ[i]*out.AccZ[i] + dudt[i])
 		scale += m * math.Abs(dudt[i])
 	}
 	if p := math.Sqrt(px*px + py*py + pz*pz); p > 1e-12*scale*10 {

@@ -25,7 +25,7 @@
       "youngAge": 0.2,
       "ionOpacity": 60,
       "ionRecomb": 2000,
-      "ionEvery": 4
+      "ionEvery": 2
     }
   },
   "velocityUnit": 0.656,

@@ -133,6 +133,7 @@ Die App soll auf jedem Mac flüssig laufen, nicht nur auf dem M4 Pro, auf dem da
 
   Eine feste Sternzahl in den Einstellungen oder `-n` überschreibt das Profil. Screenshots ohne `-n` nutzen
   50 000 und ignorieren die Einstellungen, damit Messungen reproduzierbar bleiben.
-- **Grenze des Modells:** Courant-Teilschritte wachsen mit der Auflösung des Gases (Pferdekopf: 4 statt 1,6).
+- **Grenze des Modells:** Kurze Gasschritte wachsen mit der Auflösung des Gases. Seit T-085 (ADR-0018) zahlen
+  dafür nur die betroffenen Gasteilchen, nicht mehr das ganze Gas und die Gravitation.
   Der Laufzeit-Regler (T-047) misst die echte Schrittzeit und korrigiert damit die Sternzahl der nächsten
   Szene.

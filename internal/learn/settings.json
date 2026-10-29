@@ -16,8 +16,8 @@
         "en": "Every step advances the simulation by the same time Δt. At 30 steps per second the spiral galaxy runs about 30 × 1.3 million years per real second. \"max\" runs as fast as the computer can. High values cost CPU time and can make the view and controls sluggish. 30–60 is the default."
       },
       "physics": {
-        "de": "Ziel-Schrittrate des Simulationsthreads (Runner.SetTargetSPS). Δt der Szene bleibt fest, nahe Löchern und im Gas wird intern unterteilt (Substeps, Courant-Bedingung). Die Genauigkeit hängt also nicht von dieser Einstellung ab. Erreicht der Rechner die Rate nicht, läuft die Simulation langsamer, und der Regler senkt zuerst die Bildqualität. Physikalische Zeit pro Schritt: Δt · yearsPerUnit.",
-        "en": "Target step rate of the simulation thread (Runner.SetTargetSPS). The scene's Δt is fixed; close to holes and in gas it is subdivided internally (substeps, Courant condition), so accuracy does not depend on this setting. If the computer cannot reach the rate the simulation runs slower, and the governor lowers the image quality first. Physical time per step: Δt · yearsPerUnit."
+        "de": "Ziel-Schrittrate des Simulationsthreads (Runner.SetTargetSPS). Δt der Szene bleibt fest, nahe Löchern wird intern unterteilt (Substeps), und jedes Gasteilchen rechnet mit eigenem, kürzerem Schritt (Courant-Bedingung). Die Genauigkeit hängt also nicht von dieser Einstellung ab. Erreicht der Rechner die Rate nicht, läuft die Simulation langsamer, und der Regler senkt zuerst die Bildqualität. Physikalische Zeit pro Schritt: Δt · yearsPerUnit.",
+        "en": "Target step rate of the simulation thread (Runner.SetTargetSPS). The scene's Δt is fixed; it is subdivided internally close to holes (substeps), and every gas body moves in its own shorter steps (Courant condition), so accuracy does not depend on this setting. If the computer cannot reach the rate the simulation runs slower, and the governor lowers the image quality first. Physical time per step: Δt · yearsPerUnit."
       }
     }
   },

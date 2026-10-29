@@ -77,13 +77,14 @@ func measureGas() float64 {
 	}
 	s, p := sp.Build(calibrationGas)
 	n := s.Len()
-	dudt, divv := make([]float64, n), make([]float64, n)
+	var out sim.HydroOut
+	out.Resize(n)
 	var h sph.Solver
-	h.Forces(s, &p, dudt, divv) // converges the smoothing lengths
+	h.Forces(s, &p, nil, nil, &out) // converges the smoothing lengths
 	best := math.Inf(1)
 	for range 2 {
 		t0 := time.Now()
-		h.Forces(s, &p, dudt, divv)
+		h.Forces(s, &p, nil, nil, &out)
 		best = min(best, time.Since(t0).Seconds())
 	}
 	return best / nlogn(float64(countGas(s)))

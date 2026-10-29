@@ -43,17 +43,51 @@ type GasParams struct {
 
 // Hydro computes the hydrodynamic part of the gas model.
 type Hydro interface {
-	// Forces computes the pressure and viscosity accelerations of gas bodies (added to s.Acc* by
-	// AddAccelerations), fills s.Rho and s.H, and writes du/dt and the velocity divergence of every
-	// body (0 for non-gas) into dudt and divv. It must not touch s.Acc*: it runs concurrently with
-	// the gravity solver.
-	Forces(s *State, p *Params, dudt, divv []float64)
-	// AddAccelerations adds the accelerations of the last Forces to s.Acc*.
-	AddAccelerations(s *State)
-	// Timestep returns the largest stable time step (Courant condition) after the last Forces,
-	// +Inf without gas.
-	Timestep() float64
+	// Forces evaluates the gas bodies i with active[i] (all gas if active is nil) at the current
+	// positions: it updates their s.Rho and s.H and writes their entries of out; other entries
+	// stay as they are. Inactive gas enters as neighbors with its current (predicted) Rho, H, U
+	// and velocity. step[i] is the step body i is currently integrated with (nil or 0: unknown);
+	// out.Dt of an evaluated body is at most LimiterRatio times the smallest step among its
+	// neighbors (Saitoh & Makino 2009). A neighbor j whose step is longer than LimiterRatio times
+	// the out.Dt of an evaluated body gets out.Wake[j] lowered to that out.Dt, so it can be woken
+	// up. Forces must not touch s.Acc*: it runs concurrently with the gravity solver.
+	Forces(s *State, p *Params, active []bool, step []float64, out *HydroOut)
+	// Bound lowers dt[i] of every gas body to the sound crossing step of its current internal
+	// energy, which may have grown since the last evaluation (supernovae).
+	Bound(s *State, p *Params, dt []float64)
 }
+
+// HydroOut is the result of hydro evaluations, per body.
+type HydroOut struct {
+	AccX, AccY, AccZ []float64 // pressure and viscosity acceleration
+	DuDt, DivV       []float64 // change of the internal energy, velocity divergence
+	Dt               []float64 // largest stable time step (Courant condition, step limiter)
+	// Wake is, as float64 bits, the smallest Dt of an evaluated neighbor that requires a shorter
+	// step of this body (+Inf: none); updated atomically, reset by the integrator.
+	Wake []uint64
+}
+
+// Resize makes room for n bodies; new entries are zero.
+func (o *HydroOut) Resize(n int) {
+	for _, f := range []*[]float64{&o.AccX, &o.AccY, &o.AccZ, &o.DuDt, &o.DivV, &o.Dt} {
+		old := len(*f)
+		*f = resize(*f, n)
+		if n > old {
+			clear((*f)[old:])
+		}
+	}
+	old := len(o.Wake)
+	o.Wake = resize(o.Wake, n)
+	for i := old; i < n; i++ {
+		o.Wake[i] = noWake
+	}
+}
+
+// noWake is the Wake value of a body no neighbor wants to wake up.
+var noWake = math.Float64bits(math.Inf(1))
+
+// LimiterRatio is the largest ratio of the time steps of neighboring gas bodies.
+const LimiterRatio = 4
 
 // SourceMass is the gravitating mass of a body of kind k and mass m under p.
 func (p *Params) SourceMass(k Kind, m float64) float64 {
@@ -103,9 +137,10 @@ type Simulation struct {
 	comoving    Solver // periodic force solver of the comoving mode
 	// Substeps is the number of inner substeps used near black holes in the last step.
 	Substeps int
-	// HydroSubsteps is the number of parts the last step was split into for the gas.
+	// HydroSubsteps is the number of hydro evaluations in the last step (individual gas steps,
+	// blockstep.go); HydroLoad is their cost in units of an evaluation of all gas.
 	HydroSubsteps int
-	hydroDt       float64 // stable step of the gas after the last hydro evaluation (0: none yet)
+	HydroLoad     float64
 
 	accValid bool
 	holes    []int // alive black holes, refreshed every step
@@ -118,7 +153,8 @@ type Simulation struct {
 
 	histories   map[uint64]*holeHistory // past positions of black holes by ID (retarded.go)
 	accretion   map[uint64]float64      // recent accretion rate of black holes by ID (accrete.go)
-	dudt, divv  []float64               // gas: du/dt and velocity divergence (gas.go)
+	hydro       HydroOut                // last hydro evaluation of every gas body (gas.go)
+	gas         gasSteps                // individual time steps of gas (blockstep.go)
 	ion         ionizer                 // photoionization grid (ionize.go)
 	holeHists   []*holeHistory          // histories of m.holes, bound once per step
 	dragWeights []float64               // scratch of dragBack (framedrag.go)
@@ -131,7 +167,7 @@ func New(s *State, solver Solver, p Params) *Simulation {
 // Reset replaces the state and restarts the clock.
 func (m *Simulation) Reset(s *State, p Params) {
 	m.State, m.Params, m.Time, m.Steps, m.accValid, m.ExternalEnergy = s, p, 0, 0, false, 0
-	m.StarsFormed, m.HolesFormed, m.hydroDt = 0, 0, 0
+	m.StarsFormed, m.HolesFormed = 0, 0
 	m.FormedMass, m.Supernovae, m.SNMass = 0, 0, 0
 	m.InfallMass, m.InfallPending = 0, nil
 	m.accretion = nil
@@ -150,7 +186,8 @@ func (m *Simulation) Restore(s *State, p Params, time float64, steps int, extern
 // without recomputing it, which matters for gas: the smoothing-length iteration is not idempotent.
 type Forces struct {
 	AccX, AccY, AccZ, Rho, DuDt, DivV []float64
-	HydroDt                           float64
+	// Hydro accelerations and time steps of gas (since T-085; AccX… are gravity only).
+	HAccX, HAccY, HAccZ, HDt []float64
 }
 
 // LastForces returns a copy of the last force evaluation, or nil if there is none.
@@ -161,8 +198,9 @@ func (m *Simulation) LastForces() *Forces {
 	s := m.State
 	return &Forces{
 		AccX: slices.Clone(s.AccX), AccY: slices.Clone(s.AccY), AccZ: slices.Clone(s.AccZ),
-		Rho: slices.Clone(s.Rho), DuDt: slices.Clone(m.dudt), DivV: slices.Clone(m.divv),
-		HydroDt: m.hydroDt,
+		Rho: slices.Clone(s.Rho), DuDt: slices.Clone(m.hydro.DuDt), DivV: slices.Clone(m.hydro.DivV),
+		HAccX: slices.Clone(m.hydro.AccX), HAccY: slices.Clone(m.hydro.AccY), HAccZ: slices.Clone(m.hydro.AccZ),
+		HDt: slices.Clone(m.hydro.Dt),
 	}
 }
 
@@ -172,12 +210,18 @@ func (m *Simulation) RestoreForces(f *Forces) {
 	if f == nil || len(f.AccX) != n || len(f.Rho) != n {
 		return
 	}
+	if m.Hydro != nil && m.hasGas() && len(f.HDt) != n {
+		return // saved before T-085: AccX includes the hydro forces, recompute them
+	}
 	copy(s.AccX, f.AccX)
 	copy(s.AccY, f.AccY)
 	copy(s.AccZ, f.AccZ)
 	copy(s.Rho, f.Rho)
-	m.dudt, m.divv = slices.Clone(f.DuDt), slices.Clone(f.DivV)
-	m.hydroDt = f.HydroDt
+	m.hydro = HydroOut{
+		AccX: slices.Clone(f.HAccX), AccY: slices.Clone(f.HAccY), AccZ: slices.Clone(f.HAccZ),
+		DuDt: slices.Clone(f.DuDt), DivV: slices.Clone(f.DivV), Dt: slices.Clone(f.HDt),
+	}
+	m.hydro.Resize(n)
 	m.accValid = true
 }
 
@@ -199,28 +243,10 @@ func (m *Simulation) AddBody(b Body) int {
 	return i
 }
 
-// maxHydroSubsteps caps the subdivision of a step for the Courant condition of gas.
-const maxHydroSubsteps = 64
-
-// Step advances the simulation by Params.Dt. If gas needs a shorter step (Courant condition, e.g.
-// in shocks where galaxies collide), the step is split into equal parts; otherwise the explicit
-// hydrodynamics becomes unstable and heats itself without bound.
+// Step advances the simulation by Params.Dt. Gas is integrated with individual time steps within
+// it (blockstep.go).
 func (m *Simulation) Step() {
-	dt := m.Params.Dt
-	n := 1
-	if m.Hydro != nil && m.hydroDt > 0 && m.hydroDt < dt {
-		n = min(maxHydroSubsteps, int(math.Ceil(dt/m.hydroDt)))
-	}
-	m.HydroSubsteps = n
-	if n == 1 {
-		m.step()
-		return
-	}
-	m.Params.Dt = dt / float64(n)
-	for range n {
-		m.step()
-	}
-	m.Params.Dt = dt
+	m.step()
 }
 
 func (m *Simulation) step() {
@@ -238,12 +264,16 @@ func (m *Simulation) step() {
 		}
 	} else {
 		if !m.accValid {
-			m.computeSlow()
+			m.initForces()
 			m.accValid = true
 		}
+		own := m.collectGas()
 		kick(s, 0.5*dt)
-		drift(s, dt, m.Params.C)
-		m.computeSlow()
+		if own {
+			m.openGas(dt)
+		}
+		drift(s, dt, m.Params.C, own)
+		m.advanceGas(dt, nil)
 		kick(s, 0.5*dt)
 		m.Substeps = 1
 	}
@@ -280,9 +310,18 @@ func kick(s *State, h float64) {
 	}
 }
 
-// drift moves the bodies by dt·v. With c > 0 the coordinate velocity is v = u / √(1 + u²/c²).
-func drift(s *State, dt, c float64) {
+// drift moves the bodies by dt·v, except gas if skipGas (it moves in its own steps). With c > 0
+// the coordinate velocity is v = u / √(1 + u²/c²).
+func drift(s *State, dt, c float64, skipGas bool) {
 	n := s.Len()
+	if skipGas {
+		for i := range n {
+			if s.Kind[i] != Gas {
+				driftOne(s, i, dt, c)
+			}
+		}
+		return
+	}
 	px, py, pz := s.PosX[:n], s.PosY[:n], s.PosZ[:n]
 	vx, vy, vz := s.VelX[:n], s.VelY[:n], s.VelZ[:n]
 	if c <= 0 {
@@ -301,4 +340,11 @@ func drift(s *State, dt, c float64) {
 		py[i] += f * uy
 		pz[i] += f * uz
 	}
+}
+
+func driftOne(s *State, i int, dt, c float64) {
+	f := dt / gamma(s.VelX[i], s.VelY[i], s.VelZ[i], c)
+	s.PosX[i] += f * s.VelX[i]
+	s.PosY[i] += f * s.VelY[i]
+	s.PosZ[i] += f * s.VelZ[i]
 }

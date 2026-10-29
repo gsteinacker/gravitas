@@ -9,23 +9,20 @@ import (
 // step the internal energy is advanced, relaxed towards the cooling floor, and dense, cold,
 // converging gas turns into stars.
 
-// computeSlow computes the forces that are evaluated once per outer step: star–star gravity from
-// the Solver plus hydrodynamics of gas.
-func (m *Simulation) computeSlow() {
+// initForces evaluates gravity and the hydrodynamics of all gas, at the start of a run and after
+// the bodies changed.
+func (m *Simulation) initForces() {
 	if m.Hydro == nil || !m.hasGas() {
 		m.Solver.Accelerations(m.State, m.Params)
 		return
 	}
-	n := m.State.Len()
-	m.dudt, m.divv = resize(m.dudt, n), resize(m.divv, n)
+	m.hydro.Resize(m.State.Len())
 	// Gravity and hydro write disjoint fields, so the hydro runs while the gravity solver works
-	// (on the GPU the CPU would otherwise wait); its accelerations are added afterwards.
+	// (on the GPU the CPU would otherwise wait).
 	var wg sync.WaitGroup
 	wg.Go(func() { m.Solver.Accelerations(m.State, m.Params) })
-	m.Hydro.Forces(m.State, &m.Params, m.dudt, m.divv)
+	m.Hydro.Forces(m.State, &m.Params, nil, nil, &m.hydro)
 	wg.Wait()
-	m.Hydro.AddAccelerations(m.State)
-	m.hydroDt = m.Hydro.Timestep()
 }
 
 func (m *Simulation) hasGas() bool {
@@ -42,10 +39,10 @@ const (
 	defaultYoungAge     = 5.0
 )
 
-// updateGas advances internal energies (explicit hydro heating plus implicit cooling, which is
-// stable for any time step) and forms stars.
+// updateGas relaxes internal energies (implicit cooling, which is stable for any time step; the
+// hydro heating is integrated in blockstep.go) and forms stars.
 func (m *Simulation) updateGas(dt float64) {
-	if m.Hydro == nil || len(m.dudt) != m.State.Len() {
+	if m.Hydro == nil || len(m.hydro.DivV) != m.State.Len() {
 		return
 	}
 	s, g := m.State, &m.Params.Gas
@@ -73,7 +70,7 @@ func (m *Simulation) updateGas(dt float64) {
 			if s.Kind[i] != Gas {
 				continue
 			}
-			u := math.Max(s.U[i]+dt*m.dudt[i], 1e-3*g.UFloor)
+			u := s.U[i]
 			// Relax towards the equilibrium temperature: photoheated where ionized, cooled elsewhere.
 			target := g.UFloor
 			if g.UIon > 0 {
@@ -83,7 +80,7 @@ func (m *Simulation) updateGas(dt float64) {
 				u = target + (u-target)*decay
 			}
 			s.U[i] = u
-			if g.SFDensity > 0 && s.Rho[i] > g.SFDensity && m.divv[i] < 0 && s.Ion[i] < 0.5 &&
+			if g.SFDensity > 0 && s.Rho[i] > g.SFDensity && m.hydro.DivV[i] < 0 && s.Ion[i] < 0.5 &&
 				(u < 3*g.UFloor || s.Rho[i] > unresolved*s.Mass[i]) {
 				tff := math.Sqrt(3 * math.Pi / (32 * s.Rho[i]))
 				// Converging gas denser than the SPH resolves (ADR-0017) collapses below the

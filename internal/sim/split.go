@@ -160,20 +160,24 @@ func (m *Simulation) fastForces(eps2 float64) {
 }
 
 // stepSplit is Step with holes present: outer KDK with slow and far forces, inner KDK substeps
-// for near stars and holes.
+// for near stars and holes, own steps for far gas.
 func (m *Simulation) stepSplit() {
 	dt, c := m.Params.Dt, m.Params.C
 	eps2 := m.Params.Softening * m.Params.Softening
 	if !m.accValid {
-		m.computeSlow()
+		m.initForces()
 		m.accValid = true
 	}
+	own := m.collectGas()
 	m.bindHistories()
 	n := m.classify(eps2)
 	m.Substeps = n
 	m.outerHoleForces(eps2)
 	m.kickOuter(0.5 * dt)
 	m.dragOuter(0.5 * dt) // frame dragging (framedrag.go): kick, rotate … rotate, kick
+	if own {
+		m.openGas(dt)
+	}
 
 	h := dt / float64(n)
 	m.fastForces(eps2)
@@ -186,9 +190,10 @@ func (m *Simulation) stepSplit() {
 		m.dragFast(0.5 * h)
 		m.kickFast(0.5 * h)
 	}
-	m.driftFar(dt, c)
-
-	m.computeSlow()
+	m.driftFar(dt, c, own)
+	// Far gas moves in its own steps; near gas moved with the holes above and only receives its
+	// hydro kicks there.
+	m.advanceGas(dt, m.isNear)
 	m.outerHoleForces(eps2)
 	m.dragOuter(0.5 * dt)
 	m.kickOuter(0.5 * dt)
@@ -224,11 +229,12 @@ func (m *Simulation) driftIdx(idx []int, dt, c float64) {
 	}
 }
 
-func (m *Simulation) driftFar(dt, c float64) {
+// driftFar moves far bodies, except gas if skipGas (it moves in its own steps, blockstep.go).
+func (m *Simulation) driftFar(dt, c float64, skipGas bool) {
 	s := m.State
 	ParallelFor(s.Len(), 4096, 0, func(lo, hi int) {
 		for i := lo; i < hi; i++ {
-			if s.Kind[i] == BlackHole || m.isNear[i] {
+			if s.Kind[i] == BlackHole || m.isNear[i] || skipGas && s.Kind[i] == Gas {
 				continue
 			}
 			f := dt / gamma(s.VelX[i], s.VelY[i], s.VelZ[i], c)

@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"galaxy/internal/scene"
+	"galaxy/internal/sim"
 )
 
 // BenchmarkHorsehead measures one hydro evaluation of the Horsehead scene, the most
@@ -17,11 +18,12 @@ func BenchmarkHorsehead(b *testing.B) {
 	}
 	s, p := spec.Build(60000)
 	n := s.Len()
-	dudt, divv := make([]float64, n), make([]float64, n)
+	var out sim.HydroOut
+	out.Resize(n)
 	var sv Solver
-	sv.Forces(s, &p, dudt, divv) // converge h
+	sv.Forces(s, &p, nil, nil, &out) // converge h
 	b.ResetTimer()
 	for range b.N {
-		sv.Forces(s, &p, dudt, divv)
+		sv.Forces(s, &p, nil, nil, &out)
 	}
 }

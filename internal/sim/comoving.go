@@ -91,7 +91,7 @@ func (m *Simulation) stepComoving() {
 		m.accValid = true
 	}
 	kick(s, cp.factor(a0, am, 1))
-	drift(s, cp.factor(a0, a1, 2), 0)
+	drift(s, cp.factor(a0, a1, 2), 0, false)
 	m.wrap()
 	m.comoving.Accelerations(s, m.Params)
 	kick(s, cp.factor(am, a1, 1))
