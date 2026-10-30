@@ -111,6 +111,11 @@ kurze Gasschritte; seit T-085 rechnen nur die dichten Teilchen in diesen kurzen 
 Seit T-083 gilt: Zusammenströmendes Gas über der Auflösungsgrenze ρ > 3 N m / (4π (ε/2)³) wird sofort zum Stern
 (ADR-0017), und die Wolke beginnt mit Turbulenz (30 km/s) und 30 % Dichteschwankungen.
 
+Seit T-084 ist der Halo der Galaxienentstehung triaxial (1 : 0,8 : 0,6). Die Plummer-Kugel wird dafür in Orten
+und Geschwindigkeiten gestreckt (σ_i ∝ Achse i). Das ist kein exaktes Gleichgewicht, aber nahe daran: Über zwei
+Umläufe bleiben b/a und c/a auf 0,02 genau (`TestTriaxialHaloKeepsItsShape`). Dazu fallen drei gasreiche Unterhalos
+nacheinander ein, mit gleichen Teilchenmassen wie der Haupthalo.
+
 ## Entstehung Schwarzer Löcher (ADR-0012)
 
 Hoop-Kriterium auf der kleinsten aufgelösten Kugel: Steckt in R = 2ε die Masse M ≥ R c²/2 in mindestens 20

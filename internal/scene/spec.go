@@ -92,6 +92,9 @@ type Component struct {
 
 	// plummer: star cluster; halo: dark matter halo (Plummer, cut at haloCut); both use Scale
 	Scale float64 `json:"scale,omitempty"`
+	// halo: axis ratios of a triaxial halo (x, y, z before Inclination and Orientation), normalized
+	// to a product of 1 so that the mean density stays the same (T-084)
+	Axes [3]float64 `json:"axes,omitzero"`
 	// plummer, gasclump: rotation about SpinAxis (default +z), T-082. Clusters: share of stars
 	// turned to orbit in the same sense (0–1); clouds: extra azimuthal speed in units of the
 	// circular speed (β = rotation²/3).
@@ -208,7 +211,11 @@ func (sp *Spec) Build(n int) (*sim.State, sim.Params) {
 			if cut == 0 {
 				cut = 0.99
 			}
+			first := s.Len()
 			AddHalo(s, counts[i], c.Mass, c.Scale, v3(c.Position), v3(c.Velocity), c.Seed, cut)
+			if c.Axes != [3]float64{} {
+				ShapeHalo(s, first, v3(c.Axes), c.Inclination*deg, c.Orientation*deg, v3(c.Position), v3(c.Velocity))
+			}
 		case "hole":
 			s.Add(sim.Body{Pos: v3(c.Position), Vel: v3(c.Velocity), Mass: c.Mass, Kind: sim.BlackHole,
 				Spin: SpinVector(c.Spin, v3(c.SpinAxis), c.Mass, p.C)})

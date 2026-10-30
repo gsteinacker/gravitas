@@ -353,6 +353,28 @@ func AddHalo(s *sim.State, n int, totalMass, a float64, center, velocity vec.Vec
 	addPlummer(s, n, totalMass, a, center, velocity, seed, sim.DarkMatter, maxFrac)
 }
 
+// ShapeHalo makes the spherical halo of bodies first… triaxial: positions and velocities relative to
+// center and velocity are stretched by axes (normalized to a product of 1), then turned by
+// inclination about x and orientation about z (radians). Stretching the velocities with the
+// positions keeps the tensor virial theorem roughly balanced (σ_i ∝ axis i); the halo settles
+// within a crossing time and stays triaxial (TestTriaxialHaloKeepsItsShape).
+func ShapeHalo(s *sim.State, first int, axes vec.Vec3, inclination, orientation float64, center, velocity vec.Vec3) {
+	norm := math.Cbrt(axes.X * axes.Y * axes.Z)
+	if norm <= 0 {
+		return
+	}
+	q := axes.Scale(1 / norm)
+	stretch := func(v vec.Vec3) vec.Vec3 {
+		return vec.Vec3{X: v.X * q.X, Y: v.Y * q.Y, Z: v.Z * q.Z}.RotateX(inclination).RotateZ(orientation)
+	}
+	for i := first; i < s.Len(); i++ {
+		p := stretch(vec.Vec3{X: s.PosX[i], Y: s.PosY[i], Z: s.PosZ[i]}.Sub(center)).Add(center)
+		v := stretch(vec.Vec3{X: s.VelX[i], Y: s.VelY[i], Z: s.VelZ[i]}.Sub(velocity)).Add(velocity)
+		s.PosX[i], s.PosY[i], s.PosZ[i] = p.X, p.Y, p.Z
+		s.VelX[i], s.VelY[i], s.VelZ[i] = v.X, v.Y, v.Z
+	}
+}
+
 func addPlummer(s *sim.State, n int, totalMass, a float64, center, velocity vec.Vec3, seed uint64, kind sim.Kind, maxFrac float64) {
 	rng := rand.New(rand.NewPCG(seed, 0x91))
 	var masses []float64

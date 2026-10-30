@@ -2,8 +2,8 @@
   "name": "Galaxy formation",
   "intro": {
     "school": "Eine riesige, heiße Gaswolke, die sich ganz langsam dreht, sitzt in einem unsichtbaren Halo aus Dunkler Materie. Das Gas kühlt ab und fällt nach innen. Weil es sich dreht, kann es nicht bis in die Mitte fallen: Es wird zu einer flachen, rotierenden Scheibe, und darin entstehen die ersten Sterne. So ist vermutlich auch unsere Milchstraße entstanden.",
-    "lay": "Das klassische Bild der Entstehung einer Scheibengalaxie: Gas mit dem kosmischen Anteil von etwa 15 % an der Masse ist anfangs so heiß wie der Halo (einige 100 000 K) und dreht sich am Äquator mit der halben Kreisbahngeschwindigkeit. Es strahlt Energie ab, behält aber seinen Drehimpuls. Deshalb schrumpft die Wolke zu einer Scheibe, etwa zehnmal kleiner als der Halo. Dort wird das Gas dicht genug für Sternentstehung, Supernovae heizen es wieder auf. Aus einer Wolke aus Sternen würde dagegen keine Scheibe, weil Sterne keine Energie abstrahlen können. Probier: o (Gaskarte), Ansicht von der Kante.",
-    "physics": "Plummer-Halo aus DM (1,7·10¹¹ M☉, a = 10 kpc) und Plummer-Gaswolke (3·10¹⁰ M☉, gleiche Skala, Baryonenanteil 0,15) bei T ≈ 6·10⁵ K (≈ Virialtemperatur) mit Turbulenz (30 km/s, ≈ 0,3 σ), 30 % Dichteschwankungen und Rotation v_φ = 0,5 v_c(r) sin θ (β_Gas = 0,083; der Halo ruht, Spinparameter des Ganzen λ ≈ 0,025, typische ΛCDM-Halos 0,02–0,1, Median 0,035, Bullock et al. 2001). Kühlung auf 10⁴ K mit t_cool = 26 Myr, Sternentstehung (ε_ff = 0,066), Supernovae. Gemessen bei 8000 Teilchen: Nach 260 Myr ist das Baryonen-Verhältnis Höhe/Radius 0,39 (anfangs 1,0). Erwartung nach Fall & Efstathiou (1980), Mo, Mao & White (1998): Scheibenradius ≈ λ R/√2 bei erhaltenem spezifischem Drehimpuls. Grenzen: keine Hierarchie aus Verschmelzungen, keine kosmologische Expansion, isolierter Halo, feste Kühlzeit statt Λ(T, ρ), schwere DM-Teilchen heizen die Scheibe auf."
+    "lay": "Das klassische Bild der Entstehung einer Scheibengalaxie: Gas mit dem kosmischen Anteil von etwa 15 % an der Masse ist anfangs so heiß wie der Halo (einige 100 000 K) und dreht sich am Äquator mit der halben Kreisbahngeschwindigkeit. Es strahlt Energie ab, behält aber seinen Drehimpuls. Deshalb schrumpft die Wolke zu einer Scheibe, etwa zehnmal kleiner als der Halo. Dort wird das Gas dicht genug für Sternentstehung, Supernovae heizen es wieder auf. Aus einer Wolke aus Sternen würde dagegen keine Scheibe, weil Sterne keine Energie abstrahlen können. Dazu fallen nacheinander drei kleine, gasreiche Zwerggalaxien ein, und der Halo aus Dunkler Materie ist länglich wie in kosmologischen Simulationen: Beides kippt und verbiegt die junge Scheibe. Probier: o (Gaskarte), Ansicht von der Kante.",
+    "physics": "Plummer-Halo aus DM (1,7·10¹¹ M☉, a = 10 kpc) und Plummer-Gaswolke (3·10¹⁰ M☉, gleiche Skala, Baryonenanteil 0,15) bei T ≈ 6·10⁵ K (≈ Virialtemperatur) mit Turbulenz (30 km/s, ≈ 0,3 σ), 30 % Dichteschwankungen und Rotation v_φ = 0,5 v_c(r) sin θ (β_Gas = 0,083; der Halo ruht, Spinparameter des Ganzen λ ≈ 0,025, typische ΛCDM-Halos 0,02–0,1, Median 0,035, Bullock et al. 2001). Kühlung auf 10⁴ K mit t_cool = 26 Myr, Sternentstehung (ε_ff = 0,066), Supernovae. Gemessen bei 8000 Teilchen: Nach 260 Myr ist das Baryonen-Verhältnis Höhe/Radius 0,39 (anfangs 1,0). Erwartung nach Fall & Efstathiou (1980), Mo, Mao & White (1998): Scheibenradius ≈ λ R/√2 bei erhaltenem spezifischem Drehimpuls. Hierarchie im Kleinen (T-084): Der Halo ist triaxial (1 : 0,8 : 0,6, Jing & Suto 2002, Allgood et al. 2006), seine kurze Achse um 25° gegen den Drehimpuls des Gases geneigt; drei Unterhalos (je 6·10⁹ M☉ DM und 10⁹ M☉ Gas) starten in 35, 45 und 55 kpc auf geneigten Bahnen mit 0,35 v_c und fallen nach 260, 370 und 490 Myr ein. Grenzen: nur drei Unterhalos statt eines Verschmelzungsbaums, keine kosmologische Expansion, isolierter Halo, feste Kühlzeit statt Λ(T, ρ), schwere DM-Teilchen heizen die Scheibe auf."
   },
   "topics": [
     "galaxy-formation",
@@ -44,9 +44,9 @@
     {
       "type": "halo",
       "name": "dark matter halo",
-      "note": "Plummer halo of 8.5 units (1.7e11 Msun), scale 4 units (10 kpc), cut at 95 % of the mass. Built first, so the rotation of the gas uses the circular speed of halo plus gas.",
-      "weight": 0.7,
-      "mass": 8.5,
+      "note": "Plummer halo of 8.5 units (1.7e11 Msun), scale 4 units (10 kpc), cut at 95 % of the mass. Built first, so the rotation of the gas uses the circular speed of halo plus gas. Triaxial since T-084: axis ratios 1 : 0.8 : 0.6 (b/a and c/a of Milky Way-mass LCDM halos, Jing & Suto 2002, Allgood et al. 2006), short axis tilted 25° from the spin of the gas so that the forming disk feels a torque (tilt, warps). 0.9 units of its mass sit in the three subhalos.",
+      "weight": 0.6259,
+      "mass": 7.6,
       "scale": 4,
       "haloCut": 0.95,
       "position": [
@@ -59,14 +59,20 @@
         0,
         0
       ],
-      "seed": 41
+      "seed": 41,
+      "axes": [
+        1,
+        0.8,
+        0.6
+      ],
+      "inclination": 25
     },
     {
       "type": "gasclump",
       "name": "rotating hot gas",
-      "note": "Gas with the cosmic baryon fraction (Omega_b/Omega_m = 0.157, Planck 2018) on the same profile, at about the virial temperature (T ~ 6e5 K). Rotation 0.5 v_c sin(theta): beta_gas = 0.083, total spin parameter lambda ~ 0.025 with the halo at rest (LCDM halos: median 0.035, Bullock et al. 2001). coolTime 2 units (26 Myr) lets the gas settle into a disk instead of falling into a central clump. Monolithic collapse after Eggen, Lynden-Bell & Sandage 1962 and Fall & Efstathiou 1980. Turbulence 30 km/s (about 0.3 of the 1D virial dispersion) and 30 % density fluctuations make the collapse clumpy instead of perfectly spherical (T-083).",
-      "weight": 0.3,
-      "mass": 1.5,
+      "note": "Gas with the cosmic baryon fraction (Omega_b/Omega_m = 0.157, Planck 2018) on the same profile, at about the virial temperature (T ~ 6e5 K). Rotation 0.5 v_c sin(theta): beta_gas = 0.083, total spin parameter lambda ~ 0.025 with the halo at rest (LCDM halos: median 0.035, Bullock et al. 2001). coolTime 2 units (26 Myr) lets the gas settle into a disk instead of falling into a central clump. Monolithic collapse after Eggen, Lynden-Bell & Sandage 1962 and Fall & Efstathiou 1980. Turbulence 30 km/s (about 0.3 of the 1D virial dispersion) and 30 % density fluctuations make the collapse clumpy instead of perfectly spherical (T-083). 0.15 units of the gas sit in the three infalling subhalos (T-084).",
+      "weight": 0.27,
+      "mass": 1.35,
       "scale": 4,
       "gasTemperature": 600000,
       "rotation": 0.5,
@@ -87,6 +93,144 @@
         16,
         16,
         16
+      ]
+    },
+    {
+      "type": "halo",
+      "name": "first subhalo, dark matter",
+      "note": "Gas-rich subhalo 1 of 3 (T-084): Plummer dark matter 0.3 units (6e9 Msun, scale 2 kpc) with 0.05 units of gas at about its virial temperature (1e5 K), particles as heavy as the main halo's and gas's. Starts 35 kpc out on an orbit with 0.35 v_c (angular momentum axis [0.5, 0.0, 0.87], tilted against the spin of the main gas), free-fall time ~258 Myr, so the subhalos arrive one after the other.",
+      "weight": 0.0247,
+      "mass": 0.3,
+      "scale": 0.8,
+      "haloCut": 0.9,
+      "position": [
+        0,
+        14,
+        0
+      ],
+      "velocity": [
+        -0.2415,
+        0.0,
+        0.1394
+      ],
+      "seed": 50
+    },
+    {
+      "type": "gasclump",
+      "name": "first subhalo, gas",
+      "note": "Gas of the subhalo above, same position and velocity.",
+      "weight": 0.01,
+      "mass": 0.05,
+      "scale": 0.5,
+      "gasTemperature": 100000,
+      "turbulence": 10,
+      "position": [
+        0,
+        14,
+        0
+      ],
+      "velocity": [
+        -0.2415,
+        0.0,
+        0.1394
+      ],
+      "seed": 60,
+      "size": [
+        2,
+        2,
+        2
+      ]
+    },
+    {
+      "type": "halo",
+      "name": "second subhalo, dark matter",
+      "note": "Gas-rich subhalo 2 of 3 (T-084): Plummer dark matter 0.3 units (6e9 Msun, scale 2 kpc) with 0.05 units of gas at about its virial temperature (1e5 K), particles as heavy as the main halo's and gas's. Starts 45 kpc out on an orbit with 0.35 v_c (angular momentum axis [0.0, -0.87, 0.5], tilted against the spin of the main gas), free-fall time ~367 Myr, so the subhalos arrive one after the other.",
+      "weight": 0.0247,
+      "mass": 0.3,
+      "scale": 0.8,
+      "haloCut": 0.9,
+      "position": [
+        18,
+        0,
+        0
+      ],
+      "velocity": [
+        -0.0,
+        0.1258,
+        0.2179
+      ],
+      "seed": 51
+    },
+    {
+      "type": "gasclump",
+      "name": "second subhalo, gas",
+      "note": "Gas of the subhalo above, same position and velocity.",
+      "weight": 0.01,
+      "mass": 0.05,
+      "scale": 0.5,
+      "gasTemperature": 100000,
+      "turbulence": 10,
+      "position": [
+        18,
+        0,
+        0
+      ],
+      "velocity": [
+        -0.0,
+        0.1258,
+        0.2179
+      ],
+      "seed": 61,
+      "size": [
+        2,
+        2,
+        2
+      ]
+    },
+    {
+      "type": "halo",
+      "name": "third subhalo, dark matter",
+      "note": "Gas-rich subhalo 3 of 3 (T-084): Plummer dark matter 0.3 units (6e9 Msun, scale 2 kpc) with 0.05 units of gas at about its virial temperature (1e5 K), particles as heavy as the main halo's and gas's. Starts 55 kpc out on an orbit with 0.35 v_c (angular momentum axis [-0.6, 0.3, -0.74], tilted against the spin of the main gas), free-fall time ~490 Myr, so the subhalos arrive one after the other.",
+      "weight": 0.0247,
+      "mass": 0.3,
+      "scale": 0.8,
+      "haloCut": 0.9,
+      "position": [
+        9.839,
+        19.677,
+        -0.0
+      ],
+      "velocity": [
+        0.1526,
+        -0.0763,
+        -0.1547
+      ],
+      "seed": 52
+    },
+    {
+      "type": "gasclump",
+      "name": "third subhalo, gas",
+      "note": "Gas of the subhalo above, same position and velocity.",
+      "weight": 0.01,
+      "mass": 0.05,
+      "scale": 0.5,
+      "gasTemperature": 100000,
+      "turbulence": 10,
+      "position": [
+        9.839,
+        19.677,
+        -0.0
+      ],
+      "velocity": [
+        0.1526,
+        -0.0763,
+        -0.1547
+      ],
+      "seed": 62,
+      "size": [
+        2,
+        2,
+        2
       ]
     }
   ]
