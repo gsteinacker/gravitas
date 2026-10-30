@@ -197,6 +197,16 @@ folgt die Quelle dem schwersten Loch. Gemessen in Szene 1 (20 000 Teilchen, 1 Gy
 Sternentstehung ≈ 0,55 M☉/Jahr, über die ganze Zeit etwa konstant (17–28 neue Sterne je 100 Myr). Die Zahl der
 Gasteilchen wächst um 14 % (1024 → 1164), insgesamt sind das 0,7 % mehr Teilchen.
 
+## Satellitengalaxien (T-088, ADR-0019)
+
+Szene „Milky Way satellites“: LMC, SMC und der Vorläufer der Sagittarius-Zwerggalaxie um die Milchstraße aus
+Szene 1. Die Satelliten haben mehr Teilchen, als ihrer Masse entspricht (feinere Massenauflösung), damit
+Zweikörper-Relaxation sie nicht künstlich auflöst. Innerhalb eines Satelliten unterscheiden sich DM- und
+Sternteilchen höchstens um den Faktor ~15 in der Masse. Isoliert behält Sagittarius (3000 Teilchen) seinen
+Halbmassenradius über 530 Myr auf 1 % genau. Im Wirt verliert er beim ersten Perizentrum (16 kpc, nach ~650 Myr)
+etwa 25–30 % seiner Sterne an einen Gezeitenstrom. Das Modell der Milchstraße ist etwa dreimal leichter als die
+echte, deshalb sind die Bahngeschwindigkeiten an das Modellpotential angepasst (siehe Szenennotizen).
+
 ## Was wir bewusst ignorieren
 
 - Allgemeine Relativität jenseits der obigen Näherungen (keine Metrik, kein Frame-Dragging).
@@ -213,3 +223,5 @@ Gasteilchen wächst um 14 % (1024 → 1164), insgesamt sind das 0,7 % mehr Teilc
 4. Kein Körper erreicht jemals `|v| ≥ c`.
 5. Gas mit eigenen Zeitschritten (ADR-0018): heißer Kern in einer Gaskugel, mehrere Stufen, Energie < 2,5 % und
    Impuls < 10⁻⁴ relativ über 300 Schritte; zwei Läufe und Speichern/Laden bitidentisch.
+6. Satelliten (ADR-0019): ein isolierter Zwerg behält seinen stellaren Halbmassenradius (±15 %) über 3
+   Kreuzungszeiten, Sagittarius verliert im Wirt beim ersten Perizentrum > 10 % seiner Sterne an einen Strom.

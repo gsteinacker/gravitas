@@ -1,0 +1,165 @@
+{
+  "name": "Milky Way satellites",
+  "intro": {
+    "school": "Die Milchstraße ist nicht allein: Um sie kreisen kleinere Galaxien. Die beiden größten sind die Große und die Kleine Magellansche Wolke, die man am Südhimmel mit bloßem Auge sieht. Viel näher, aber schwer zu entdecken, ist die Sagittarius-Zwerggalaxie. Die Schwerkraft der Milchstraße zerrt so stark an ihr, dass sie langsam zerrissen wird: Ihre Sterne ziehen ein langes Band um die ganze Milchstraße.",
+    "lay": "Die drei größten Begleiter der Milchstraße an ihren echten Orten: die Magellanschen Wolken (gasreiche Scheiben, 50–60 kpc entfernt) und die Sagittarius-Zwerggalaxie, die auf einer fast polaren Bahn immer wieder dicht an der Scheibe vorbeizieht. Bei jedem Vorbeiflug reißen die Gezeiten Sterne heraus, die vor und hinter dem Zwerg auf seiner Bahn weiterlaufen: ein Gezeitenstrom. Die Dunkle Materie bremst die Satelliten (dynamische Reibung), sie sinken langsam nach innen. Probier: Herauszoomen, v (Dunkle Materie), o (Gaskarte), Spuren an.",
+    "physics": "Milchstraße wie in Szene 1, aber um 180° gedreht, damit galaktozentrische Koordinaten der Literatur direkt passen. Satelliten mit feinerer Massenauflösung (Sternteilchen von Sagittarius ~10⁵ M☉ statt ~10⁶ wie in der Scheibe, ADR-0019), sonst lösen sie sich durch Zweikörper-Relaxation künstlich auf. Das Modell der Milchstraße ist etwa dreimal leichter als die echte (v_c(50 kpc) = 121 statt ~200 km/s); daher Positionen und Bahnebenen aus der Literatur, Geschwindigkeiten angepasst: Sagittarius startet im Apozentrum (50 kpc) mit Perizentrum 16 kpc (Vasiliev & Belokurov 2020), die LMC auf einer gebundenen Bahn (18–80 kpc) statt beim ersten Einfall (Kallivayalil et al. 2013, Besla et al. 2007), die SMC in 15 statt 23 kpc Abstand auf einer fast kreisförmigen Bahn um die LMC, damit sie im kleineren Gezeitenradius der Modell-LMC bleibt (die echte ist vor ~150 Myr mit der LMC zusammengestoßen). Massen relativ zur Milchstraße wie in der Natur (LMC 15 %, Sgr-Vorläufer 1 %). Grenzen: Kugelsternhaufen und lichtschwache Zwerge (r_h < 300 pc) liegen unter der Auflösung (Glättung 150 pc); keine Reionisation, Satelliten ohne eigene Sternentstehungsgeschichte."
+  },
+  "topics": [
+    "satellites",
+    "tides",
+    "dark-matter",
+    "gas",
+    "star-formation",
+    "spiral-arms",
+    "gravity"
+  ],
+  "info": "1 unit = 2.5 kpc, 2e10 Msun (185 km/s); Milky Way with LMC, SMC and the Sagittarius dwarf; c reduced to 10",
+  "yearsPerUnit": 13200000.0,
+  "params": {
+    "dt": 0.004,
+    "softening": 0.06,
+    "c": 10,
+    "gas": {
+      "coolTime": 0.5,
+      "sfDensity": 0.002,
+      "sfEfficiency": 0.066,
+      "youngAge": 5
+    }
+  },
+  "velocityUnit": 185,
+  "gasFloorK": 10000,
+  "supernovaErgPerMsun": 1e+49,
+  "removeBulkMotion": true,
+  "camera": {
+    "target": [
+      0,
+      0,
+      0
+    ],
+    "distance": 50,
+    "pitch": 20,
+    "yaw": 0
+  },
+  "components": [
+    {
+      "type": "galaxy",
+      "weight": 0.76,
+      "mass": 10,
+      "holeMass": 0.001,
+      "infallMsunPerYear": 0.6,
+      "diskScale": 0.8,
+      "diskMin": 0.05,
+      "diskMax": 4,
+      "thickness": 0.12,
+      "seed": 1,
+      "note": "2e11 Msun total (disk 2e10 = 10 %), Hernquist halo a = 10 kpc, central hole 4e7 Msun; flat rotation curve ~180 km/s. Bulge: 20 % of the stellar mass, Hernquist a = 0.5 kpc (Milky Way-like: ~1e10 of 5e10 Msun, Bland-Hawthorn & Gerhard 2016). Structure (T-040 review): disk sech² scale z0 ≈ 2–3·10² pc (old thin disk), cold population ×0.3; gas disk scale length 2× the stars and 1.5× the stellar radius (H I is more extended); bulge Hernquist a ≈ 0.4 kpc truncated at 8a; black hole M_BH ≈ 0.005 M_bulge (Kormendy & Ho 2013). Here turned by 180° about x so that it rotates like the real Milky Way in Galactocentric coordinates (astropy convention: Sun at x = -8.1 kpc, disk spin along -z), so satellite positions and velocities from the literature can be used directly.",
+      "diskFraction": 0.1,
+      "toomreQ": 1.2,
+      "coldFraction": 0.15,
+      "haloProfile": "hernquist",
+      "haloScale": 4,
+      "haloMax": 40,
+      "darkFraction": 0.5,
+      "gasFraction": 0.15,
+      "gasTemperature": 10000,
+      "bulgeFraction": 0.2,
+      "bulgeScale": 0.16,
+      "gasScale": 1.6,
+      "gasMax": 6,
+      "name": "Milky Way",
+      "inclination": 180
+    },
+    {
+      "type": "galaxy",
+      "name": "Sagittarius dwarf",
+      "weight": 0.08,
+      "mass": 0.1,
+      "diskFraction": 0.04,
+      "bulgeFraction": 1,
+      "bulgeScale": 0.3,
+      "haloProfile": "hernquist",
+      "haloScale": 0.8,
+      "haloMax": 3.5,
+      "darkFraction": 0.8,
+      "position": [
+        -18.583,
+        -2.655,
+        6.902
+      ],
+      "velocity": [
+        -0.1449,
+        0.0617,
+        -0.3665
+      ],
+      "seed": 21,
+      "note": "Progenitor of the Sagittarius dwarf spheroidal: 2e9 Msun in the model (1 % of the Milky Way model, like ~1e10 of 1e12 Msun; Gibbons et al. 2017, Vasiliev & Belokurov 2020), stars 4 % (8e7 Msun) in a non-rotating Hernquist sphere a = 750 pc (r_half ~1.4 kpc), dark matter Hernquist a = 2 kpc cut at its tidal radius at apocenter (3.5 units = 8.8 kpc). Orbital plane from today's Galactocentric position (17.5, 2.5, -6.5) kpc and velocity (237.9, -24.3, 209.0) km/s (Vasiliev & Belokurov 2020); placed at apocenter 50 kpc opposite today's position with the tangential speed that gives a pericenter of 16 kpc in the model potential (fitted by orbit integration, T-088). Resolution (ADR-0019): 8 % of the particle budget, 80 % of them dark, so that dark and star particles differ in mass by only ~5 (heavier dark particles heat the stars); at 50 000 bodies its stars are 1e5 Msun particles, 10x lighter than the Milky Way's disk particles. Isolated, it keeps its half-mass radius over 1 Gyr."
+    },
+    {
+      "type": "galaxy",
+      "name": "Large Magellanic Cloud",
+      "weight": 0.12,
+      "mass": 1.5,
+      "diskFraction": 0.023,
+      "diskScale": 0.6,
+      "diskMin": 0.05,
+      "diskMax": 3,
+      "thickness": 0.1,
+      "toomreQ": 1.5,
+      "coldFraction": 0.1,
+      "gasFraction": 0.15,
+      "gasTemperature": 10000,
+      "haloProfile": "hernquist",
+      "haloScale": 3,
+      "haloMax": 8,
+      "darkFraction": 0.75,
+      "inclination": 35,
+      "orientation": 120,
+      "position": [
+        -0.4,
+        -16.4,
+        -11.2
+      ],
+      "velocity": [
+        -0.1387,
+        -0.5497,
+        0.5376
+      ],
+      "seed": 22,
+      "note": "Galactocentric position (-1, -41, -28) kpc (Kallivayalil et al. 2013). Mass 15 % of the Milky Way model (3e10 Msun; the real LMC has ~1.4e11 of ~1e12, Erkal et al. 2019), baryons 2.3 % (stars 2.7e9, H I 5e8 Msun of 1.4e11, scaled), disk scale length 1.5 kpc, Hernquist halo a = 7.5 kpc cut at 20 kpc (v_c ~85 km/s at 8.7 kpc, real ~90). Velocity: the measured direction (-57, -226, 221) km/s scaled by 0.45 for the lighter model, a bound orbit with pericenter ~45 kpc and apocenter ~100 kpc instead of the first infall favored today (Besla et al. 2007). Disk orientation illustrative. darkFraction 0.75 keeps dark particles ~14x heavier than disk particles (as in the Milky Way, ~9x); isolated, the disk keeps its half-mass radius over 800 Myr."
+    },
+    {
+      "type": "galaxy",
+      "name": "Small Magellanic Cloud",
+      "weight": 0.04,
+      "mass": 0.06,
+      "diskFraction": 0.13,
+      "diskScale": 0.25,
+      "diskMin": 0.03,
+      "diskMax": 1.0,
+      "thickness": 0.15,
+      "toomreQ": 1.5,
+      "coldFraction": 0.1,
+      "gasFraction": 0.55,
+      "gasTemperature": 10000,
+      "haloProfile": "hernquist",
+      "haloScale": 0.5,
+      "haloMax": 1.4,
+      "darkFraction": 0.5,
+      "inclination": 60,
+      "orientation": 30,
+      "position": [
+        3.806,
+        -15.611,
+        -15.406
+      ],
+      "velocity": [
+        -0.1497,
+        -0.1155,
+        0.608
+      ],
+      "seed": 23,
+      "note": "Mass 1.2e9 Msun in the model (real ~6e9 within its tidal radius, scaled like the LMC), stars 3e8 and H I 4e8 Msun real (Stanimirovic et al. 2004): gas-rich, thick and compact disk (scale 625 pc, cut at 2.5 kpc; halo cut at 3.5 kpc) so that it fits inside its tidal radius in the lighter model LMC. Placed 15 kpc from the LMC along the measured offset (16, 3, -16) kpc (real 23 kpc, Kallivayalil et al. 2013), inside the tidal radius of the model LMC in the Milky Way (~20 kpc), on a nearly circular orbit around the LMC (0.44 units = 81 km/s) in the plane of the measured relative velocity (76, 73, -68) km/s. Dynamical friction in the LMC halo makes it sink: t_df ~ 1.17 r² v_c / (G m ln Λ) ~ 2 Gyr here (at 11 kpc and twice the mass it merged within 500 Myr). The real SMC is on an eccentric orbit and collided with the LMC ~150 Myr ago (Zivick et al. 2018)."
+    }
+  ]
+}
