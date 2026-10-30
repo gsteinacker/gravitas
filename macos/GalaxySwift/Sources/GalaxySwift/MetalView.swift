@@ -11,6 +11,26 @@ final class SimulationView: MTKView {
     private var handle: Int32 = -1 // launch pad handle being dragged (engine.Handle), -1 none
 
     override var acceptsFirstResponder: Bool { true }
+
+    override func viewDidMoveToWindow() {
+        super.viewDidMoveToWindow()
+        NotificationCenter.default.removeObserver(self)
+        NSWorkspace.shared.notificationCenter.removeObserver(self)
+        guard let w = window else { return }
+        // Started while the display slept, the view stayed blank after waking up (T-089): restart the
+        // draw loop whenever the screen wakes or the window changes screen or visibility.
+        let restart = #selector(restartDrawing)
+        NSWorkspace.shared.notificationCenter.addObserver(self, selector: restart, name: NSWorkspace.screensDidWakeNotification, object: nil)
+        NotificationCenter.default.addObserver(self, selector: restart, name: NSWindow.didChangeScreenNotification, object: w)
+        NotificationCenter.default.addObserver(self, selector: restart, name: NSWindow.didChangeOcclusionStateNotification, object: w)
+    }
+
+    @objc private func restartDrawing() {
+        (delegate as? Renderer)?.restart()
+        isPaused = true
+        isPaused = false
+        needsDisplay = true
+    }
     override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
 
     /// pixel converts a window point of the event into render pixels (origin top left).

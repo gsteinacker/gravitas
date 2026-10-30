@@ -114,6 +114,13 @@ final class Renderer: NSObject, MTKViewDelegate {
 
     func mtkView(_ view: MTKView, drawableSizeWillChange size: CGSize) {}
 
+    /// restart rebuilds the render targets and forgets the frame time after the display woke up or
+    /// the window moved to another screen: a long gap must not count as a slow frame.
+    func restart() {
+        size = .zero
+        lastDraw = CFAbsoluteTimeGetCurrent()
+    }
+
     private func texture(_ w: Int, _ h: Int, _ format: MTLPixelFormat = .rgba16Float) -> MTLTexture {
         let d = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: format, width: max(1, w), height: max(1, h), mipmapped: false)
         d.usage = [.renderTarget, .shaderRead]

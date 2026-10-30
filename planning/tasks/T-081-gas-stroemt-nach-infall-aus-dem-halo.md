@@ -1,7 +1,7 @@
 ---
 id: T-081
 title: Gas strömt nach (Infall aus dem Halo) und Sternentstehungsrate kalibrieren
-status: doing
+status: done
 milestone: M9
 priority: 2
 estimate: L
