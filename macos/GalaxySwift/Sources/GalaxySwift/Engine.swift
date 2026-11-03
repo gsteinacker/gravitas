@@ -100,11 +100,15 @@ final class Engine {
         var s = GalaxyState()
         galaxy_state(&s)
         live = s
+        // state holds only values that change rarely: menus, the inspector and its popovers rebuild
+        // whenever it changes, which closes open submenus and (i) popovers (T-077). Every value that
+        // changes while the simulation runs must be zeroed here and read from live.
         var slow = s // without the values that change all the time
         slow.sps = 0; slow.fps = 0; slow.time = 0; slow.drift = 0; slow.driftQuality = 0
         slow.substeps = 0; slow.hydroSubsteps = 0; slow.starsFormed = 0; slow.bodies = 0
         slow.theta = 0; slow.renderScale = 0; slow.scaleFactor = 0
         slow.supernovae = 0; slow.sfr = 0; slow.snRate = 0; slow.gasShare = 0; slow.infallRate = 0
+        slow.barA2 = 0; slow.barOmega = 0 // measured every 0.5 s (T-090); read from live
         slow.darkBodies = min(slow.darkBodies, 1); slow.gasBodies = min(slow.gasBodies, 1) // only whether there are any
         slow.blackHoles = min(slow.blackHoles, 1)
         if !same(slow, state) { state = slow }

@@ -19,13 +19,13 @@ final class SimulationView: MTKView {
         guard let w = window else { return }
         // Started while the display slept, the view stayed blank after waking up (T-089): restart the
         // draw loop whenever the screen wakes or the window changes screen or visibility.
-        let restart = #selector(restartDrawing)
+        let restart = #selector(restartDrawing(_:))
         NSWorkspace.shared.notificationCenter.addObserver(self, selector: restart, name: NSWorkspace.screensDidWakeNotification, object: nil)
         NotificationCenter.default.addObserver(self, selector: restart, name: NSWindow.didChangeScreenNotification, object: w)
         NotificationCenter.default.addObserver(self, selector: restart, name: NSWindow.didChangeOcclusionStateNotification, object: w)
     }
 
-    @objc private func restartDrawing() {
+    @objc private func restartDrawing(_: Notification) {
         (delegate as? Renderer)?.restart()
         isPaused = true
         isPaused = false

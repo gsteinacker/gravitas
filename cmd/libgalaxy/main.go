@@ -17,6 +17,8 @@ typedef struct {
 	double camX, camY, camZ, yaw, pitch, distance, fov;
 } GalaxyFrameInfo;
 
+// GalaxyState: values that change while the simulation runs (time, rates, bar, …) must be zeroed
+// in the slow copy of Engine.refresh (Swift), or menus and popovers close at every update (T-077).
 typedef struct {
 	int paused, speed, gravity, darkOff, darkBodies, gasBodies, blackHoles, bodies, stars;
 	int tool, level, explain, scene, driftQuality, substeps, hydroSubsteps, gpu, showHUD, showHelp, starsFormed;
