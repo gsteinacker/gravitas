@@ -1,5 +1,6 @@
 {
   "name": "Cosmic web",
+  "group": "cosmos",
   "intro": {
     "school": "So ist die Materie im Weltall verteilt, wenn man sehr weit herauszoomt: Sie bildet ein riesiges Netz aus Fäden und Knoten, dazwischen fast leere Blasen. In den Knoten sitzen ganze Galaxienhaufen. Der Würfel ist über 300 Millionen Lichtjahre breit. Jedes Teilchen hier ist so schwer wie viele Galaxien zusammen.",
     "lay": "Ein Würfel von 100 Mpc/h (etwa 480 Millionen Lichtjahre) mit Dunkler Materie, so verteilt, wie es das Standardmodell der Kosmologie (ΛCDM) für heute vorhersagt: aus winzigen Dichteschwankungen nach dem Urknall ist durch Schwerkraft das kosmische Netz gewachsen. In der Szenendatei (`redshift`) lässt sich ein früherer Zeitpunkt wählen, dann ist das Netz schwächer ausgeprägt. Die Szene ist eine Momentaufnahme: Die Ausdehnung des Raums wird nicht simuliert. Mit der Leertaste startest du nur gewöhnliche Schwerkraft ohne Expansion, und der ganze Würfel stürzt in sich zusammen.",

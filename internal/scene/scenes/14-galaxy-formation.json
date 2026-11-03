@@ -1,5 +1,6 @@
 {
   "name": "Galaxy formation",
+  "group": "galaxies",
   "intro": {
     "school": "Eine riesige, heiße Gaswolke, die sich ganz langsam dreht, sitzt in einem unsichtbaren Halo aus Dunkler Materie. Das Gas kühlt ab und fällt nach innen. Weil es sich dreht, kann es nicht bis in die Mitte fallen: Es wird zu einer flachen, rotierenden Scheibe, und darin entstehen die ersten Sterne. So ist vermutlich auch unsere Milchstraße entstanden.",
     "lay": "Das klassische Bild der Entstehung einer Scheibengalaxie: Gas mit dem kosmischen Anteil von etwa 15 % an der Masse ist anfangs so heiß wie der Halo (einige 100 000 K) und dreht sich am Äquator mit der halben Kreisbahngeschwindigkeit. Es strahlt Energie ab, behält aber seinen Drehimpuls. Deshalb schrumpft die Wolke zu einer Scheibe, etwa zehnmal kleiner als der Halo. Dort wird das Gas dicht genug für Sternentstehung, Supernovae heizen es wieder auf. Aus einer Wolke aus Sternen würde dagegen keine Scheibe, weil Sterne keine Energie abstrahlen können. Dazu fallen nacheinander drei kleine, gasreiche Zwerggalaxien ein, und der Halo aus Dunkler Materie ist länglich wie in kosmologischen Simulationen: Beides kippt und verbiegt die junge Scheibe. Probier: o (Gaskarte), Ansicht von der Kante.",

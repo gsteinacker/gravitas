@@ -48,6 +48,9 @@ struct ContentView: View {
             InspectorView(engine: engine)
                 .inspectorColumnWidth(min: 280, ideal: 320, max: 420)
         }
+        .sheet(isPresented: Binding(get: { engine.showScenes }, set: { engine.showScenes = $0 })) {
+            SceneOverview(engine: engine)
+        }
         .sheet(isPresented: Binding(get: { engine.state.showHelp != 0 }, set: { if !$0 && engine.state.showHelp != 0 { engine.action("help") } })) {
             KeyOverview(engine: engine)
         }
@@ -73,7 +76,11 @@ struct InspectorView: View {
         Form {
             if engine.launch.active != 0 { LaunchSection(engine: engine) }
             Section(L("Simulation", "Simulation")) {
-                LabeledContent(L("Szene", "Scene"), verbatim: engine.sceneName)
+                LabeledContent {
+                    Button(engine.sceneName) { engine.showScenes = true }
+                        .buttonStyle(.link)
+                        .help(L("Andere Szene wählen (⇧⌘N)", "Choose another scene (⇧⌘N)"))
+                } label: { Text(L("Szene", "Scene")) }
                 HStack {
                     Button(s.paused != 0 ? L("Weiter", "Resume") : L("Pause", "Pause")) { engine.action("pause") }
                     Button(L("Schritt", "Step")) { engine.action("step") }
@@ -488,12 +495,64 @@ struct SettingsView: View {
     }
 }
 
+/// SceneOverview lists all built-in scenes by group with a short description (T-078); a click
+/// loads the scene.
+struct SceneOverview: View {
+    var engine: Engine
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text(L("Szenen", "Scenes")).font(.title2.bold())
+            ScrollView {
+                VStack(alignment: .leading, spacing: 16) {
+                    ForEach(engine.catalog.groups, id: \.title) { group in
+                        VStack(alignment: .leading, spacing: 6) {
+                            Text(verbatim: group.title).font(.headline).foregroundStyle(.secondary)
+                            ForEach(group.scenes) { e in row(e) }
+                        }
+                    }
+                }
+            }
+            HStack {
+                Spacer()
+                Button(L("Schließen", "Close")) { engine.showScenes = false }.keyboardShortcut(.cancelAction)
+            }
+        }
+        .padding(24)
+        .frame(width: 620, height: 640)
+    }
+
+    private func row(_ e: SceneEntry) -> some View {
+        Button {
+            engine.showScenes = false
+            engine.action("scene\(e.index)")
+        } label: {
+            HStack(alignment: .firstTextBaseline, spacing: 12) {
+                Text(verbatim: e.key.isEmpty ? " " : e.key)
+                    .font(.body.monospaced()).foregroundStyle(.orange).frame(width: 14)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(verbatim: e.name).bold()
+                    Text(verbatim: e.summary).font(.callout).foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                Spacer(minLength: 0)
+            }
+            .padding(.vertical, 6).padding(.horizontal, 8)
+            .background(e.name == engine.sceneName ? Color.accentColor.opacity(0.15) : Color.clear,
+                        in: RoundedRectangle(cornerRadius: 6))
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+    }
+}
+
 /// KeyOverview lists the keys of the simulation view (Help menu, "?" or F1).
 struct KeyOverview: View {
     var engine: Engine
 
     private let keys: [(String, String)] = [
         ("1 – 9", L("Szene laden", "load scene")),
+        ("⇧⌘N", L("Szenenübersicht: alle Szenen nach Gruppen", "scene overview: all scenes by group")),
         (L("Klick", "Click"), L("Startrampe öffnen: Objekt auf der Scheibenebene mit Griffen", "open the launch pad: object on the disk plane with handles")),
         (L("Objekt ziehen", "Drag object"), L("Schleuder: zurückziehen und loslassen startet", "slingshot: pull back and release to launch")),
         (L("Griffe ziehen", "Drag handles"), L("gelb mit/gegen die Drehung, cyan außen/innen, magenta oben/unten, Spitze frei", "yellow pro/retrograde, cyan out/in, magenta up/down, tip freely")),

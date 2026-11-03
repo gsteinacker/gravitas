@@ -9,6 +9,7 @@ Spielstände (F5/F9, `-load`) sind dagegen **exakte Abzüge** eines laufenden Zu
 ```json
 {
   "name": "Name im HUD",
+  "group": "galaxies",
   "info": "Einheiten und Annahmen, eine Zeile im HUD",
   "yearsPerUnit": 13200000,
   "params": {"dt": 0.004, "softening": 0.06, "c": 10},
@@ -29,6 +30,8 @@ Spielstände (F5/F9, `-load`) sind dagegen **exakte Abzüge** eines laufenden Zu
 - Gas: `velocityUnit` und `gasFloorK` auf Szenenebene, in `params.gas`
   `coolTime`, `sfDensity`, `sfEfficiency`, `youngAge` (Simulationseinheiten). Siehe ADR-0007.
 - Supernovae (ADR-0015): `supernovaErgPerMsun` (z. B. 1e49) und optional `supernovaDelayMyr` ([3, 40]) auf Szenenebene
+- `group` ordnet die Szene in der Szenenübersicht (⇧⌘N) und im Menü „Neu aus Szene“ ein: `galaxies`, `stars`,
+  `gas` oder `cosmos` (T-078). Die Kurzbeschreibung dort ist der erste Satz von `intro.school`.
 - `note` ist freier Text für Quellen und Annahmen und wird nicht ausgewertet.
 - `paused: true` startet die Szene angehalten (statische Szenen wie das kosmische Netz).
 

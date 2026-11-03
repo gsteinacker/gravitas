@@ -1,5 +1,6 @@
 {
   "name": "Direct collapse",
+  "group": "gas",
   "intro": {
     "school": "Eine riesige, warme Gaswolke fällt unter ihrer eigenen Schwerkraft in sich zusammen. Im Zentrum wird das Gas so dicht, dass nicht einmal Licht mehr entkommen kann: Ein Schwarzes Loch entsteht. Damit du das in kurzer Zeit siehst, ist das Licht hier sehr langsam.",
     "lay": "So könnten im frühen Universum die ersten großen Schwarzen Löcher entstanden sein: Eine Wolke aus 100 000 Sonnenmassen, die kaum abkühlt (etwa 8000 K) und deshalb nicht in viele Sterne zerfällt, sondern als Ganzes kollabiert. Sobald die Masse im Zentrum in ihren eigenen Schwarzschild-Radius passt, wird sie zum Loch. Die Lichtgeschwindigkeit ist stark verkleinert, sonst bräuchte das viel dichtere Zustände, als die Simulation auflösen kann.",

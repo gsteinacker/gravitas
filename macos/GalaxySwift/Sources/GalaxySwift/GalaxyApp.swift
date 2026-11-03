@@ -49,15 +49,21 @@ struct GalaxyApp: App {
     @CommandsBuilder private var commands: some Commands {
         CommandGroup(replacing: .newItem) {
             Menu(L("Neu aus Szene", "New from Scene")) {
-                ForEach(Array(engine.presets.enumerated()), id: \.offset) { i, name in
-                    if i < 9 { // the digit keys 1-9 (app.ActionForChar)
-                        Button(name) { engine.action("scene\(i)") }
-                            .keyboardShortcut(KeyEquivalent(Character("\(i + 1)")), modifiers: [])
-                    } else {
-                        Button(name) { engine.action("scene\(i)") }
+                ForEach(engine.catalog.groups, id: \.title) { group in
+                    Section(group.title) {
+                        ForEach(group.scenes) { e in
+                            if let k = e.key.first { // the digit keys 1-9 (app.ActionForChar)
+                                Button(e.name) { engine.action("scene\(e.index)") }
+                                    .keyboardShortcut(KeyEquivalent(k), modifiers: [])
+                            } else {
+                                Button(e.name) { engine.action("scene\(e.index)") }
+                            }
+                        }
                     }
                 }
             }
+            Button(L("Szenenübersicht …", "Scene Overview…")) { engine.showScenes = true }
+                .keyboardShortcut("n", modifiers: [.command, .shift])
             Button(L("Öffnen …", "Open…")) { importing = true }.keyboardShortcut("o")
             Divider()
             Button(L("Stand sichern …", "Save State…")) { save(type: .galaxyState, ext: "galaxy") { engine.save($0) } }

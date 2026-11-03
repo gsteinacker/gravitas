@@ -1,5 +1,6 @@
 {
   "name": "Black hole binary in a cluster",
+  "group": "stars",
   "intro": {
     "school": "Zwei Schwarze Löcher umkreisen sich mitten in einem Sternhaufen. Sie wirbeln die Sterne herum und verschlucken manche davon. Mit < machst du die Lichtgeschwindigkeit kleiner – dann werden die Löcher größer und gefräßiger.",
     "lay": "Ein Doppel-Schwarzes-Loch in einem Sternhaufen. Die Löcher schleudern Sterne heraus, verschlucken andere und lenken das Licht ab (Gravitationslinse). Mit p kannst du die endliche Ausbreitung der Gravitation einschalten.",

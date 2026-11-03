@@ -1,5 +1,6 @@
 {
   "name": "Galaxy collision",
+  "group": "galaxies",
   "intro": {
     "school": "Zwei Galaxien fliegen aufeinander zu! Beim Zusammenstoß werden Sterne zu langen Schweifen auseinandergezogen, und am Ende verschmelzen beide zu einer großen Galaxie. Die Sterne selbst stoßen dabei fast nie zusammen.",
     "lay": "Zwei Spiralgalaxien mit Halos aus Dunkler Materie nähern sich und ziehen sich durch Gezeitenkräfte gegenseitig auseinander. Die Halos bremsen sie ab, sodass sie nach einigen Durchgängen verschmelzen. Im verdichteten Gas entstehen dabei viele neue Sterne.",

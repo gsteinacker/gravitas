@@ -23,6 +23,7 @@ import (
 // units (G = 1) unless a field says otherwise.
 type Spec struct {
 	Name      string            `json:"name"`
+	Group     string            `json:"group,omitempty"`           // galaxies | stars | gas | cosmos (scene overview, T-078)
 	Info      string            `json:"info,omitempty"`            // shown in the HUD, e.g. the physical units
 	Intro     map[string]string `json:"intro,omitempty"`           // introduction per audience: school, lay, physics
 	Topics    []string          `json:"topics,omitempty"`          // related topics of the learning mode (internal/learn)

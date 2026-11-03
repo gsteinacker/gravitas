@@ -1,5 +1,6 @@
 {
   "name": "Star cluster",
+  "group": "stars",
   "intro": {
     "school": "Ein Kugelsternhaufen: Hunderttausende Sterne, eng zusammengedrängt wie ein Bienenschwarm. Jeder Stern zieht alle anderen an, und gemeinsam bleiben sie zusammen. Setz ein Schwarzes Loch hinein und schau, was passiert!",
     "lay": "Ein Sternhaufen im Gleichgewicht: Die Bewegung der Sterne hält ihrer gemeinsamen Anziehung genau die Waage (Virialgleichgewicht). Kugelsternhaufen enthalten praktisch keine Dunkle Materie. Klick, um ein Schwarzes Loch zu setzen.",

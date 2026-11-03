@@ -1,5 +1,6 @@
 {
   "name": "Structure formation",
+  "group": "cosmos",
   "intro": {
     "school": "Kurz nach dem Urknall war das Weltall fast völlig gleichmäßig gefüllt. Schau zu, wie die Schwerkraft aus winzigen Unterschieden in 13 Milliarden Jahren das kosmische Netz formt: Fäden, Knoten und leere Blasen. Gleichzeitig dehnt sich der Raum aus. Der Würfel wächst mit, deshalb sieht er immer gleich groß aus.",
     "lay": "Ein Würfel von 100 Mpc/h, der sich mit dem Universum ausdehnt (mitbewegte Koordinaten). Start bei Rotverschiebung z = 50, etwa 50 Millionen Jahre nach dem Urknall, Ende heute bei z = 0. Die Schwerkraft verstärkt die Dichteschwankungen, die Ausdehnung bremst sie, und seit etwa fünf Milliarden Jahren bremst die Dunkle Energie das Wachstum zusätzlich. Im Inspektor steht statt der Zeit die Rotverschiebung z.",

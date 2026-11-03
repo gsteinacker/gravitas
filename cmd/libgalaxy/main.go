@@ -297,7 +297,7 @@ func galaxy_pan(dx, dy C.double) { eng.Pan(float64(dx), float64(dy)) }
 //export galaxy_zoom
 func galaxy_zoom(f C.double) { eng.Zoom(float64(f)) }
 
-// galaxy_text returns a text (freed with galaxy_free): presets, sceneName, sceneInfo, message,
+// galaxy_text returns a text (freed with galaxy_free): presets, sceneCatalog (JSON, T-078), sceneName, sceneInfo, message,
 // topics (titles, one per line), title and body of the focused explanation, hardware, profile.
 //
 //export galaxy_text
@@ -338,6 +338,13 @@ func galaxy_text(what *C.char) *C.char {
 		if eng.Options().Intro {
 			s = "1"
 		}
+	case "scenes":
+		if eng.Options().Scenes {
+			s = "1"
+		}
+	case "sceneCatalog":
+		data, _ := json.Marshal(scene.Catalog())
+		s = string(data)
 	case "lang":
 		s = "en"
 		if i18n.Current() == i18n.German {

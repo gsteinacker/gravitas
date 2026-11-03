@@ -1,5 +1,6 @@
 {
   "name": "Spiral galaxy",
+  "group": "galaxies",
   "intro": {
     "school": "Eine Spiralgalaxie wie unsere Milchstraße: Milliarden Sterne kreisen um ein Zentrum. Schau, wie sich Spiralarme bilden und wie in ihnen neue, blaue Sterne entstehen. Tipp: Drück x und sieh, was ohne Dunkle Materie passiert!",
     "lay": "Eine Scheibengalaxie mit Dunkle-Materie-Halo, Gas und einem zentralen Schwarzen Loch. Aus kleinen Unregelmäßigkeiten wachsen Spiralarme und ein Balken; im verdichteten Gas der Arme entstehen junge Sterne. Probier: x (Dunkle Materie aus), u (Staub), o (Gaskarte), Ansicht von der Kante.",

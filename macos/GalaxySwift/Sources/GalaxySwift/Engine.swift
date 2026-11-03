@@ -38,6 +38,10 @@ final class Engine {
     /// settings (introAtStart), from the Help menu, or with -intro.
     var showIntro = false
     let presets: [String]
+    /// catalog lists the built-in scenes by group with a short description (T-078).
+    let catalog: [SceneEntry]
+    /// showScenes opens the scene overview (File menu, inspector, -scenes).
+    var showScenes = false
     let hardware: String
 
     /// init starts the Go core with the command line (flags: engine/options.go, CLAUDE.md);
@@ -54,6 +58,8 @@ final class Engine {
         }
         uiGerman = Engine.text("lang") == "de"
         presets = Engine.text("presets").split(separator: "\n").map(String.init)
+        catalog = (try? JSONDecoder().decode([SceneEntry].self, from: Data(Engine.text("sceneCatalog").utf8))) ?? []
+        showScenes = Engine.text("scenes") == "1"
         hardware = Engine.text("hardware")
         var after = 0.0
         if let p = galaxy_shot(&after) {
@@ -222,5 +228,31 @@ final class Engine {
             f = on ? f | bit : f & ~bit
             self.set("fx", Double(f))
         })
+    }
+}
+
+/// SceneEntry is a built-in scene in the overview (scene.Entry in Go).
+struct SceneEntry: Decodable, Identifiable {
+    let index: Int
+    let name: String
+    let group: String
+    let groupTitle: String
+    let summary: String
+    let key: String
+    var id: Int { index }
+}
+
+extension Array where Element == SceneEntry {
+    /// groups splits the catalog into its groups, in order.
+    var groups: [(title: String, scenes: [SceneEntry])] {
+        var out: [(title: String, scenes: [SceneEntry])] = []
+        for e in self {
+            if out.last?.title == e.groupTitle {
+                out[out.count - 1].scenes.append(e)
+            } else {
+                out.append((e.groupTitle, [e]))
+            }
+        }
+        return out
     }
 }
