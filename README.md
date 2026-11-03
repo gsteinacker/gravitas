@@ -45,6 +45,29 @@ make plan                                       # Fortschritt im Backlog
 make check                                      # fmt, vet, Tests, Backlog-Validierung (Go-Kern)
 ```
 
+**Parameter** (für `make run ARGS="…"` oder direkt `./bin/swift/GalaxySwift …`, Quelle:
+`internal/engine/options.go`):
+
+| Parameter | Bedeutung |
+|-----------|-----------|
+| `-preset N` | Startszene, ab 1 (Standard 1) |
+| `-scene datei.json` / `-load stand.galaxy` | Eigene Szene ([Format](docs/scenes.md)) / gespeicherten Stand laden |
+| `-n N` | Sternzahl (0 = nach Leistungsprofil, Screenshots: 50 000) |
+| `-c X` | Lichtgeschwindigkeit (0 = Vorgabe der Szene, −1 = Newton ohne c) |
+| `-gravity M` | Gravitation der Löcher: `instant`, `retarded`, `retarded+v` |
+| `-theta X` | Öffnungswinkel des Barnes-Hut-Baums, kleiner = genauer (Standard 0,9) |
+| `-gpu=false` | Baumdurchlauf auf der CPU statt auf der GPU |
+| `-fx a,b,…` | Effekte: `glow`, `lens`, `doppler`, `trails`, `dark`, `gas`, `dust` |
+| `-lang de\|en` | Sprache (Standard: System) |
+| `-explain stufe[:thema]` | Lernmodus öffnen: `school`, `lay`, `physics`, optional mit Thema |
+| `-hud` / `-help` / `-scenes` / `-intro` | Statuszeile / Tastenübersicht / Szenenübersicht / Vorspann zeigen |
+| `-info id` | Erklärung eines Reglers öffnen, z. B. `c`, `theta`, `dust` |
+| `-tool T` / `-mass X` | Werkzeug `hole`, `cluster`, `cloud`, `galaxy` / Masse platzierter Objekte |
+| `-launch x,y[,p[,1]]` | Start planen bei x,y (Anteile der Bildgröße), p: 0 Ruhe, 1 Kreisbahn, 2 Flucht, 3 Zentrum, 4 Doppel; `,1` startet sofort |
+| `-zoom X` / `-target x,y,z` | Vergrößerung / Kamera auf Weltkoordinaten |
+| `-shot bild.png` / `-shot-after S` | Screenshot nach S Sekunden (Standard 4) speichern und beenden; gibt eine Messzeile aus |
+| `-scale X` / `-adapt` | Pixel pro Punkt, z. B. 2 für Retina (0 = adaptiv) / Screenshot passt Qualität und Sternzahl an wie die App |
+
 Alle Aktionen stehen auch in der Menüleiste und im Inspektor (⌥⌘I). `?` oder `F1` zeigt die Übersicht in der App.
 
 **Szenen** ([Format und Quellen](docs/scenes.md)), im Menü *Ablage → Neu aus Szene* und in der Szenenübersicht
