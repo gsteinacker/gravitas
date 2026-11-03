@@ -1,6 +1,6 @@
 GO ?= go
 
-.PHONY: check fmt vet test race bench lib lib-test metallib build run shot app dmg notarize package-dmg icon plan next
+.PHONY: check fmt vet test race bench lib lib-test metallib build run shot app dmg notarize package-dmg icon plan next clean
 
 check: fmt vet test
 	$(GO) run ./tools/plan check
@@ -25,6 +25,12 @@ plan:
 
 next:
 	@$(GO) run ./tools/plan next
+
+# clean removes all build output: bin/ (library, shaders, app, DMG, screenshots), the Swift build
+# directory and test or profile files in the repository root.
+clean:
+	rm -rf bin $(SWIFT_PKG)/.build
+	rm -f *.test *.prof *.out
 
 # ---- the app: Go core as a library, SwiftUI front end (ADR-0011) -------------------------------
 # lib       bin/lib/libgalaxy.a + .h, universal (arm64 + x86_64)

@@ -28,6 +28,7 @@ eine alte `Galaxy.app` kann danach gelöscht werden.
 **Bauen** (braucht Xcode mit Metal-Toolchain):
 - `make app` erzeugt `bin/Gravitas.app` (Universal, ad-hoc signiert).
 - `make dmg` erzeugt das Disk-Image.
+- `make clean` löscht alle Build-Ergebnisse (`bin/`, Swift-Build).
 - Mit einem Apple-Developer-Zertifikat signiert und notarisiert
   `make notarize SIGN_ID="Developer ID Application: …" NOTARY_PROFILE=…`. Das Profil wird vorher einmal mit
   `xcrun notarytool store-credentials` angelegt.

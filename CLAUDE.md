@@ -15,7 +15,7 @@ interne Namen (Go-Modul `galaxy`, `libgalaxy`, `GalaxySwift`, `Galaxy.metal`) bl
 
 ## Befehle
 - `make check`: gofmt-Prüfung, vet, Tests, Backlog-Validierung. **Vor jedem Commit grün.**
-- `make test` / `make race` / `make bench`
+- `make test` / `make race` / `make bench` / `make clean` (löscht `bin/` samt Screenshots und den Swift-Build)
 - `make build`: Go-Bibliothek, Shader und Swift-App nach `bin/swift/GalaxySwift`. `make run ARGS="-preset 2"`
   startet sie. `make app` / `make dmg` bauen `bin/Gravitas.app` und das DMG.
 - Der Screenshot-Modus gibt eine Zeile `shot …: bodies= fps= steps_per_s= substeps= gas_substeps= t= profile= auto_stars= gpu=` aus. Damit lassen sich
