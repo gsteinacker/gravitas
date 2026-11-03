@@ -642,5 +642,27 @@
         "en": "Lynden-Bell trick (1960): stars with v_φ < 0 about the axis get the sign of v_φ reversed with probability f (scene.SpinUpCluster). Speeds, radii and energy stay the same; the distribution function f(E, L_z) remains an equilibrium solution, so the Plummer model stays in equilibrium. Observed: v_rot/σ ≈ 0.1–0.5 in globular clusters (Bianchini et al. 2018, Kamann et al. 2018)."
       }
     }
+  },
+  {
+    "id": "bar",
+    "topic": "bars",
+    "title": {
+      "de": "Balken",
+      "en": "Bar"
+    },
+    "levels": {
+      "school": {
+        "de": "Zeigt, ob die Galaxie in der Mitte einen Balken aus Sternen hat. A₂ ist die Balkenstärke: 0 heißt rund, ab etwa 0,2 ist ein Balken da. Ω sagt, wie schnell er sich dreht.",
+        "en": "Shows whether the galaxy has a bar of stars in its middle. A₂ is the bar strength: 0 means round, from about 0.2 there is a bar. Ω tells how fast it turns."
+      },
+      "lay": {
+        "de": "A₂ misst, wie stark die Sterne im Inneren der Scheibe in zwei gegenüberliegende Richtungen gehäuft sind. Spiralarme tragen auch etwas bei, ein Balken erkennt man an einem Wert über 0,2, der lange anhält. Ω ist die Musterdrehzahl: Wie schnell sich die Form als Ganzes dreht, in km/s pro kpc (Milchstraße etwa 40). Die Sterne darin laufen schneller.",
+        "en": "A₂ measures how much the stars in the inner disk bunch up in two opposite directions. Spiral arms add a little; a bar shows as a value above 0.2 that lasts. Ω is the pattern speed: how fast the shape turns as a whole, in km/s per kpc (Milky Way about 40). The stars inside move faster."
+      },
+      "physics": {
+        "de": "A₂ = |Σ m e^{2iφ}| / Σ m der Sterne in der Scheibenebene (Drehimpuls der inneren Sterne), zwischen 0,15 und 1 stellarem Halbmassenradius um das Dichtezentrum (schrumpfende Kugeln, nicht das Loch, das durch die DM-Teilchen herumwandert, T-091). Ω_p aus der Phasenänderung zwischen zwei Messungen (alle 0,5 s), nur angezeigt ab A₂ ≥ 0,15. Gemessen im Go-Kern (sim.MeasureBar), nur in Galaxienszenen.",
+        "en": "A₂ = |Σ m e^{2iφ}| / Σ m of the stars in the disk plane (angular momentum of the inner stars), between 0.15 and 1 stellar half-mass radius around the density center (shrinking spheres, not the hole, which wanders through the dark matter particles, T-091). Ω_p from the change of phase between two measurements (every 0.5 s), shown only for A₂ ≥ 0.15. Measured in the Go core (sim.MeasureBar), only in galaxy scenes."
+      }
+    }
   }
 ]

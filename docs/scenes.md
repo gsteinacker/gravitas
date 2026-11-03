@@ -59,6 +59,7 @@ Spielstände (F5/F9, `-load`) sind dagegen **exakte Abzüge** eines laufenden Zu
 | 9 | Pferdekopfnebel | 1 pc, 100 M☉ | Photoverdampfung einer Wolkenkante, siehe `note` |
 | (14) | Galaxienentstehung | 2,5 kpc, 2·10¹⁰ M☉ | rotierende heiße Gaswolke (Baryonenanteil 0,15) in einem DM-Halo kollabiert zur Scheibe (T-082), siehe `note` |
 | (15) | Milchstraße mit Satelliten | 2,5 kpc, 2·10¹⁰ M☉ | LMC, SMC und Sagittarius-Zwerg an Orten und auf Bahnebenen aus der Literatur, feinere Massenauflösung der Satelliten (T-088, ADR-0019), siehe `note` |
+| (16) | Balkenspirale | 2,5 kpc, 2·10¹⁰ M☉ | scheibendominierte Variante von Szene 1, bildet einen Balken (T-090) |
 | Menü | 10 Direkter Kollaps | 1 pc, 10⁴ M☉, c = 15 | 10⁵ M☉ Gas bei 8000 K kollabiert zum Loch (T-067, ADR-0012) |
 | Menü | 11 Akkretionsscheibe | 1 pc, 10⁵ M☉, c = 3 | Gaswolke füttert ein Loch, Scheibe als Darstellung (T-065) |
 | Menü | 12 Kosmisches Netz | 1 Mpc, Würfel 100 Mpc/h | Zel'dovich, ΛCDM Planck 2018, statisch (T-073) |

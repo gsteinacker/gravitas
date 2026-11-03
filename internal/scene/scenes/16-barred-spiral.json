@@ -1,0 +1,72 @@
+{
+  "name": "Barred spiral",
+  "group": "galaxies",
+  "intro": {
+    "school": "Viele Spiralgalaxien haben in der Mitte einen geraden Balken aus Sternen, auch unsere Milchstraße. Hier siehst du, wie er entsteht: Am Anfang ist die Scheibe rund, nach ein paar Umdrehungen ordnen sich die Sterne in der Mitte zu einem Balken, und an seinen Enden beginnen die Spiralarme.",
+    "lay": "Eine Scheibengalaxie wie in Szene 1, aber mit weniger Dunkler Materie im Inneren, kleinerem Bulge und kühlerer, geordneterer Scheibe. Dann ist sie instabil: Eine ovale Störung verstärkt sich bei jedem Umlauf, bis nach etwa 150 Millionen Jahren ein Balken entstanden ist. Er dreht sich als Ganzes langsamer als die Sterne darin, treibt Gas nach innen und gibt Drehimpuls an den Halo ab. Der Inspektor zeigt die Balkenstärke A₂ und seine Drehzahl. Probier: Ansicht von oben, o (Gaskarte), Ansicht von der Kante.",
+    "physics": "Wie Szene 1, aber Hernquist-Halo mit a = 20 statt 10 kpc, Bulge 5 % statt 20 % der Sternmasse, Q = 1,0 statt 1,2: Die Scheibe dominiert innen, die Balkeninstabilität (Ostriker & Peebles 1973) wächst in wenigen Umläufen, A₂ ≈ 0,3, Ω_p im Inspektor. Gemessen (T-090) bei 60 000 Körpern: A₂ = 0,17–0,24 über 2,1 Gyr bei Ω_p ≈ 21 km/s/kpc; ohne Gas bis 0,42, Knicken nach ~1 Gyr (innere Scheibe 50 % dicker), danach langsamer durch Drehimpulsabgabe an den Halo (Athanassoula 2002). Grenzen: Unter ~30 000 Körpern löst numerische Aufheizung durch die schweren DM-Teilchen den Balken nach ~1 Gyr auf, 150 pc Glättung (Erdnussform nur angedeutet), das zentrale Loch wandert (T-091)."
+  },
+  "topics": [
+    "bars",
+    "spiral-arms",
+    "dark-matter",
+    "gas",
+    "star-formation",
+    "bulge"
+  ],
+  "info": "1 unit = 2.5 kpc, 2e10 Msun (185 km/s); disk-dominated spiral that forms a bar; c reduced to 10",
+  "yearsPerUnit": 13200000.0,
+  "params": {
+    "dt": 0.004,
+    "softening": 0.06,
+    "c": 10,
+    "gas": {
+      "coolTime": 0.5,
+      "sfDensity": 0.002,
+      "sfEfficiency": 0.066,
+      "youngAge": 5
+    }
+  },
+  "velocityUnit": 185,
+  "gasFloorK": 10000,
+  "supernovaErgPerMsun": 1e+49,
+  "camera": {
+    "target": [
+      0,
+      0,
+      0
+    ],
+    "distance": 10,
+    "pitch": 75,
+    "yaw": 0
+  },
+  "components": [
+    {
+      "type": "galaxy",
+      "weight": 1,
+      "mass": 10,
+      "holeMass": 0.001,
+      "infallMsunPerYear": 0.6,
+      "diskScale": 0.8,
+      "diskMin": 0.05,
+      "diskMax": 4,
+      "thickness": 0.12,
+      "seed": 3,
+      "note": "Like the galaxy of the spiral scene (2e11 Msun, 10 % disk, 15 % gas, central hole), changed so that the disk dominates the inner galaxy (T-090): Hernquist halo scale 20 kpc instead of 10 (the halo mass inside the disk drops by about half), bulge 5 % instead of 20 % of the stellar mass, Toomre Q = 1.0 instead of 1.2. Then the bar instability (Ostriker & Peebles 1973) grows a bar with A2 ~ 0.3 within ~150 Myr. Measured (T-090): at 60 000 bodies the bar keeps A2 = 0.17-0.24 for 2.1 Gyr at a pattern speed of ~21 km/s/kpc; without gas it reaches 0.42, buckles after ~1 Gyr (inner disk 50 % thicker, A2 0.42 -> 0.34) and slows down as the halo takes up its angular momentum. At 20 000 bodies it dissolves after ~1 Gyr (numerical heating).",
+      "diskFraction": 0.1,
+      "toomreQ": 1.0,
+      "coldFraction": 0.15,
+      "haloProfile": "hernquist",
+      "haloScale": 8,
+      "haloMax": 40,
+      "darkFraction": 0.5,
+      "gasFraction": 0.15,
+      "gasTemperature": 10000,
+      "bulgeFraction": 0.05,
+      "bulgeScale": 0.16,
+      "gasScale": 1.6,
+      "gasMax": 6,
+      "name": "barred spiral"
+    }
+  ]
+}

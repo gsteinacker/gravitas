@@ -242,6 +242,7 @@ type Controller struct {
 	posted     []func(*Controller)
 	sim        SimState
 	rates      rateMeter
+	bar        barMeter
 	state      atomic.Pointer[State]
 }
 
@@ -263,6 +264,7 @@ type SimState struct {
 	Substeps, HydroSubsteps                    int
 	Gravity                                    sim.GravityMode
 	DarkMatterOff                              bool
+	Bar                                        BarState // bar of the galaxy in galaxy scenes (T-090)
 }
 
 // New creates the controller for a runner that already simulates sp, built for n bodies.
@@ -618,6 +620,8 @@ func (c *Controller) Observe(sn *sim.Snapshot) {
 	}
 	c.rates.add(sn.Time, sn.FormedMass, sn.SNMass, sn.InfallMass, rateWindow(c.Scene))
 	s.Infall = sn.Infall
+	c.bar.observe(sn, c.Scene)
+	s.Bar = c.bar.state(c.Scene)
 	var gas, stars float64
 	if s.HolesFormed > c.sim.HolesFormed && s.Time >= c.sim.Time { // not after a restart (T-067)
 		c.Notify(i18n.T("Ein Schwarzes Loch ist entstanden: die Masse passte in ihren eigenen Schwarzschild-Radius.",

@@ -273,6 +273,14 @@ struct StarStats: View {
         } label: {
             Text(L("Gasvorrat", "Gas reservoir"))
         }
+        if s.bar != 0 {
+            LabeledContent {
+                Text(verbatim: barText).monospacedDigit()
+                InfoButton(engine, "bar")
+            } label: {
+                Text(L("Balken", "Bar"))
+            }
+        }
         if s.infall != 0 {
             LabeledContent {
                 Text(verbatim: s.rateUnits != 0 ? String(format: L("%.2f M☉/Jahr", "%.2f M☉/yr"), s.infallRate)
@@ -283,6 +291,15 @@ struct StarStats: View {
                 Text(L("Gaszufluss", "Gas inflow"))
             }
         }
+    }
+
+    /// barText is the bar strength A2 and, for a bar (A2 ≥ 0.15), its pattern speed.
+    private var barText: String {
+        let a2 = String(format: "A₂ %.2f", s.barA2)
+        guard s.barA2 >= 0.15, !s.barOmega.isNaN else { return a2 + L(" · kein Balken", " · no bar") }
+        let omega = s.barUnits != 0 ? String(format: L("%.0f km/s/kpc", "%.0f km/s/kpc"), s.barOmega)
+                                    : String(format: L("%.3g /Zeit", "%.3g /time"), s.barOmega)
+        return a2 + " · Ω " + omega
     }
 
     private var sfrText: String {

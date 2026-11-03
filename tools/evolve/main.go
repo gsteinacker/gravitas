@@ -124,6 +124,9 @@ func report(m *sim.Simulation, steps int, start time.Time) {
 	_ = stars
 	h, r50, rz := shape(s)
 	fmt.Printf("  baryons: half-mass radius %.3g, rms height %.3g, flattening %.2f (height/radius)\n", r50, h, rz)
+	if b := sim.MeasureBar(s); b.Radius > 0 {
+		fmt.Printf("  bar: A2 %.3f, phase %.0f°, measured within %.3g\n", b.A2, b.Phase*180/math.Pi, b.Radius)
+	}
 }
 
 // shape measures the baryons (stars and gas) about their center of mass and angular momentum

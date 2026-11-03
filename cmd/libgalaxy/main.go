@@ -38,6 +38,8 @@ typedef struct {
 	double sfr, snRate, gasShare, rateWindow;
 	int infall;              // gas falls in from the halo (infallRate in M☉/yr or per time unit)
 	double infallRate;
+	int bar, barUnits;       // galaxy scene: bar measured (T-090); pattern speed in km/s/kpc, else per time unit
+	double barA2, barOmega;  // m = 2 amplitude of the stars, pattern speed (NaN unknown)
 } GalaxyState;
 
 typedef struct {
@@ -204,6 +206,7 @@ func galaxy_state(out *C.GalaxyState) {
 		starFormation: b(s.Rates.Formation), rateUnits: b(s.Rates.Units), supernovae: C.int(s.Sim.Supernovae),
 		sfr: C.double(s.Rates.SFR), snRate: C.double(s.Rates.SNRate), gasShare: C.double(s.Rates.GasShare),
 		rateWindow: C.double(s.Rates.Window), infall: b(s.Rates.Infall), infallRate: C.double(s.Rates.InfallRate),
+		bar: b(s.Sim.Bar.Shown), barUnits: b(s.Sim.Bar.Units), barA2: C.double(s.Sim.Bar.A2), barOmega: C.double(s.Sim.Bar.Omega),
 	}
 }
 
