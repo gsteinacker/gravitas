@@ -122,8 +122,9 @@ struct Crawl: View {
     private var text: some View {
         let yellow = Color(red: 1.0, green: 0.85, blue: 0.2)
         return VStack(spacing: 28) {
-            Text(L("GALAXIE", "GALAXY")).font(.system(size: 96, weight: .black)).kerning(8)
-            Text(L("Eine Simulation der Schwerkraft", "A simulation of gravity")).font(.system(size: 34, weight: .bold))
+            Text("GRAVITAS").font(.system(size: 96, weight: .black)).kerning(8)
+            Text(L("Galaxy Sandbox – eine Simulation der Schwerkraft", "Galaxy Sandbox – a simulation of gravity"))
+                .font(.system(size: 34, weight: .bold)).multilineTextAlignment(.center)
             ForEach(Array(IntroView.paragraphs.enumerated()), id: \.offset) { _, p in
                 Text(p).font(.system(size: 30, weight: .semibold)).multilineTextAlignment(.center).lineSpacing(6)
                     .fixedSize(horizontal: false, vertical: true)

@@ -99,7 +99,7 @@ final class Renderer: NSObject, MTKViewDelegate {
             final = try pipe("screenVertex", "finalFragment", .bgra8Unorm)
             hole = try pipe("holeVertex", "holeFragment", .bgra8Unorm, blend: (.one, .oneMinusSourceAlpha))
         } catch {
-            NSLog("Galaxy: shaders: \(error)")
+            NSLog("Gravitas: shaders: \(error)")
             return nil
         }
     }

@@ -3,7 +3,6 @@ package app
 import (
 	"fmt"
 	"math"
-	"os"
 	"path/filepath"
 	"sync"
 	"sync/atomic"
@@ -278,14 +277,14 @@ func New(runner *sim.Runner, n int, sp *scene.Spec) *Controller {
 	return c
 }
 
-// DefaultSaveDir is the per-user save directory (~/Library/Application Support/Galaxy/saves on
+// DefaultSaveDir is the per-user save directory (~/Library/Application Support/Gravitas/saves on
 // macOS), or "saves" if the system has no config directory.
 func DefaultSaveDir() string {
-	dir, err := os.UserConfigDir()
-	if err != nil {
+	dir := prefs.Dir()
+	if dir == "" {
 		return "saves"
 	}
-	return filepath.Join(dir, "Galaxy", "saves")
+	return filepath.Join(dir, "saves")
 }
 
 // Post hands work to the update loop; safe to call from any goroutine.

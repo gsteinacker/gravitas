@@ -1,4 +1,4 @@
-# Galaxy
+# Gravitas – Galaxy Sandbox
 
 Interaktive N-Body-Simulation: Zehntausende Sterne, Schwarze Löcher, Sternhaufen, Gaswolken und ganze Galaxien
 per Mausklick, einstellbare Lichtgeschwindigkeit. Dazu Gas (SPH) mit Kühlung, Sternentstehung und Supernovae,
@@ -9,22 +9,24 @@ und Einstellungen mit Erklärung zu jedem Regler, Deutsch und Englisch.
 
 ## Installieren (macOS 14 oder neuer, Apple Silicon und Intel)
 
-1. `Galaxy-<Version>.dmg` öffnen und **Galaxy** auf **Applications** (Programme) ziehen.
+1. `Gravitas-<Version>.dmg` öffnen und **Gravitas** auf **Applications** (Programme) ziehen.
 2. Beim ersten Start meldet macOS, dass die App nicht geprüft werden kann. Sie ist (noch) nicht bei Apple
    notarisiert. Einmalig freigeben:
-   - **macOS 15 und neuer:** Galaxy starten und die Meldung schließen. Dann unter *Systemeinstellungen →
-     Datenschutz & Sicherheit* bei „Galaxy wurde blockiert“ auf **Trotzdem öffnen** klicken.
-   - **macOS 14:** Im Finder bei gedrückter ctrl-Taste auf Galaxy klicken, dann **Öffnen** wählen.
-3. Beim ersten Start misst Galaxy etwa 0,1 s lang die Leistung des Rechners. Daraus wählt es die Sternzahl für
+   - **macOS 15 und neuer:** Gravitas starten und die Meldung schließen. Dann unter *Systemeinstellungen →
+     Datenschutz & Sicherheit* bei „Gravitas wurde blockiert“ auf **Trotzdem öffnen** klicken.
+   - **macOS 14:** Im Finder bei gedrückter ctrl-Taste auf Gravitas klicken, dann **Öffnen** wählen.
+3. Beim ersten Start misst Gravitas etwa 0,1 s lang die Leistung des Rechners. Daraus wählt es die Sternzahl für
    flüssige 30 Schritte/s. Danach passt es Auflösung und Genauigkeit laufend an. In den *Einstellungen* (⌘,)
    lassen sich das Profil, eine feste Sternzahl oder die Grafikkarte wählen, dort gibt es auch „Leistung neu
    messen“.
 
-Speicherstände (`.galaxy`) öffnen sich per Doppelklick. Einstellungen und Stände liegen unter
-`~/Library/Application Support/Galaxy`.
+Speicherstände (`.gravitas`, ältere `.galaxy`) öffnen sich per Doppelklick. Einstellungen und Stände liegen unter
+`~/Library/Application Support/Gravitas`. Ein Ordner `Galaxy` aus Versionen vor der Umbenennung wird beim ersten Start
+übernommen. Weil sich die Bundle-ID geändert hat, fragt macOS beim ersten Start von Gravitas erneut nach der Freigabe;
+eine alte `Galaxy.app` kann danach gelöscht werden.
 
 **Bauen** (braucht Xcode mit Metal-Toolchain):
-- `make app` erzeugt `bin/Galaxy.app` (Universal, ad-hoc signiert).
+- `make app` erzeugt `bin/Gravitas.app` (Universal, ad-hoc signiert).
 - `make dmg` erzeugt das Disk-Image.
 - Mit einem Apple-Developer-Zertifikat signiert und notarisiert
   `make notarize SIGN_ID="Developer ID Application: …" NOTARY_PROFILE=…`. Das Profil wird vorher einmal mit
@@ -36,7 +38,7 @@ Speicherstände (`.galaxy`) öffnen sich per Doppelklick. Einstellungen und Stä
 make run                                        # Start (Sternzahl nach Leistungsprofil, Spiralgalaxie)
 make run ARGS="-n 50000 -c 2.5"                 # kleines c: das zentrale Loch frisst die Galaxie
 make run ARGS="-preset 5"                       # Lokale Gruppe in echten Abständen (x/v: Dunkle Materie)
-make run ARGS="-scene $PWD/meine.json"          # eigene Szene (docs/scenes.md); -load …/x.galaxy lädt einen Stand
+make run ARGS="-scene $PWD/meine.json"          # eigene Szene (docs/scenes.md); -load …/x.gravitas lädt einen Stand
 make run ARGS="-preset 4 -c 3"                  # Doppel-Loch mit Linseneffekt
 make run ARGS="-preset 2 -fx glow,doppler,trails"   # Kollision mit Bahnspuren
 make run ARGS="-preset 14"                      # Galaxienentstehung aus Halo-Gas (Szenen ab 10: Menü / ⇧⌘N)
@@ -51,7 +53,7 @@ make check                                      # fmt, vet, Tests, Backlog-Valid
 | Parameter | Bedeutung |
 |-----------|-----------|
 | `-preset N` | Startszene, ab 1 (Standard 1) |
-| `-scene datei.json` / `-load stand.galaxy` | Eigene Szene ([Format](docs/scenes.md)) / gespeicherten Stand laden |
+| `-scene datei.json` / `-load stand.gravitas` | Eigene Szene ([Format](docs/scenes.md)) / gespeicherten Stand laden |
 | `-n N` | Sternzahl (0 = nach Leistungsprofil, Screenshots: 50 000) |
 | `-c X` | Lichtgeschwindigkeit (0 = Vorgabe der Szene, −1 = Newton ohne c) |
 | `-gravity M` | Gravitation der Löcher: `instant`, `retarded`, `retarded+v` |
@@ -91,7 +93,7 @@ Alle Aktionen stehen auch in der Menüleiste und im Inspektor (⌥⌘I). `?` ode
 | `Leertaste` `.` `+` `-` `r` | Pause, Einzelschritt, Tempo, Neustart |
 | `e` | **Lernmodus**: Einführung zur Szene und Erklärungen (←/→ Thema, ↑/↓ Zielgruppe: Schüler, Interessierte, Physik) |
 | `x` `v` | Dunkle Materie: Gravitation an/aus, sichtbar machen |
-| `F5` `F9` | Spielstand speichern / neuesten laden (`~/Library/Application Support/Galaxy/saves`) |
+| `F5` `F9` | Spielstand speichern / neuesten laden (`~/Library/Application Support/Gravitas/saves`) |
 | `o` `u` | Gaskarte (Falschfarben) / Staubabsorption |
 | `p` | Gravitation der Löcher: instantan / retardiert / retardiert + v (Ausbreitung mit c) |
 | `g` `t` `l` `d` | Effekte: Glow, Spuren, Gravitationslinse, Doppler-Farben |

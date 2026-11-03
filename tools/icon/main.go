@@ -26,7 +26,7 @@ const (
 
 func main() {
 	in := flag.String("in", "", "source PNG (screenshot with -hud=false)")
-	out := flag.String("out", "Galaxy.iconset", "output .iconset directory")
+	out := flag.String("out", "Gravitas.iconset", "output .iconset directory")
 	cx := flag.Float64("cx", 0.5, "crop center x, fraction of the width")
 	cy := flag.Float64("cy", 0.5, "crop center y, fraction of the height")
 	size := flag.Float64("size", 0.9, "crop size, fraction of the height")

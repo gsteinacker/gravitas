@@ -15,7 +15,7 @@ internal/prefs/      Einstellungen (JSON in Application Support)
 internal/i18n/       Deutsch/Englisch
 internal/learn/      Lerntexte (topics/*.json)
 internal/scene/      Anfangsbedingungen und Szenen (scenes/*.json)
-internal/save/       Speicherstände (.galaxy)
+internal/save/       Speicherstände (.gravitas, alt .galaxy)
 internal/sim/        Zustand (Struct-of-Arrays), Integrator, Relativität, Akkretion, Diagnose
 internal/sim/direct/ Referenzlöser O(N²) (Tests, kleine N)
 internal/sim/bh/     Barnes-Hut-Octree, parallel, Baumdurchlauf optional auf Metal

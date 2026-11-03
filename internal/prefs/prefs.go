@@ -1,12 +1,20 @@
 // Package prefs stores the user's settings as JSON in the per-user config directory
-// (~/Library/Application Support/Galaxy/prefs.json on macOS).
+// (~/Library/Application Support/Gravitas/prefs.json on macOS).
 package prefs
 
 import (
 	"encoding/json"
+	"errors"
+	"io/fs"
 	"os"
 	"path/filepath"
 )
+
+// AppName is the directory of the app's files in the per-user config directory.
+const AppName = "Gravitas"
+
+// legacyName is the directory before the app was renamed from Galaxy to Gravitas (T-092).
+const legacyName = "Galaxy"
 
 // GPU modes.
 const (
@@ -38,13 +46,47 @@ type Calibration struct {
 // Default returns the settings of a first start.
 func Default() *Prefs { return &Prefs{GPU: GPUAuto} }
 
-// Path is the settings file, or "" if the system has no config directory.
-func Path() string {
-	dir, err := os.UserConfigDir()
+// Dir is the app's directory for settings and saved states, or "" if the system has no config
+// directory. On first use it takes over the directory of the app's old name.
+func Dir() string {
+	base, err := os.UserConfigDir()
 	if err != nil {
 		return ""
 	}
-	return filepath.Join(dir, "Galaxy", "prefs.json")
+	return dirIn(base)
+}
+
+// dirIn returns AppName in base. If it does not exist yet, it moves base/Galaxy there, but only if
+// that holds the files of this app (another app could have used the generic name).
+func dirIn(base string) string {
+	dir := filepath.Join(base, AppName)
+	if _, err := os.Stat(dir); !errors.Is(err, fs.ErrNotExist) {
+		return dir
+	}
+	old := filepath.Join(base, legacyName)
+	if ours(old) {
+		_ = os.Rename(old, dir) // if it fails, the app starts with defaults
+	}
+	return dir
+}
+
+// ours reports whether dir holds the settings or saved states of this app.
+func ours(dir string) bool {
+	for _, name := range []string{"prefs.json", "saves"} {
+		if _, err := os.Stat(filepath.Join(dir, name)); err == nil {
+			return true
+		}
+	}
+	return false
+}
+
+// Path is the settings file, or "" if the system has no config directory.
+func Path() string {
+	dir := Dir()
+	if dir == "" {
+		return ""
+	}
+	return filepath.Join(dir, "prefs.json")
 }
 
 // Load reads the settings; a missing or broken file gives the defaults.

@@ -4,7 +4,7 @@ import SwiftUI
 import UniformTypeIdentifiers
 
 extension UTType {
-    static let galaxyState = UTType(exportedAs: "de.steinacker.galaxy.state", conformingTo: .data)
+    static let gravitasState = UTType(exportedAs: "de.steinacker.gravitas.state", conformingTo: .data)
 }
 
 struct ContentView: View {

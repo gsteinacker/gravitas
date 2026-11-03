@@ -59,7 +59,7 @@ func ParseOptions(args []string) (*Options, error) {
 	fs.IntVar(&o.Preset, "preset", 1, "built-in start scene (1-based)")
 	fs.IntVar(&o.Stars, "n", 0, "number of stars (0 = from the performance profile; screenshots: 50000)")
 	fs.StringVar(&o.SceneFile, "scene", "", "start scene from a JSON file (see docs/scenes.md)")
-	fs.StringVar(&o.LoadFile, "load", "", "start from a saved state (.galaxy)")
+	fs.StringVar(&o.LoadFile, "load", "", "start from a saved state (.gravitas, or .galaxy from before the rename)")
 	fs.Float64Var(&o.C, "c", 0, "speed of light (0 = scene default, -1 = Newtonian)")
 	fs.StringVar(&o.Gravity, "gravity", "instant", "propagation of black hole gravity: instant, retarded, retarded+v")
 	fs.StringVar(&o.FX, "fx", "", "render effects: glow, lens, doppler, trails, dark, gas, dust")

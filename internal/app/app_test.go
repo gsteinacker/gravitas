@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"galaxy/internal/learn"
+	"galaxy/internal/save"
 	"galaxy/internal/scene"
 	"galaxy/internal/sim"
 	"galaxy/internal/sim/direct"
@@ -220,7 +221,7 @@ func TestQuickSaveAndLoad(t *testing.T) {
 	c.Do(ActionQuickSave)
 	deadline := time.Now().Add(5 * time.Second)
 	for {
-		if m, _ := filepath.Glob(filepath.Join(c.SaveDir, "*.galaxy")); len(m) == 1 {
+		if m, _ := filepath.Glob(filepath.Join(c.SaveDir, "*"+save.Extension)); len(m) == 1 {
 			break
 		}
 		if time.Now().After(deadline) {

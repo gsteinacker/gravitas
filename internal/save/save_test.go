@@ -1,10 +1,12 @@
 package save
 
 import (
+	"os"
 	"path/filepath"
 	"reflect"
 	"slices"
 	"testing"
+	"time"
 
 	"galaxy/internal/scene"
 	"galaxy/internal/sim"
@@ -109,5 +111,21 @@ func TestLatest(t *testing.T) {
 	}
 	if got, err := Latest(dir); err != nil || filepath.Base(got) != "b"+Extension {
 		t.Errorf("Latest = %q, %v", got, err)
+	}
+
+	// A state saved before the rename (T-092) is found and read.
+	old := filepath.Join(dir, "c"+LegacyExtension)
+	if err := Write(old, &File{Format: Format}); err != nil {
+		t.Fatal(err)
+	}
+	later := time.Now().Add(time.Minute)
+	if err := os.Chtimes(old, later, later); err != nil {
+		t.Fatal(err)
+	}
+	if got, err := Latest(dir); err != nil || got != old {
+		t.Errorf("Latest = %q, %v, want the old file", got, err)
+	}
+	if _, err := Read(old); err != nil {
+		t.Errorf("old file: %v", err)
 	}
 }

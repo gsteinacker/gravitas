@@ -1,9 +1,10 @@
-# Galaxy – interaktive N-Body-Simulation
+# Gravitas – Galaxy Sandbox: interaktive N-Body-Simulation
 
 Spielerische Simulation von 10⁴–10⁵ Sternen mit Schwarzen Löchern und einstellbarer Lichtgeschwindigkeit.
 Stack: **Go 1.27** für Physik und Kern (CPU, Barnes-Hut-Baumdurchlauf optional auf Metal), **SwiftUI + Metal** als
 Mac-App (`macos/GalaxySwift`), verbunden über den Go-Kern als C-Bibliothek (`cmd/libgalaxy`, ADR-0011). Bauen der
-App braucht Xcode.
+App braucht Xcode. Nutzer sehen den Namen „Gravitas“ (T-092: Bundle, DMG, `Application Support/Gravitas`, `.gravitas`);
+interne Namen (Go-Modul `galaxy`, `libgalaxy`, `GalaxySwift`, `Galaxy.metal`) bleiben.
 
 ## Orientierung
 - `docs/analysis/01-tech-stack.md`: warum dieser Stack
@@ -16,9 +17,9 @@ App braucht Xcode.
 - `make check`: gofmt-Prüfung, vet, Tests, Backlog-Validierung. **Vor jedem Commit grün.**
 - `make test` / `make race` / `make bench`
 - `make build`: Go-Bibliothek, Shader und Swift-App nach `bin/swift/GalaxySwift`. `make run ARGS="-preset 2"`
-  startet sie. `make app` / `make dmg` bauen `bin/Galaxy.app` und das DMG.
+  startet sie. `make app` / `make dmg` bauen `bin/Gravitas.app` und das DMG.
 - Der Screenshot-Modus gibt eine Zeile `shot …: bodies= fps= steps_per_s= substeps= gas_substeps= t= profile= auto_stars= gpu=` aus. Damit lassen sich
-  Messungen ohne Bildauswertung machen. Vorher prüfen, dass keine andere App läuft (`pgrep -fl Galaxy`).
+  Messungen ohne Bildauswertung machen. Vorher prüfen, dass keine andere App läuft (`pgrep -fl 'Galaxy|Gravitas'`).
 - Effekte für Screenshots über `-fx glow,lens,doppler,trails` wählen (Tasten gehen im Screenshot-Modus nicht).
   Ausschnitt über `-zoom 6 -target x,y,z` (Weltkoordinaten), z. B. um die Auflösung in Einzelsterne zu prüfen.
 - Screenshots sind fest (50 000 Sterne, Faktor 1, ohne Einstellungen). `-adapt` misst wie die App (Kalibrierung,
@@ -39,7 +40,7 @@ App braucht Xcode.
 3. Kleine, in sich geschlossene Commits pro Task: `T-XXX: <was>`.
 4. Abweichungen vom Physikmodell oder von der Architektur brauchen einen ADR (`/adr`).
 5. Performance-relevante Änderungen: vorher/nachher benchmarken (`/bench`), Ergebnis in `docs/perf-log.md`.
-   **Vorher `pgrep -fl Galaxy` prüfen:** Eine laufende App belegt mehrere Kerne und halbiert die
+   **Vorher `pgrep -fl 'Galaxy|Gravitas'` prüfen:** Eine laufende App belegt mehrere Kerne und halbiert die
    Benchmark-Zahlen. Läuft sie, nur relativ messen (alter Commit per `git worktree` gegen neuen, abwechselnd).
    Benchmarks auch am entwickelten Zustand prüfen (`BenchmarkAccelerationsEvolved`).
 

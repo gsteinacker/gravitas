@@ -24,7 +24,7 @@ func main() {
 	preset := flag.Int("preset", 9, "built-in scene (1-based)")
 	until := flag.Float64("t", 0.5, "simulation time to reach")
 	every := flag.Float64("every", 0, "also report progress every this much simulation time")
-	out := flag.String("o", "evolved.galaxy", "save file to write")
+	out := flag.String("o", "evolved.gravitas", "save file to write")
 	in := flag.String("in", "", "continue from this save file instead of building the scene")
 	yaw := flag.Float64("yaw", math.NaN(), "camera yaw in degrees (default: the scene's)")
 	pitch := flag.Float64("pitch", math.NaN(), "camera pitch in degrees (default: the scene's)")

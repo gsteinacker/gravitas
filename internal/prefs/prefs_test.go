@@ -44,3 +44,52 @@ func TestBrokenOrMissingFileGivesDefaults(t *testing.T) {
 		t.Error("inspector should be shown by default")
 	}
 }
+
+func TestDirTakesOverTheOldDirectory(t *testing.T) {
+	base := t.TempDir()
+	old := filepath.Join(base, legacyName)
+	if err := Default().Save(filepath.Join(old, "prefs.json")); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(filepath.Join(old, "saves"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	dir := dirIn(base)
+	if dir != filepath.Join(base, AppName) {
+		t.Fatalf("dir = %q", dir)
+	}
+	for _, name := range []string{"prefs.json", "saves"} {
+		if _, err := os.Stat(filepath.Join(dir, name)); err != nil {
+			t.Errorf("%s not taken over: %v", name, err)
+		}
+	}
+	if _, err := os.Stat(old); !os.IsNotExist(err) {
+		t.Errorf("old directory still there: %v", err)
+	}
+}
+
+func TestDirLeavesForeignAndNewerDirectoriesAlone(t *testing.T) {
+	base := t.TempDir()
+	foreign := filepath.Join(base, legacyName, "other.db") // another app called Galaxy
+	if err := os.MkdirAll(filepath.Dir(foreign), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(foreign, nil, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	dirIn(base)
+	if _, err := os.Stat(foreign); err != nil {
+		t.Errorf("foreign directory moved: %v", err)
+	}
+
+	base = t.TempDir()
+	for _, d := range []string{legacyName, AppName} {
+		if err := Default().Save(filepath.Join(base, d, "prefs.json")); err != nil {
+			t.Fatal(err)
+		}
+	}
+	dirIn(base)
+	if _, err := os.Stat(filepath.Join(base, legacyName, "prefs.json")); err != nil {
+		t.Errorf("old directory moved over an existing new one: %v", err)
+	}
+}

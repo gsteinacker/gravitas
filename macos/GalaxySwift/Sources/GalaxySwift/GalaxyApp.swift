@@ -29,10 +29,10 @@ struct GalaxyApp: App {
     }
 
     var body: some Scene {
-        WindowGroup("Galaxy") {
+        WindowGroup("Gravitas") {
             ContentView(engine: engine, renderer: renderer, showInspector: $showInspector, showLearning: $showLearning)
                 .frame(minWidth: 900, minHeight: 600)
-                .fileImporter(isPresented: $importing, allowedContentTypes: [.galaxyState, .json]) { result in
+                .fileImporter(isPresented: $importing, allowedContentTypes: [.gravitasState, .json]) { result in
                     guard case let .success(url) = result else { return }
                     let access = url.startAccessingSecurityScopedResource()
                     defer { if access { url.stopAccessingSecurityScopedResource() } }
@@ -47,6 +47,11 @@ struct GalaxyApp: App {
 
     /// commands follow the menu order of the HIG: File, Edit, View, one app menu, Window, Help (T-079).
     @CommandsBuilder private var commands: some Commands {
+        CommandGroup(replacing: .appInfo) {
+            Button(L("Über Gravitas", "About Gravitas")) {
+                NSApp.orderFrontStandardAboutPanel(options: [.applicationName: "Gravitas – Galaxy Sandbox"])
+            }
+        }
         CommandGroup(replacing: .newItem) {
             Menu(L("Neu aus Szene", "New from Scene")) {
                 ForEach(engine.catalog.groups, id: \.title) { group in
@@ -66,7 +71,7 @@ struct GalaxyApp: App {
                 .keyboardShortcut("n", modifiers: [.command, .shift])
             Button(L("Öffnen …", "Open…")) { importing = true }.keyboardShortcut("o")
             Divider()
-            Button(L("Stand sichern …", "Save State…")) { save(type: .galaxyState, ext: "galaxy") { engine.save($0) } }
+            Button(L("Stand sichern …", "Save State…")) { save(type: .gravitasState, ext: "gravitas") { engine.save($0) } }
                 .keyboardShortcut("s")
             Button(L("Schnell sichern", "Quick Save")) { engine.action("quickSave") }
                 .keyboardShortcut(KeyEquivalent(Character(UnicodeScalar(NSF5FunctionKey)!)), modifiers: [])
@@ -207,7 +212,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     @MainActor func application(_ application: NSApplication, open urls: [URL]) {
         for u in urls {
-            NSLog("Galaxy: open \(u.path)")
+            NSLog("Gravitas: open \(u.path)")
             if let err = AppDelegate.engine?.open(u) { alert(L("Datei kann nicht geöffnet werden", "Cannot open the file"), err) }
         }
     }

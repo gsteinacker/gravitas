@@ -31,17 +31,17 @@ next:
 # build     bin/swift/GalaxySwift (with Galaxy.metallib next to it), for development and screenshots
 # run       build and start it (flags as in CLAUDE.md, e.g. make run ARGS="-preset 2")
 # shot      screenshot bin/shot.png (PRESET, AFTER)
-# app       bin/Galaxy.app, universal, signed with SIGN_ID ("-" = ad hoc)
-# dmg       bin/Galaxy-<version>.dmg with a link to /Applications
+# app       bin/Gravitas.app, universal, signed with SIGN_ID ("-" = ad hoc)
+# dmg       bin/Gravitas-<version>.dmg with a link to /Applications
 # notarize  submit the DMG to Apple (SIGN_ID = "Developer ID Application: …", NOTARY_PROFILE)
-# icon      regenerate packaging/macos/Galaxy.icns from a screenshot
+# icon      regenerate packaging/macos/Gravitas.icns from a screenshot
 
 VERSION   ?= $(shell git describe --tags --always --dirty 2>/dev/null | sed 's/^v//')
 BUILD     ?= $(shell git rev-list --count HEAD 2>/dev/null || echo 1)
-BUNDLE_ID ?= de.steinacker.galaxy
+BUNDLE_ID ?= de.steinacker.gravitas
 SIGN_ID   ?= -
 NOTARY_PROFILE ?= galaxy-notary
-APP       := bin/Galaxy.app
+APP       := bin/Gravitas.app
 SWIFT_PKG := macos/GalaxySwift
 BIN       := bin/swift/GalaxySwift
 LIBFLAGS  := CGO_ENABLED=1 GOOS=darwin CGO_CFLAGS="-mmacosx-version-min=14.0" CGO_LDFLAGS="-mmacosx-version-min=14.0"
@@ -79,33 +79,33 @@ shot: build
 app: build
 	rm -rf "$(APP)"
 	mkdir -p "$(APP)/Contents/MacOS" "$(APP)/Contents/Resources/de.lproj" "$(APP)/Contents/Resources/en.lproj"
-	cp $(BIN) "$(APP)/Contents/MacOS/Galaxy"
-	cp bin/metal/Galaxy.metallib packaging/macos/Galaxy.icns "$(APP)/Contents/Resources/"
+	cp $(BIN) "$(APP)/Contents/MacOS/Gravitas"
+	cp bin/metal/Galaxy.metallib packaging/macos/Gravitas.icns "$(APP)/Contents/Resources/"
 	sed -e 's/@VERSION@/$(VERSION)/g' -e 's/@BUILD@/$(BUILD)/g' -e 's/@BUNDLE_ID@/$(BUNDLE_ID)/g' \
 		packaging/macos/Info.plist.tmpl > "$(APP)/Contents/Info.plist"
 	plutil -lint "$(APP)/Contents/Info.plist"
 	touch "$(APP)/Contents/Resources/de.lproj/InfoPlist.strings" "$(APP)/Contents/Resources/en.lproj/InfoPlist.strings"
 	codesign --force --sign "$(SIGN_ID)" $(if $(filter -,$(SIGN_ID)),--timestamp=none,--options runtime --timestamp) "$(APP)"
 	codesign --verify --strict "$(APP)"
-	@echo "$(APP) $(VERSION) ($$(lipo -archs "$(APP)/Contents/MacOS/Galaxy"))"
+	@echo "$(APP) $(VERSION) ($$(lipo -archs "$(APP)/Contents/MacOS/Gravitas"))"
 
 dmg: app
-	rm -rf bin/dmg "bin/Galaxy-$(VERSION).dmg"
+	rm -rf bin/dmg "bin/Gravitas-$(VERSION).dmg"
 	mkdir -p bin/dmg
 	cp -R "$(APP)" bin/dmg/
 	ln -s /Applications bin/dmg/Applications
-	hdiutil create -volname "Galaxy $(VERSION)" -srcfolder bin/dmg -fs HFS+ -format UDZO -ov "bin/Galaxy-$(VERSION).dmg"
-	$(if $(filter -,$(SIGN_ID)),,codesign --sign "$(SIGN_ID)" --timestamp "bin/Galaxy-$(VERSION).dmg")
+	hdiutil create -volname "Gravitas $(VERSION)" -srcfolder bin/dmg -fs HFS+ -format UDZO -ov "bin/Gravitas-$(VERSION).dmg"
+	$(if $(filter -,$(SIGN_ID)),,codesign --sign "$(SIGN_ID)" --timestamp "bin/Gravitas-$(VERSION).dmg")
 	rm -rf bin/dmg
-	@echo "bin/Galaxy-$(VERSION).dmg"
+	@echo "bin/Gravitas-$(VERSION).dmg"
 
 notarize: dmg
 	@if [ "$(SIGN_ID)" = "-" ]; then echo "notarize needs SIGN_ID=\"Developer ID Application: …\""; exit 1; fi
-	xcrun notarytool submit "bin/Galaxy-$(VERSION).dmg" --keychain-profile "$(NOTARY_PROFILE)" --wait
-	xcrun stapler staple "bin/Galaxy-$(VERSION).dmg"
+	xcrun notarytool submit "bin/Gravitas-$(VERSION).dmg" --keychain-profile "$(NOTARY_PROFILE)" --wait
+	xcrun stapler staple "bin/Gravitas-$(VERSION).dmg"
 
 icon: build
 	./$(BIN) -preset 1 -n 120000 -scale 2 -shot bin/icon-src.png -shot-after 8
-	rm -rf bin/Galaxy.iconset
-	$(GO) run ./tools/icon -in bin/icon-src.png -out bin/Galaxy.iconset -size 0.82
-	iconutil -c icns bin/Galaxy.iconset -o packaging/macos/Galaxy.icns
+	rm -rf bin/Gravitas.iconset
+	$(GO) run ./tools/icon -in bin/icon-src.png -out bin/Gravitas.iconset -size 0.82
+	iconutil -c icns bin/Gravitas.iconset -o packaging/macos/Gravitas.icns

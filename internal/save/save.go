@@ -1,4 +1,4 @@
-// Package save writes and reads complete simulation states (".galaxy" files: gob, gzip).
+// Package save writes and reads complete simulation states (".gravitas" files: gob, gzip).
 package save
 
 import (
@@ -20,7 +20,11 @@ import (
 const Format = 4
 
 // Extension of saved states.
-const Extension = ".galaxy"
+const Extension = ".gravitas"
+
+// LegacyExtension is the extension before the app was renamed from Galaxy to Gravitas (T-092); such
+// files have the same layout and stay readable.
+const LegacyExtension = ".galaxy"
 
 // Camera is the view at the time of saving.
 type Camera struct {
@@ -166,15 +170,17 @@ func Read(path string) (*File, error) {
 
 // NewPath returns a fresh file name in dir, based on the current time.
 func NewPath(dir string) string {
-	return filepath.Join(dir, "galaxy-"+time.Now().Format("20060102-150405")+Extension)
+	return filepath.Join(dir, "gravitas-"+time.Now().Format("20060102-150405")+Extension)
 }
 
-// Latest returns the most recently modified saved state in dir.
+// Latest returns the most recently modified saved state in dir, old extension included.
 func Latest(dir string) (string, error) {
 	files, err := filepath.Glob(filepath.Join(dir, "*"+Extension))
 	if err != nil {
 		return "", err
 	}
+	legacy, _ := filepath.Glob(filepath.Join(dir, "*"+LegacyExtension))
+	files = append(files, legacy...)
 	var best string
 	var bestTime time.Time
 	for _, f := range files {
