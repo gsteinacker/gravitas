@@ -1,11 +1,13 @@
 # Gravitas – Galaxy Sandbox
 
-**Was passiert, wenn Licht nur zehnmal so schnell ist wie die Sterne einer Galaxie?** Gravitas ist ein
-Sandkasten für Gravitation auf dem Mac: 10⁴ bis 10⁵ Teilchen, Schwarze Löcher, Gas und Dunkle Materie, live
-gerechnet. Man kann zuschauen, eingreifen und nachlesen, warum es so aussieht.
+**Wie entstehen Spiralarme, Gezeitenschweife und neue Sterne, wenn man eine Galaxie einfach nach den Gesetzen
+der Physik rechnet?** Gravitas simuliert das live auf dem Mac: 10⁴ bis 10⁵ Teilchen aus Sternen, Gas, Dunkler
+Materie und Schwarzen Löchern, mit Sternentstehung, Supernovae und Szenen nach echten Vorbildern. Die Strukturen
+sind nicht animiert, sie ergeben sich aus den Kräften. Man kann zuschauen, eingreifen und nachlesen, was das Modell
+abbildet und wo es vereinfacht.
 
-*An interactive N-body sandbox for macOS: galaxies, black holes, gas and dark matter with an adjustable speed of
-light, in German and English.*
+*A realistic, interactive N-body simulation for macOS: galaxies with gas, star formation, supernovae, dark matter
+and black holes, scenes modelled on real objects, in German and English.*
 
 [**⬇ Gravitas für macOS laden**](https://github.com/gsteinacker/gravitas/releases/latest/download/Gravitas.dmg)
 (Apple Silicon und Intel, macOS 14+) · [alle Versionen](https://github.com/gsteinacker/gravitas/releases) ·
@@ -24,16 +26,16 @@ light, in German and English.*
 
 ## Was drinsteckt
 
-- **Lichtgeschwindigkeit als Regler.** `c` ist ein Parameter. Wird es kleiner, wachsen die Horizonte
-  (r_s = 2GM/c²), Sterne stürzen ab der innersten stabilen Bahn (3 r_s) hinein, und die Gravitation der Löcher
-  breitet sich auf Wunsch mit c aus (retardiert). Gravitationslinse und Doppler-Farben machen das sichtbar.
-- **Echte Physik, ehrlich vereinfacht.** Barnes-Hut-Baum (wahlweise auf der GPU), Gas als SPH mit Kühlung,
+- **Echte Physik, ehrlich vereinfacht:** Barnes-Hut-Baum (wahlweise auf der GPU), Gas als SPH mit Kühlung,
   Sternentstehung und Supernovae, rotierende Löcher mit Frame Dragging, Dunkle Materie, ein mitbewegter Modus mit
   kosmischer Expansion. Was vereinfacht ist und warum, steht in [docs/physics.md](docs/physics.md) und in
   [ADRs](docs/adr); der Inspektor zeigt die Energiedrift.
 - **16 Szenen nach echten Vorbildern:** Lokale Gruppe in echten Abständen, Antennen, Whirlpool (M51), die S-Sterne
   um Sgr A\*, die Satelliten der Milchstraße, eine Balkenspirale. Jede Szene ist eine JSON-Datei mit Quellen und
   Annahmen ([Format](docs/scenes.md)), eigene Szenen lassen sich laden.
+- **Lichtgeschwindigkeit als Regler:** `c` ist ein Parameter. Wird es kleiner, wachsen die Horizonte
+  (r_s = 2GM/c²), Sterne stürzen ab der innersten stabilen Bahn (3 r_s) hinein, und die Gravitation der Löcher
+  breitet sich auf Wunsch mit c aus (retardiert). Gravitationslinse und Doppler-Farben machen das sichtbar.
 - **Selber eingreifen:** Schwarze Löcher, Sternhaufen, Gaswolken oder ganze Galaxien per Klick setzen und mit
   Kreisbahn-, Flucht- oder freier Geschwindigkeit losschicken. Stände speichern und später weiterrechnen.
 - **Lernmodus in drei Stufen:** zu jeder Szene und jedem Konzept eine Erklärung für Schüler, Interessierte und
