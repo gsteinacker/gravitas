@@ -33,13 +33,7 @@ struct ContentView: View {
                         .padding(20)
                         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
                 }
-                if !engine.message.isEmpty {
-                    Text(engine.message)
-                        .padding(.horizontal, 14).padding(.vertical, 8)
-                        .background(.regularMaterial, in: Capsule())
-                        .padding(.bottom, 24)
-                        .transition(.opacity)
-                }
+                MessageToast(engine: engine)
             }
             .navigationTitle(engine.sceneName)
             .navigationSubtitle(engine.sceneInfo)
@@ -57,6 +51,22 @@ struct ContentView: View {
         .onChange(of: showLearning) { _, on in engine.set("explain", on ? 1 : 0) }
         .onChange(of: engine.state.explain) { _, on in showLearning = on != 0 }
         .overlay { if engine.showIntro { IntroView(engine: engine) } } // over the whole window, inspector too
+    }
+}
+
+/// MessageToast shows the core's short messages. It reads engine.message itself: if ContentView read
+/// it, every message would rebuild the inspector and close an open (i) popover (T-077).
+struct MessageToast: View {
+    var engine: Engine
+
+    var body: some View {
+        if !engine.message.isEmpty {
+            Text(engine.message)
+                .padding(.horizontal, 14).padding(.vertical, 8)
+                .background(.regularMaterial, in: Capsule())
+                .padding(.bottom, 24)
+                .transition(.opacity)
+        }
     }
 }
 
@@ -246,36 +256,37 @@ struct LiveStats: View {
     }
 }
 
-/// StarStats shows how fast stars form and explode (app.StarRates), from engine.live.
+/// StarStats shows how fast stars form and explode (app.StarRates). The rows and their (i) read only
+/// the slow engine.state; the numbers are LiveText views that alone read engine.live, so the
+/// updates do not rebuild the rows and close an open (i) popover (T-077).
 struct StarStats: View {
     var engine: Engine
 
-    private var s: GalaxyState { engine.live }
+    private var s: GalaxyState { engine.state }
 
     var body: some View {
         LabeledContent {
-            Text(verbatim: sfrText).monospacedDigit()
+            LiveText(engine: engine) { StarStats.sfrText($0) }
             InfoButton(engine, "starFormationRate")
         } label: {
             Text(L("Sternentstehung", "Star formation"))
                 .help(String(format: L("gemittelt über die letzten %@", "averaged over the last %@"), windowText))
         }
         LabeledContent {
-            Text(verbatim: snText).monospacedDigit()
+            LiveText(engine: engine) { StarStats.snText($0) }
             InfoButton(engine, "supernovae")
         } label: {
             Text(L("Supernovae", "Supernovae"))
         }
         LabeledContent {
-            Text(verbatim: String(format: L("%.1f %% von Sternen + Gas", "%.1f %% of stars + gas"), 100 * s.gasShare))
-                .monospacedDigit()
+            LiveText(engine: engine) { String(format: L("%.1f %% von Sternen + Gas", "%.1f %% of stars + gas"), 100 * $0.gasShare) }
             InfoButton(engine, "gasReservoir")
         } label: {
             Text(L("Gasvorrat", "Gas reservoir"))
         }
         if s.bar != 0 {
             LabeledContent {
-                Text(verbatim: barText).monospacedDigit()
+                LiveText(engine: engine) { StarStats.barText($0) }
                 InfoButton(engine, "bar")
             } label: {
                 Text(L("Balken", "Bar"))
@@ -283,9 +294,10 @@ struct StarStats: View {
         }
         if s.infall != 0 {
             LabeledContent {
-                Text(verbatim: s.rateUnits != 0 ? String(format: L("%.2f M☉/Jahr", "%.2f M☉/yr"), s.infallRate)
-                                                : String(format: L("%.3g Masse/Zeit", "%.3g mass/time"), s.infallRate))
-                    .monospacedDigit()
+                LiveText(engine: engine) {
+                    $0.rateUnits != 0 ? String(format: L("%.2f M☉/Jahr", "%.2f M☉/yr"), $0.infallRate)
+                                      : String(format: L("%.3g Masse/Zeit", "%.3g mass/time"), $0.infallRate)
+                }
                 InfoButton(engine, "gasInflow")
             } label: {
                 Text(L("Gaszufluss", "Gas inflow"))
@@ -294,7 +306,7 @@ struct StarStats: View {
     }
 
     /// barText is the bar strength A2 and, for a bar (A2 ≥ 0.15), its pattern speed.
-    private var barText: String {
+    static func barText(_ s: GalaxyState) -> String {
         let a2 = String(format: "A₂ %.2f", s.barA2)
         guard s.barA2 >= 0.15, !s.barOmega.isNaN else { return a2 + L(" · kein Balken", " · no bar") }
         let omega = s.barUnits != 0 ? String(format: L("%.0f km/s/kpc", "%.0f km/s/kpc"), s.barOmega)
@@ -302,13 +314,13 @@ struct StarStats: View {
         return a2 + " · Ω " + omega
     }
 
-    private var sfrText: String {
+    static func sfrText(_ s: GalaxyState) -> String {
         let rate = s.rateUnits != 0 ? String(format: L("%.2f M☉/Jahr", "%.2f M☉/yr"), s.sfr)
                                     : String(format: L("%.3g Masse/Zeit", "%.3g mass/time"), s.sfr)
         return rate + " · " + String(format: L("%d neu", "%d new"), s.starsFormed)
     }
 
-    private var snText: String {
+    static func snText(_ s: GalaxyState) -> String {
         let rate = s.rateUnits != 0 ? String(format: L("%.2f pro Jh.", "%.2f per century"), s.snRate)
                                     : String(format: L("%.3g Masse/Zeit", "%.3g mass/time"), s.snRate)
         return rate + " · " + String(format: L("%d explodiert", "%d exploded"), s.supernovae)
@@ -317,6 +329,17 @@ struct StarStats: View {
     private var windowText: String {
         s.rateUnits != 0 ? String(format: L("%.0f Mio. Jahre", "%.0f Myr"), s.rateWindow / 1e6)
                          : String(format: L("%.0f Zeiteinheiten", "%.0f time units"), s.rateWindow)
+    }
+}
+
+/// LiveText is a number from engine.live. Only this small view reads live, so its updates do not
+/// rebuild the row around it.
+struct LiveText: View {
+    var engine: Engine
+    let text: (GalaxyState) -> String
+
+    var body: some View {
+        Text(verbatim: text(engine.live)).monospacedDigit()
     }
 }
 
