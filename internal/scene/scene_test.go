@@ -144,7 +144,7 @@ func TestBuiltinScenesFormNoHoles(t *testing.T) {
 
 // TestCosmicWebMass: the cosmic web holds Ω_m ρ_crit V of dark matter in exactly n particles.
 func TestCosmicWebMass(t *testing.T) {
-	sp, err := LoadSpec("scenes/12-cosmic-web.json")
+	sp, err := LoadSpec("testdata/cosmic-web.json")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -170,7 +170,7 @@ func TestCosmicWebMass(t *testing.T) {
 // TestStructureFormationGrows: the comoving scene sets up its periodic box and its clustering grows
 // (the rms of the displacement from the lattice increases with a).
 func TestStructureFormationGrows(t *testing.T) {
-	sp, err := LoadSpec("scenes/13-structure.json")
+	sp, err := LoadSpec("testdata/structure.json")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -207,7 +207,7 @@ func TestStructureFormationGrows(t *testing.T) {
 
 // TestStructureFormationStopsToday: the comoving run ends at a = 1 and says so.
 func TestStructureFormationStopsToday(t *testing.T) {
-	sp, err := LoadSpec("scenes/13-structure.json")
+	sp, err := LoadSpec("testdata/structure.json")
 	if err != nil {
 		t.Fatal(err)
 	}

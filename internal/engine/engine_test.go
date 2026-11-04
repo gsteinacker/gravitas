@@ -196,14 +196,25 @@ func TestStarSettingsAndCorrection(t *testing.T) {
 }
 
 // TestCosmicWebDrawsDarkMatterPoints: a scene of dark matter only draws its particles as points
-// (no haze); a galaxy keeps the haze (T-073).
+// (no haze); a galaxy keeps the haze (T-073). The cosmic web is no built-in scene any more (T-094).
 func TestCosmicWebDrawsDarkMatterPoints(t *testing.T) {
 	t.Setenv("HOME", t.TempDir())
 	for _, c := range []struct {
-		preset int
-		web    bool
-	}{{11, true}, {0, false}} {
-		e := New(c.preset, 3000)
+		scene string // a scene file, or "" for the spiral galaxy
+		web   bool
+	}{{"../scene/testdata/cosmic-web.json", true}, {"", false}} {
+		args := []string{"-n", "3000"}
+		if c.scene != "" {
+			args = append(args, "-scene", c.scene)
+		}
+		o, err := ParseOptions(args)
+		if err != nil {
+			t.Fatal(err)
+		}
+		e, err := Start(o)
+		if err != nil {
+			t.Fatal(err)
+		}
 		e.Runner.SetPaused(true)
 		buf := make([]float32, 10000*FloatsPerBody)
 		var info FrameInfo
@@ -215,7 +226,7 @@ func TestCosmicWebDrawsDarkMatterPoints(t *testing.T) {
 		}
 		look := e.Prepare(buf, nil, info, 1440, 900, 1, view.Effects{Glow: true, Dark: true})
 		if web := look.WebAlpha > 0; web != c.web || (web && look.DarkAlpha != 0) {
-			t.Errorf("preset %d: web alpha %g, dark alpha %g", c.preset+1, look.WebAlpha, look.DarkAlpha)
+			t.Errorf("%q: web alpha %g, dark alpha %g", c.scene, look.WebAlpha, look.DarkAlpha)
 		}
 		e.Close()
 	}

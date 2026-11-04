@@ -3,7 +3,7 @@
   "group": "galaxies",
   "intro": {
     "school": "Eine Spiralgalaxie wie unsere Milchstraße: Milliarden Sterne kreisen um ein Zentrum. Schau, wie sich Spiralarme bilden und wie in ihnen neue, blaue Sterne entstehen. Tipp: Drück x und sieh, was ohne Dunkle Materie passiert!",
-    "lay": "Eine Scheibengalaxie mit Dunkle-Materie-Halo, Gas und einem zentralen Schwarzen Loch. Aus kleinen Unregelmäßigkeiten wachsen Spiralarme (einen Balken bildet die Balkenspirale, Szene 16); im verdichteten Gas der Arme entstehen junge Sterne. Probier: x (Dunkle Materie aus), u (Staub), o (Gaskarte), Ansicht von der Kante.",
+    "lay": "Eine Scheibengalaxie mit Dunkle-Materie-Halo, Gas und einem zentralen Schwarzen Loch. Aus kleinen Unregelmäßigkeiten wachsen Spiralarme (einen Balken bildet die Balkenspirale, Szene 14); im verdichteten Gas der Arme entstehen junge Sterne. Probier: x (Dunkle Materie aus), u (Staub), o (Gaskarte), Ansicht von der Kante.",
     "physics": "Exponentielle Toomre-Scheibe (Q = 1,2) mit 15 % SPH-Gas in einem Hernquist-Halo (90 % DM), Loch 4·10⁷ Sonnenmassen. Swing-Amplifikation erzeugt Arme; der Halo dominiert schon innen, deshalb bildet sich kein Balken (A₂ < 0,08 über 1,3 Gyr, T-090), Sternentstehung nach ρ-Schwelle und t_ff. Einheiten: 2,5 kpc, 2·10¹⁰ Sonnenmassen, c reduziert."
   },
   "topics": [

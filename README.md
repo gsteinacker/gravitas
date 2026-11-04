@@ -19,18 +19,17 @@ and black holes, scenes modelled on real objects, in German and English.*
 |---|---|
 | ![Zwei Galaxien nach dem ersten Durchgang](docs/images/collision.jpg) | ![Schwarzes Loch mit Gravitationslinse](docs/images/lens.jpg) |
 | **Kollision** (Szene 2): Nach dem ersten Durchgang reißen Gezeitenkräfte lange Schweife aus beiden Scheiben, die zentralen Löcher umkreisen einander. | **Loch-Doppel im Sternhaufen** (Szene 4, c = 3): Die Linse verbiegt das Licht der Sterne dahinter, der Horizont wächst mit kleinerem c. |
-| ![Akkretionsscheibe](docs/images/accretion.jpg) | ![Kosmisches Netz](docs/images/cosmic-web.jpg) |
-| **Akkretionsscheibe** (Szene 11): Eine Gaswolke streift ein Loch von 10 000 Sonnenmassen, die Gezeiten zerreißen sie. Die Scheibe leuchtet so hell, wie das Loch gerade Masse schluckt. | **Kosmisches Netz** (Szene 12): Ein Würfel von 480 Millionen Lichtjahren Dunkler Materie mit Filamenten und Knoten, wie das Standardmodell (ΛCDM, Planck 2018) sie heute vorhersagt. |
+| ![Akkretionsscheibe](docs/images/accretion.jpg) | ![Milchstraße mit Satelliten](docs/images/satellites.jpg) |
+| **Akkretionsscheibe** (Szene 11): Eine Gaswolke streift ein Loch von 10 000 Sonnenmassen, die Gezeiten zerreißen sie. Die Scheibe leuchtet so hell, wie das Loch gerade Masse schluckt. | **Milchstraße mit Satelliten** (Szene 13): Die Magellanschen Wolken und der Sagittarius-Zwerg an ihren echten Orten. Bei jedem Vorbeiflug reißen die Gezeiten Sterne aus dem Zwerg, die als Strom auf seiner Bahn weiterlaufen. |
 | ![Spiralgalaxie](docs/images/spiral.jpg) | ![Pferdekopfnebel](docs/images/horsehead.jpg) |
 | **Spiralgalaxie** (Szene 1): Arme entstehen aus kleinen Störungen, im verdichteten Gas bilden sich junge, blaue Sterne. | **Pferdekopfnebel** (Szene 9): UV-Licht von Sigma Orionis bringt den Wasserstoff zum Leuchten, die dichte Staubsäule wirft Schatten. |
 
 ## Was drinsteckt
 
 - **Echte Physik, ehrlich vereinfacht:** Barnes-Hut-Baum (wahlweise auf der GPU), Gas als SPH mit Kühlung,
-  Sternentstehung und Supernovae, rotierende Löcher mit Frame Dragging, Dunkle Materie, ein mitbewegter Modus mit
-  kosmischer Expansion. Was vereinfacht ist und warum, steht in [docs/physics.md](docs/physics.md) und in
-  [ADRs](docs/adr); der Inspektor zeigt die Energiedrift.
-- **16 Szenen nach echten Vorbildern:** Lokale Gruppe in echten Abständen, Antennen, Whirlpool (M51), die S-Sterne
+  Sternentstehung und Supernovae, rotierende Löcher mit Frame Dragging, Dunkle Materie. Was vereinfacht ist und
+  warum, steht in [docs/physics.md](docs/physics.md) und in [ADRs](docs/adr); der Inspektor zeigt die Energiedrift.
+- **14 Szenen nach echten Vorbildern:** Lokale Gruppe in echten Abständen, Antennen, Whirlpool (M51), die S-Sterne
   um Sgr A\*, die Satelliten der Milchstraße, eine Balkenspirale. Jede Szene ist eine JSON-Datei mit Quellen und
   Annahmen ([Format](docs/scenes.md)), eigene Szenen lassen sich laden.
 - **Lichtgeschwindigkeit als Regler:** `c` ist ein Parameter. Wird es kleiner, wachsen die Horizonte
@@ -83,7 +82,7 @@ make run ARGS="-preset 5"                       # Lokale Gruppe in echten Abstä
 make run ARGS="-scene $PWD/meine.json"          # eigene Szene (docs/scenes.md); -load …/x.gravitas lädt einen Stand
 make run ARGS="-preset 4 -c 3"                  # Doppel-Loch mit Linseneffekt
 make run ARGS="-preset 2 -fx glow,doppler,trails"   # Kollision mit Bahnspuren
-make run ARGS="-preset 14"                      # Galaxienentstehung aus Halo-Gas (Szenen ab 10: Menü / ⇧⌘N)
+make run ARGS="-preset 12"                      # Galaxienentstehung aus Halo-Gas (Szenen ab 10: Menü / ⇧⌘N)
 make shot PRESET=9                              # Screenshot bin/shot.png mit Messzeile
 make plan                                       # Fortschritt im Backlog
 make check                                      # fmt, vet, Tests, Backlog-Validierung (Go-Kern)
@@ -119,10 +118,9 @@ Alle Aktionen stehen auch in der Menüleiste und im Inspektor (⌥⌘I). `?` ode
 
 | Gruppe | Szenen |
 |--------|--------|
-| Galaxien | `1` Spiralgalaxie, `2` Galaxienkollision, `5` Lokale Gruppe, `6` Antennen, `7` Whirlpool (M51), 14 Galaxienentstehung, 15 Satelliten der Milchstraße (LMC, SMC, Sagittarius), 16 Balkenspirale |
+| Galaxien | `1` Spiralgalaxie, `2` Galaxienkollision, `5` Lokale Gruppe, `6` Antennen, `7` Whirlpool (M51), 12 Galaxienentstehung, 13 Satelliten der Milchstraße (LMC, SMC, Sagittarius), 14 Balkenspirale |
 | Sterne und Schwarze Löcher | `3` Sternhaufen, `4` Loch-Doppel im Haufen, `8` S-Sterne um Sgr A\* |
 | Gas und Sternentstehung | `9` Pferdekopfnebel, 10 Direkter Kollaps, 11 Akkretionsscheibe |
-| Kosmos | 12 Kosmisches Netz, 13 Strukturbildung (mitbewegt, mit Expansion) |
 
 | Eingabe | Aktion |
 |---------|--------|

@@ -6,12 +6,6 @@
     "lay": "Ein Würfel von 100 Mpc/h (etwa 480 Millionen Lichtjahre) mit Dunkler Materie, so verteilt, wie es das Standardmodell der Kosmologie (ΛCDM) für heute vorhersagt: aus winzigen Dichteschwankungen nach dem Urknall ist durch Schwerkraft das kosmische Netz gewachsen. In der Szenendatei (`redshift`) lässt sich ein früherer Zeitpunkt wählen, dann ist das Netz schwächer ausgeprägt. Die Szene ist eine Momentaufnahme: Die Ausdehnung des Raums wird nicht simuliert. Mit der Leertaste startest du nur gewöhnliche Schwerkraft ohne Expansion, und der ganze Würfel stürzt in sich zusammen.",
     "physics": "Zel'dovich-Näherung x = q + D(z) Ψ(q), Ψ(k) = i k/k² δ(k), Gauß'sches Feld mit linearem Spektrum nach Eisenstein & Hu (1998, ohne Baryon-Oszillationen), normiert auf σ₈ = 0,81, Planck 2018 (h = 0,677, Ω_m = 0,31). Wachstumsfaktor D(a) aus dem Integral für flaches ΛCDM. Teilchenmasse Ω_m ρ_krit L³/N (bei 64³ = 262 144 Teilchen etwa 5·10¹¹ M☉). Grenzen: Die Zel'dovich-Näherung überschätzt die Breite von Filamenten und verschmiert Knoten nach der Schalenkreuzung (z = 0 ist dafür zu spät). Keine Expansion, keine periodischen Ränder, keine Galaxien."
   },
-  "topics": [
-    "cosmic-web",
-    "dark-matter",
-    "gravity",
-    "units"
-  ],
   "info": "Zel'dovich realization of ΛCDM (Planck 2018) in a 100 Mpc/h box at z = 0; 1 unit = 1 Mpc; static (no expansion)",
   "yearsPerUnit": 9.778e9,
   "velocityUnit": 100,

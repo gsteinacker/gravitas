@@ -1,7 +1,7 @@
 ---
 id: T-076
 title: Kosmisches Netz Etappe 3b: TreePM mit periodischem Baum
-status: todo
+status: blocked
 milestone: M11
 priority: 3
 estimate: L
@@ -27,3 +27,5 @@ Barnes-Hut-Baum für kurze, getrennt mit einem erfc-Split. Etappe 3 aus `docs/an
 ## Notizen
 
 Physik-Änderung: physics-reviewer einsetzen.
+
+- 2026-11-04: Blockiert, die Szenen zum kosmischen Netz sind entfernt (T-094). Nur aufnehmen, wenn sie zurückkommen.

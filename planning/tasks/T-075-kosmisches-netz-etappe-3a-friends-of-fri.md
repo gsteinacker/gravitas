@@ -1,7 +1,7 @@
 ---
 id: T-075
 title: Kosmisches Netz Etappe 3a: Friends-of-Friends und beschriftete Haufen
-status: todo
+status: blocked
 milestone: M11
 priority: 3
 estimate: M
@@ -29,3 +29,5 @@ beschriftet. Ohne neues Kraftgesetz, deshalb vor TreePM.
 
 Aus T-062. Davis et al. 1985 (FoF). Bis TreePM (T-076) sind kleine Halos durch das PM-Gitter verwaschen; die
 Beschriftung gilt daher nur oberhalb einer Mindestteilchenzahl (z. B. 32).
+
+- 2026-11-04: Blockiert, die Szenen zum kosmischen Netz sind entfernt (T-094). Nur aufnehmen, wenn sie zurückkommen.

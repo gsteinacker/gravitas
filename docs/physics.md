@@ -139,7 +139,7 @@ weil eine α-Scheibe auf r_g-Skalen Auflösungen und Zeitschritte weit unter den
 
 ## Kosmologischer Modus (ADR-0014)
 
-Szenen mit `params.cosmology` rechnen mitbewegt im periodischen Würfel: u = a² ẋ, ẋ = u/a², u̇ = −∇φ/a,
+Keine eingebaute Szene nutzt den Modus mehr (T-094); Beispiele in `internal/scene/testdata`. Szenen mit `params.cosmology` rechnen mitbewegt im periodischen Würfel: u = a² ẋ, ẋ = u/a², u̇ = −∇φ/a,
 ∇²φ = 4πG(ρ − ρ̄), KDK in Δ ln a mit exakten Faktoren, Kräfte per Particle-Mesh (`internal/cosmo/pm.go`).
 Invarianten: Layzer-Irvine (`TestComovingConservesMomentumAndLayzerIrvine`) und lineares Wachstum einer Mode
 gegen D(a) (`TestPlaneWaveGrowsLinearly`). Statt der Energiedrift gibt es keine Anzeige, statt t wird z gezeigt.

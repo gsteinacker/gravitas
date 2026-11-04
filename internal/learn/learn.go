@@ -49,7 +49,7 @@ func (t *Topic) Text(l Level) string { return t.Levels[l.Key()] }
 // Order is the order in which topics are listed.
 var Order = []string{
 	"gravity", "dark-matter", "black-holes", "hole-formation", "isco", "kerr", "accretion-disks", "speed-of-light", "doppler", "lensing",
-	"retarded-gravity", "cosmic-web", "expansion", "spiral-arms", "bars", "galaxy-formation", "tides", "satellites", "gas", "cooling", "star-formation", "supernovae", "gas-cycle", "ionization", "dust", "energy", "units",
+	"retarded-gravity", "spiral-arms", "bars", "galaxy-formation", "tides", "satellites", "gas", "cooling", "star-formation", "supernovae", "gas-cycle", "ionization", "dust", "energy", "units",
 }
 
 //go:embed topics/*.json
