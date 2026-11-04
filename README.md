@@ -1,15 +1,51 @@
 # Gravitas – Galaxy Sandbox
 
-Interaktive N-Body-Simulation: Zehntausende Sterne, Schwarze Löcher, Sternhaufen, Gaswolken und ganze Galaxien
-per Mausklick, einstellbare Lichtgeschwindigkeit. Dazu Gas (SPH) mit Kühlung, Sternentstehung und Supernovae,
-rotierende Löcher (Kerr, Frame Dragging) mit Akkretionsscheiben, Dunkle Materie und ein mitbewegter Modus mit
-kosmischer Expansion für das kosmische Netz.
-Native Mac-App (SwiftUI + Metal) mit Physik-Kern in Go: Menüleiste, Inspektor, Szenenübersicht, Lern-Seitenleiste
-und Einstellungen mit Erklärung zu jedem Regler, Deutsch und Englisch.
+**Was passiert, wenn Licht nur zehnmal so schnell ist wie die Sterne einer Galaxie?** Gravitas ist ein
+Sandkasten für Gravitation auf dem Mac: 10⁴ bis 10⁵ Teilchen, Schwarze Löcher, Gas und Dunkle Materie, live
+gerechnet. Man kann zuschauen, eingreifen und nachlesen, warum es so aussieht.
+
+*An interactive N-body sandbox for macOS: galaxies, black holes, gas and dark matter with an adjustable speed of
+light, in German and English.*
+
+[**⬇ Gravitas für macOS laden**](https://github.com/gsteinacker/gravitas/releases/latest/download/Gravitas.dmg)
+(Apple Silicon und Intel, macOS 14+) · [alle Versionen](https://github.com/gsteinacker/gravitas/releases) ·
+[Installation](#installieren-macos-14-oder-neuer-apple-silicon-und-intel)
+
+![Gravitas mit Lernmodus (links) und Inspektor (rechts)](docs/images/app.jpg)
+
+| | |
+|---|---|
+| ![Zwei Galaxien nach dem ersten Durchgang](docs/images/collision.jpg) | ![Schwarzes Loch mit Gravitationslinse](docs/images/lens.jpg) |
+| **Kollision** (Szene 2): Nach dem ersten Durchgang reißen Gezeitenkräfte lange Schweife aus beiden Scheiben, die zentralen Löcher umkreisen einander. | **Loch-Doppel im Sternhaufen** (Szene 4, c = 3): Die Linse verbiegt das Licht der Sterne dahinter, der Horizont wächst mit kleinerem c. |
+| ![Akkretionsscheibe](docs/images/accretion.jpg) | ![Kosmisches Netz](docs/images/cosmic-web.jpg) |
+| **Akkretionsscheibe** (Szene 11): Eine Gaswolke streift ein Loch von 10 000 Sonnenmassen, die Gezeiten zerreißen sie. Die Scheibe leuchtet so hell, wie das Loch gerade Masse schluckt. | **Kosmisches Netz** (Szene 12): Ein Würfel von 480 Millionen Lichtjahren Dunkler Materie mit Filamenten und Knoten, wie das Standardmodell (ΛCDM, Planck 2018) sie heute vorhersagt. |
+| ![Spiralgalaxie](docs/images/spiral.jpg) | ![Pferdekopfnebel](docs/images/horsehead.jpg) |
+| **Spiralgalaxie** (Szene 1): Arme entstehen aus kleinen Störungen, im verdichteten Gas bilden sich junge, blaue Sterne. | **Pferdekopfnebel** (Szene 9): UV-Licht von Sigma Orionis bringt den Wasserstoff zum Leuchten, die dichte Staubsäule wirft Schatten. |
+
+## Was drinsteckt
+
+- **Lichtgeschwindigkeit als Regler.** `c` ist ein Parameter. Wird es kleiner, wachsen die Horizonte
+  (r_s = 2GM/c²), Sterne stürzen ab der innersten stabilen Bahn (3 r_s) hinein, und die Gravitation der Löcher
+  breitet sich auf Wunsch mit c aus (retardiert). Gravitationslinse und Doppler-Farben machen das sichtbar.
+- **Echte Physik, ehrlich vereinfacht.** Barnes-Hut-Baum (wahlweise auf der GPU), Gas als SPH mit Kühlung,
+  Sternentstehung und Supernovae, rotierende Löcher mit Frame Dragging, Dunkle Materie, ein mitbewegter Modus mit
+  kosmischer Expansion. Was vereinfacht ist und warum, steht in [docs/physics.md](docs/physics.md) und in
+  [ADRs](docs/adr); der Inspektor zeigt die Energiedrift.
+- **16 Szenen nach echten Vorbildern:** Lokale Gruppe in echten Abständen, Antennen, Whirlpool (M51), die S-Sterne
+  um Sgr A\*, die Satelliten der Milchstraße, eine Balkenspirale. Jede Szene ist eine JSON-Datei mit Quellen und
+  Annahmen ([Format](docs/scenes.md)), eigene Szenen lassen sich laden.
+- **Selber eingreifen:** Schwarze Löcher, Sternhaufen, Gaswolken oder ganze Galaxien per Klick setzen und mit
+  Kreisbahn-, Flucht- oder freier Geschwindigkeit losschicken. Stände speichern und später weiterrechnen.
+- **Lernmodus in drei Stufen:** zu jeder Szene und jedem Konzept eine Erklärung für Schüler, Interessierte und
+  Physiker, in der Physik-Stufe mit den Grenzen des Modells. Jeder Regler hat ein (i) mit Erklärung.
+- **Passt sich dem Rechner an:** Gravitas misst beim ersten Start die Leistung und wählt Sternzahl und Auflösung
+  für flüssige 30 Schritte/s.
 
 ## Installieren (macOS 14 oder neuer, Apple Silicon und Intel)
 
-1. `Gravitas-<Version>.dmg` öffnen und **Gravitas** auf **Applications** (Programme) ziehen.
+1. [`Gravitas.dmg`](https://github.com/gsteinacker/gravitas/releases/latest/download/Gravitas.dmg) laden (neueste
+   Version, ältere unter [Releases](https://github.com/gsteinacker/gravitas/releases)), öffnen und **Gravitas** auf
+   **Applications** (Programme) ziehen.
 2. Beim ersten Start meldet macOS, dass die App nicht geprüft werden kann. Sie ist (noch) nicht bei Apple
    notarisiert. Einmalig freigeben:
    - **macOS 15 und neuer:** Gravitas starten und die Meldung schließen. Dann unter *Systemeinstellungen →
@@ -29,6 +65,9 @@ eine alte `Galaxy.app` kann danach gelöscht werden.
 - `make app` erzeugt `bin/Gravitas.app` (Universal, ad-hoc signiert).
 - `make dmg` erzeugt das Disk-Image.
 - `make clean` löscht alle Build-Ergebnisse (`bin/`, Swift-Build).
+- **Neue Version veröffentlichen:** `git tag v0.2.0 && git push origin v0.2.0`. Der Workflow
+  [`release`](.github/workflows/release.yml) baut auf einem macOS-Runner, testet und hängt `Gravitas-0.2.0.dmg` und
+  `Gravitas.dmg` an das GitHub-Release; der Download-Link oben zeigt dann auf die neue Version.
 - Mit einem Apple-Developer-Zertifikat signiert und notarisiert
   `make notarize SIGN_ID="Developer ID Application: …" NOTARY_PROFILE=…`. Das Profil wird vorher einmal mit
   `xcrun notarytool store-credentials` angelegt.

@@ -1,0 +1,45 @@
+# Builds Gravitas.app on a macOS runner and publishes the DMG as a GitHub release.
+# Trigger: push a tag "vX.Y.Z" (git tag v0.2.0 && git push origin v0.2.0), or run it by hand
+# (Actions → release → Run workflow) with an existing tag.
+# The DMG is ad-hoc signed (no Apple Developer ID); README explains the one-time approval.
+name: release
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "existing tag to (re)build, e.g. v0.1.0"
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  dmg:
+    runs-on: macos-26
+    env:
+      TAG: ${{ inputs.tag || github.ref_name }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.TAG }}
+          fetch-depth: 0
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: Metal toolchain
+        run: xcrun -sdk macosx metal --version || xcodebuild -downloadComponent MetalToolchain
+      - name: Tests
+        run: make check lib-test
+      - name: Build DMG
+        run: make dmg VERSION="${TAG#v}"
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          dmg="bin/Gravitas-${TAG#v}.dmg"
+          cp "$dmg" bin/Gravitas.dmg   # fixed name for releases/latest/download/Gravitas.dmg
+          shasum -a 256 "$dmg" bin/Gravitas.dmg > bin/SHA256SUMS.txt
+          gh release view "$TAG" >/dev/null 2>&1 || gh release create "$TAG" --title "Gravitas ${TAG#v}" --generate-notes
+          gh release upload "$TAG" "$dmg" bin/Gravitas.dmg bin/SHA256SUMS.txt --clobber
